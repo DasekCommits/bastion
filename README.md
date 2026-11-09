@@ -13,6 +13,23 @@ Once you are happy with your defense, you publish it to the public leaderboard, 
 3. **Post-mortem.** You get a report on what was blocked, what got through, what was detected, and how to close each gap.
 4. **Leaderboard.** You publish your fortress. Defenders are ranked by how long their fortress holds, and attackers by how many fortresses they break.
 
+## Difficulty tiers
+
+Each tier is a different company with its own budget, team, attack surface and attacker. Every tier has its own leaderboard, and you unlock the next tier by beating the previous one.
+
+| | Small | Medium | Large |
+|---|---|---|---|
+| **Company** | Online shop, 5 people | Private clinic, 50 people | Bank, 500+ people |
+| **Infrastructure** | Web server, database | + email, VPN, patient records | + Active Directory, cloud, ATM network |
+| **Budget** | Low | Medium | High, but much more to cover |
+| **Blue Team** | Just you | 2-3 IT staff | Full SOC with analysts |
+| **Attacker** | Script kiddie | Ransomware gang | APT-style organized group |
+| **Compliance** | None | GDPR (medical data) | GDPR + banking regulations |
+
+Larger companies are harder because of more than their size. A bigger attack surface means more ways in, and every team has limited attention: too many noisy alerts and your analysts miss the real one (alert fatigue).
+
+Every company is defined in a data file, so new scenarios can be added without touching the engine.
+
 ## Safety
 
 Bastion never attacks real systems. The network is simulated, and payloads only run against an isolated rule engine, never against a live server.
@@ -27,7 +44,8 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 ## Roadmap
 
 - [x] Project setup
-- [ ] Company model (assets, employees, network)
+- [ ] Company model (assets, employees, network) and the Small tier
+- [ ] Medium and Large tiers, tier unlocks
 - [ ] Defense and attack catalog with MITRE ATT&CK mapping
 - [ ] Simulation engine and post-mortem report
 - [ ] WAF rule sandbox (real payloads vs. real rules)
