@@ -27,14 +27,25 @@ STYLE = Style.from_dict({
 
 
 class Picker:
-    def __init__(self, message: str, options: list, budget: int, need_one: bool = False, done_label: str = "Done"):
+    def __init__(
+        self,
+        message: str,
+        options: list,
+        budget: int | None,
+        need_one: bool = False,
+        done_label: str = "Done",
+        status=None,
+        preselected: list[str] | None = None,
+    ):
         self.message = message
         self.options = options
         self.budget = budget
         self.need_one = need_one
         self.done_label = done_label
+        self.status = status
         self.cursor = 0
-        self.chosen: list[str] = []
+        valid = {option.value for option in options}
+        self.chosen: list[str] = [value for value in (preselected or []) if value in valid]
         self.warning = ""
 
     @property
@@ -54,7 +65,7 @@ class Picker:
         if option.value in self.chosen:
             self.chosen.remove(option.value)
             self.warning = ""
-        elif self.spent + option.cost > self.budget:
+        elif self.budget is not None and self.spent + option.cost > self.budget:
             self.warning = f"Not enough budget: {option.title} costs {option.cost}, you have {self.budget - self.spent} left."
         else:
             self.chosen.append(option.value)
@@ -70,14 +81,18 @@ class Picker:
         return True
 
     def tokens(self) -> list[tuple[str, str]]:
-        spent, left = self.spent, self.budget - self.spent
-        filled = round(BAR_WIDTH * spent / self.budget) if self.budget else 0
-        lines = [
-            ("class:mark", "◆ "), ("class:question", self.message), ("", "\n"),
-            ("class:tag", "  Spent "), ("class:spent", f"{spent}/{self.budget} "),
-            ("class:full", "█" * filled), ("class:empty", "░" * (BAR_WIDTH - filled)),
-            ("class:tag", f"  {left} left"), ("", "\n\n"),
-        ]
+        lines = [("class:mark", "◆ "), ("class:question", self.message), ("", "\n")]
+        if self.budget is not None:
+            spent, left = self.spent, self.budget - self.spent
+            filled = round(BAR_WIDTH * spent / self.budget) if self.budget else 0
+            lines += [
+                ("class:tag", "  Spent "), ("class:spent", f"{spent}/{self.budget} "),
+                ("class:full", "█" * filled), ("class:empty", "░" * (BAR_WIDTH - filled)),
+                ("class:tag", f"  {left} left"),
+            ]
+        if self.status:
+            lines += self.status(list(self.chosen))
+        lines.append(("", "\n\n"))
         for index, option in enumerate(self.options):
             here = index == self.cursor
             picked = option.value in self.chosen

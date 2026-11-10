@@ -358,3 +358,39 @@ def score_panel(score, profile, unlocked: list[str]) -> Panel:
             lines.append(f"\nLocked: {tier}, {reason}", style=FAINT)
             break
     return Panel(lines, title="[bold]SCORE[/]", title_align="left", border_style=color, padding=(1, 2))
+
+
+def waf_intro() -> Text:
+    return Text(
+        "A WAF is a doorman for the web shop. Every message a visitor sends passes it first. "
+        "Pick what the doorman cleans up and what he blocks. 40 real attacks and 25 innocent customers "
+        "will try to get in. Your score here is how strong the WAF is in this game.",
+        style=MUTED,
+    )
+
+
+def waf_status_tokens(report) -> list[tuple[str, str]]:
+    attacks = sum(report.totals.get(kind, 0) for kind in ("sqli", "xss", "traversal"))
+    caught = sum(report.caught.get(kind, 0) for kind in ("sqli", "xss", "traversal"))
+    tokens = [
+        ("class:tag", "  Hackers blocked "), ("class:spent", f"{caught}/{attacks}"),
+        ("class:tag", "   Innocent customers blocked "),
+        ("class:warning" if report.false_positives else "class:spent", f"{len(report.false_positives)}/{report.totals.get('benign', 0)}"),
+        ("class:tag", "   WAF score "), ("class:spent", f"{report.score}/100"),
+    ]
+    if report.missed:
+        tricks = [v.hint for v in report.missed[:3]]
+        more = f" (+{len(report.missed) - 3} more)" if len(report.missed) > 3 else ""
+        tokens += [("", "\n"), ("class:tag", "  Still getting in: " + "; ".join(tricks) + more)]
+    if report.false_positives:
+        names = ", ".join(f"'{v.text}'" for v in report.false_positives[:3])
+        tokens += [("", "\n"), ("class:warning", f"  Wrongly blocked: {names}")]
+    return tokens
+
+
+def waf_summary(report) -> Text:
+    color = GREEN if report.score >= 85 else AMBER if report.score >= 60 else RED
+    return Text.assemble(
+        ("Your WAF scored ", MUTED), (f"{report.score}/100", f"bold {color}"),
+        (f". In this game it stops about {min(95, report.score)}% of attacks on the web shop.", MUTED),
+    )

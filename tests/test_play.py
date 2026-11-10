@@ -10,7 +10,7 @@ from bastion.company import load_scenario
 from bastion.engine import Campaign
 from bastion import look
 from bastion.picker import Picker
-from bastion.play import BACK, END_DAY, GIVE_UP, Game, main
+from bastion.play import BACK, END_DAY, GIVE_UP, Game, Option, main
 
 
 class Script:
@@ -259,3 +259,50 @@ def test_balance_command_runs(capsys):
 
     assert cli(["balance", "--all"]) == 0
     assert "games logged" in capsys.readouterr().out
+
+
+class WafScript(Script):
+    def build_waf(self, message, options, preselected, status):
+        answer = self.answers.pop(0)
+        status(answer)
+        return answer
+
+
+def test_building_a_waf_sets_its_strength_in_the_game(company, catalog):
+    good = ["url-decode", "lowercase", "union", "or-true", "script", "event"]
+    script = WafScript(["waf"], good)
+    game = Game(company, catalog, "easy", script, random.Random(1), side="blue")
+    game.pick_defenses("Done")
+    assert 0 < game.waf_score < 100
+    assert "Your WAF scored" in script.text
+    weak = Campaign(company, catalog, ["waf"], ["exploit-web"], seed=1, waf_score=10)
+    strong = Campaign(company, catalog, ["waf"], ["exploit-web"], seed=1, waf_score=95)
+    assert strong.preview("exploit-web", "web-01").success_chance < weak.preview("exploit-web", "web-01").success_chance
+
+
+def test_waf_builder_remembers_your_last_rules(company, catalog):
+    import json
+
+    from bastion.profile import home
+
+    script = WafScript(["waf"], ["script"])
+    Game(company, catalog, "easy", script, random.Random(1), side="blue").pick_defenses("Done")
+    assert json.loads((home() / "waf-build.json").read_text()) == ["script"]
+
+
+def test_real_waf_picker_with_keys(company, catalog):
+    from prompt_toolkit.application import create_app_session
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+
+    from bastion.picker import Picker
+    from bastion.waf import evaluate, library_ruleset, load_corpus, load_library
+
+    corpus = load_corpus()
+    options = [Option(item.title, item.id) for item in load_library()]
+    status = lambda chosen: look.waf_status_tokens(evaluate(library_ruleset(chosen), corpus))
+    with create_pipe_input() as keys:
+        keys.send_text("\r\x1b[B\r\x1b[A\x1b[A\r")
+        with create_app_session(input=keys, output=DummyOutput()):
+            chosen = Picker("WAF", options, None, status=status).run()
+    assert chosen == ["url-decode", "lowercase"]

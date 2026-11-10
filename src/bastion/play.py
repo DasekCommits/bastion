@@ -1,4 +1,5 @@
 import argparse
+import json
 import random
 import sys
 import time
@@ -12,7 +13,8 @@ from bastion.catalog import Catalog, load_catalog, load_edge
 from bastion.company import Company, list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, NightResult, StepResult
 from bastion.gamelog import log_game
-from bastion.profile import load_profile, save_profile
+from bastion.profile import home, load_profile, save_profile
+from bastion.waf import evaluate, library_ruleset, load_corpus, load_library, load_rules
 from bastion.look import percent
 
 END_DAY = "end-day"
@@ -72,6 +74,11 @@ class Terminal:
         )
         return chosen
 
+    def build_waf(self, message: str, options: list[Option], preselected: list[str], status) -> list[str]:
+        from bastion.picker import Picker
+
+        return Picker(message, options, None, False, "Done, use this WAF", status=status, preselected=preselected).run()
+
     def say(self, content="") -> None:
         self.console.print(content)
 
@@ -108,6 +115,7 @@ class Game:
         self.easy = difficulty == "easy"
         self.explain = difficulty in ("easy", "medium")
         self.ui = ui
+        self.waf_score: int | None = None
 
     def defense_options(self) -> list[Option]:
         options = []
@@ -146,7 +154,48 @@ class Game:
         self.ui.say(look.team_rule("blue", f"protect {self.company.name}"))
         self.ui.say(look.company_panel(self.company, self.explain, reveal_admins=self.easy))
         self.ui.say(look.budget_note("Blue", self.company.budget, self.company.budget_range, look.BLUE))
-        return self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, done_label)
+        chosen = self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, done_label)
+        if "waf" in chosen:
+            self.waf_score = self.build_waf()
+        return chosen
+
+    def build_waf(self) -> int:
+        corpus = load_corpus()
+        expert_file = home() / "waf-rules.json"
+        if expert_file.exists():
+            how = self.ui.select("Your web application firewall", [
+                Option("Pick rules from the list", "list", description="Choose ready-made rules, explained in plain words."),
+                Option("Use my own rules file (expert)", "file", description=str(expert_file)),
+            ])
+            if how == "file":
+                report = evaluate(load_rules(expert_file), corpus)
+                self.ui.say(look.waf_summary(report))
+                return report.score
+
+        library = load_library()
+        saved = home() / "waf-build.json"
+        try:
+            preselected = json.loads(saved.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            preselected = []
+        options = [
+            Option(item.title, item.id, tag="clean up first" if item.kind == "clean" else "", description=item.explain)
+            for item in library
+        ]
+        self.ui.say(look.waf_intro())
+
+        def status(chosen: list[str]) -> list[tuple[str, str]]:
+            return look.waf_status_tokens(evaluate(library_ruleset(chosen, library), corpus))
+
+        chosen = self.ui.build_waf("Build your web application firewall", options, preselected, status)
+        try:
+            saved.parent.mkdir(parents=True, exist_ok=True)
+            saved.write_text(json.dumps(chosen), encoding="utf-8")
+        except OSError:
+            pass
+        report = evaluate(library_ruleset(chosen, library), corpus)
+        self.ui.say(look.waf_summary(report))
+        return report.score
 
     def pick_arsenal(self, subtitle: str = "switch sides and break in") -> list[str]:
         self.ui.say()
@@ -300,7 +349,7 @@ class Game:
             defenses = self.pick_defenses()
             arsenal = self.pick_arsenal()
         edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
-        campaign = Campaign(self.company, self.catalog, defenses, arsenal, rng=self.rng, edge=edge)
+        campaign = Campaign(self.company, self.catalog, defenses, arsenal, rng=self.rng, edge=edge, waf_score=self.waf_score)
         self.ui.say()
         if self.side == "blue":
             self.watch_attack(campaign)

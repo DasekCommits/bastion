@@ -1,4 +1,5 @@
 import copy
+import dataclasses
 import random
 from dataclasses import dataclass, field
 
@@ -136,6 +137,17 @@ def check_arsenal(company: Company, catalog: Catalog, attack_ids: list[str]) -> 
     if cost > company.red_budget:
         raise PlanError(f"These attacks cost {cost}, but the Red Team budget is {company.red_budget}")
     return cost
+
+
+def _with_waf(defense: Defense, waf_score: int | None) -> Defense:
+    if defense.id != "waf" or waf_score is None:
+        return defense
+    strength = waf_score / 100
+    return dataclasses.replace(
+        defense,
+        blocks={**defense.blocks, "exploit-web": min(CEILING, strength)},
+        detects={**defense.detects, "exploit-web": round(0.5 * strength, 2)},
+    )
 
 
 def clamp(chance: float) -> float:
@@ -348,6 +360,7 @@ class Campaign:
         seed: int | None = None,
         rng: random.Random | None = None,
         edge: float = 1.0,
+        waf_score: int | None = None,
     ):
         self.edge = edge
         self.company = company
@@ -356,7 +369,8 @@ class Campaign:
         self.budget_used = check_defenses(company, catalog, self.defense_ids)
         self.arsenal = list(arsenal)
         self.red_budget_used = check_arsenal(company, catalog, self.arsenal)
-        self.defenses = [catalog.defenses[defense_id] for defense_id in self.defense_ids]
+        self.waf_score = waf_score
+        self.defenses = [_with_waf(catalog.defenses[d], waf_score) for d in self.defense_ids]
         self.rng = rng or random.Random(seed)
         self.foothold = Foothold()
         self.results: list[StepResult] = []

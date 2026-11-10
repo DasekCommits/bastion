@@ -143,3 +143,28 @@ def evaluate_safely(ruleset: RuleSet, corpus: dict, timeout: float = TIMEOUT_SEC
         ) from None
     process.join()
     return report
+
+
+CLEAN_ORDER = ("url-decode", "html-decode", "remove-tabs", "strip-sql-comments", "collapse-spaces", "lowercase")
+
+
+@dataclass
+class LibraryItem:
+    id: str
+    kind: str
+    title: str
+    explain: str
+    pattern: str = ""
+
+
+def load_library() -> list[LibraryItem]:
+    raw = json.loads((DATA_DIR / "waf_library.json").read_text(encoding="utf-8"))
+    return [LibraryItem(**item) for item in raw]
+
+
+def library_ruleset(selected: list[str], library: list[LibraryItem] | None = None) -> RuleSet:
+    library = library or load_library()
+    chosen = {item.id: item for item in library if item.id in selected}
+    steps = [step for step in CLEAN_ORDER if step in chosen]
+    rules = [Rule(item.id, item.pattern, item.title) for item in library if item.kind == "rule" and item.id in chosen]
+    return RuleSet(steps, rules)
