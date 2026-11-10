@@ -113,9 +113,18 @@ def check_plan(company: Company, catalog: Catalog, plan: list[Step]) -> int:
     for day in set(days):
         if days.count(day) > company.moves_per_day:
             raise PlanError(f"Day {day} has more than {company.moves_per_day} moves")
-    cost = sum(catalog.attacks[step.attack_id].cost for step in plan)
+    return check_arsenal(company, catalog, list(dict.fromkeys(step.attack_id for step in plan)))
+
+
+def check_arsenal(company: Company, catalog: Catalog, attack_ids: list[str]) -> int:
+    if len(attack_ids) != len(set(attack_ids)):
+        raise PlanError("The same attack was bought twice")
+    for attack_id in attack_ids:
+        if attack_id not in catalog.attacks:
+            raise PlanError(f"Unknown attack '{attack_id}'")
+    cost = sum(catalog.attacks[attack_id].cost for attack_id in attack_ids)
     if cost > company.red_budget:
-        raise PlanError(f"This attack costs {cost}, but the Red Team budget is {company.red_budget}")
+        raise PlanError(f"These attacks cost {cost}, but the Red Team budget is {company.red_budget}")
     return cost
 
 
@@ -229,6 +238,154 @@ def _apply(attack: Attack, target_id: str, company: Company, foothold: Foothold,
     return points, f"Encrypted: {names}."
 
 
+@dataclass
+class Preview:
+    possible: bool
+    note: str
+    success_chance: float
+    detect_chance: float
+    heat_after: float
+
+
+class Campaign:
+    def __init__(
+        self,
+        company: Company,
+        catalog: Catalog,
+        defense_ids: list[str],
+        arsenal: list[str],
+        seed: int | None = None,
+        rng: random.Random | None = None,
+    ):
+        self.company = company
+        self.catalog = catalog
+        self.defense_ids = list(defense_ids)
+        self.budget_used = check_defenses(company, catalog, self.defense_ids)
+        self.arsenal = list(arsenal)
+        self.red_budget_used = check_arsenal(company, catalog, self.arsenal)
+        self.defenses = [catalog.defenses[defense_id] for defense_id in self.defense_ids]
+        self.rng = rng or random.Random(seed)
+        self.foothold = Foothold()
+        self.results: list[StepResult] = []
+        self.nights: list[NightResult] = []
+        self.stolen: list[str] = []
+        self.encrypted: list[str] = []
+        self.heat = 0.0
+        self.used: dict[str, int] = {}
+        self.day = 1
+        self.moves_today = 0
+        self.caught = False
+        self.out_of_days = False
+
+    @property
+    def finished(self) -> bool:
+        return self.caught or self.out_of_days
+
+    @property
+    def moves_left_today(self) -> int:
+        return self.company.moves_per_day - self.moves_today
+
+    def targets_for(self, attack_id: str) -> list[str]:
+        attack = self.catalog.attacks[attack_id]
+        if attack.target == "server":
+            return [server.id for server in self.company.servers]
+        return [employee.id for employee in self.company.employees]
+
+    def preview(self, attack_id: str, target_id: str) -> Preview:
+        attack = self.catalog.attacks[attack_id]
+        possible, note = _is_possible(attack, target_id, self.company, self.foothold)
+        if not possible:
+            return Preview(False, note, 0.0, 0.0, self.heat)
+        chance = success_chance(attack, self.defenses)
+        if attack.id == "exploit-web" and target_id not in self.foothold.scanned:
+            chance *= BLIND_PENALTY
+            note = "Attacking blind: no scan first, so the attacker does not know what to exploit."
+        if attack.tactic == "privilege-escalation" and target_id in self.foothold.admin_on:
+            chance = 1.0
+            note = "Already an administrator here, nothing to escalate."
+        heat = min(1.0, self.heat + heat_gain(attack, self.defenses, self.used.get(attack.id, 0)))
+        spotted = 1 - (1 - detect_chance(attack, self.defenses)) * (1 - heat)
+        return Preview(True, note, chance, spotted, heat)
+
+    def move(self, attack_id: str, target_id: str) -> StepResult:
+        if self.finished:
+            raise PlanError("The campaign is over")
+        if self.moves_left_today <= 0:
+            raise PlanError(f"Day {self.day} has no moves left")
+        if attack_id not in self.arsenal:
+            raise PlanError(f"'{attack_id}' is not in your arsenal")
+        if target_id not in self.targets_for(attack_id):
+            attack = self.catalog.attacks[attack_id]
+            raise PlanError(f"'{target_id}' is not a valid {attack.target} for '{attack_id}'")
+
+        attack = self.catalog.attacks[attack_id]
+        step = Step(attack_id, target_id, self.day)
+        helped = [d.id for d in self.defenses if attack.id in d.blocks or attack.id in d.detects]
+        missing = [d.id for d in self.catalog.defenses_against(attack.id) if d.id not in self.defense_ids]
+        self.moves_today += 1
+        preview = self.preview(attack_id, target_id)
+
+        if not preview.possible:
+            result = StepResult(step, attack, False, preview.note, 0, 0, False, False, helped, missing)
+            self.results.append(result)
+            return result
+
+        self.heat = preview.heat_after
+        self.used[attack.id] = self.used.get(attack.id, 0) + 1
+        succeeded = self.rng.random() < preview.success_chance
+        detected = self.rng.random() < preview.detect_chance
+        note = preview.note
+        points = 0
+
+        if succeeded:
+            points, outcome = _apply(attack, target_id, self.company, self.foothold, self.defense_ids)
+            note = f"{note} {outcome}".strip()
+            if attack.tactic == "exfiltration" and points:
+                self.stolen.append(target_id)
+            if attack.tactic == "impact" and points:
+                self.encrypted.append(target_id)
+
+        result = StepResult(
+            step, attack, True, note, preview.success_chance, preview.detect_chance,
+            succeeded, detected, helped, missing, points, self.heat,
+        )
+        self.results.append(result)
+        self.caught = detected
+        return result
+
+    def end_day(self) -> NightResult | None:
+        if self.finished:
+            return None
+        if self.day >= self.company.max_days:
+            self.out_of_days = True
+            return None
+        night = _night(self.day, self.heat, self.defenses, self.rng)
+        self.nights.append(night)
+        self.heat = night.heat_after
+        self.caught = night.found
+        self.day += 1
+        self.moves_today = 0
+        return night
+
+    def report(self) -> Report:
+        return Report(
+            company=self.company,
+            defenses=list(self.defense_ids),
+            budget_used=self.budget_used,
+            red_budget_used=self.red_budget_used,
+            results=self.results,
+            nights=self.nights,
+            days_used=self.day if self.results or self.nights else 0,
+            caught=self.caught,
+            points=sum(result.points for result in self.results),
+            stolen=self.stolen,
+            encrypted=self.encrypted,
+        )
+
+    def plan(self) -> list[Step]:
+        return [result.step for result in self.results]
+
+
 def run_attack(
     company: Company,
     catalog: Catalog,
@@ -237,81 +394,19 @@ def run_attack(
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> Report:
-    budget_used = check_defenses(company, catalog, defense_ids)
-    red_budget_used = check_plan(company, catalog, plan)
-    rng = rng or random.Random(seed)
-    defenses = [catalog.defenses[defense_id] for defense_id in defense_ids]
-    foothold = Foothold()
-    results = []
-    stolen, encrypted = [], []
-    caught = False
-    heat = 0.0
-    used = {}
-    nights = []
-    day = 1
-
+    check_defenses(company, catalog, defense_ids)
+    check_plan(company, catalog, plan)
+    arsenal = list(dict.fromkeys(step.attack_id for step in plan))
+    campaign = Campaign(company, catalog, defense_ids, arsenal, seed=seed, rng=rng)
     for step in plan:
-        while day < step.day and not caught:
-            night = _night(day, heat, defenses, rng)
-            nights.append(night)
-            heat = night.heat_after
-            caught = night.found
-            day += 1
-        if caught:
+        while campaign.day < step.day and not campaign.finished:
+            campaign.end_day()
+        if campaign.finished:
             break
-
-        attack = catalog.attacks[step.attack_id]
-        helped = [d.id for d in defenses if attack.id in d.blocks or attack.id in d.detects]
-        missing = [d.id for d in catalog.defenses_against(attack.id) if d.id not in defense_ids]
-        possible, note = _is_possible(attack, step.target_id, company, foothold)
-
-        if not possible:
-            results.append(StepResult(step, attack, False, note, 0, 0, False, False, helped, missing))
-            continue
-
-        chance = success_chance(attack, defenses)
-        if attack.id == "exploit-web" and step.target_id not in foothold.scanned:
-            chance *= BLIND_PENALTY
-            note = "Attacking blind: no scan first, so the attacker does not know what to exploit."
-        if attack.tactic == "privilege-escalation" and step.target_id in foothold.admin_on:
-            chance = 1.0
-            note = "Already an administrator here, nothing to escalate."
-
-        heat = min(1.0, heat + heat_gain(attack, defenses, used.get(attack.id, 0)))
-        used[attack.id] = used.get(attack.id, 0) + 1
-        spotted = 1 - (1 - detect_chance(attack, defenses)) * (1 - heat)
-        succeeded = rng.random() < chance
-        detected = rng.random() < spotted
-        points = 0
-
-        if succeeded:
-            points, outcome = _apply(attack, step.target_id, company, foothold, defense_ids)
-            note = f"{note} {outcome}".strip()
-            if attack.tactic == "exfiltration" and points:
-                stolen.append(step.target_id)
-            if attack.tactic == "impact" and points:
-                encrypted.append(step.target_id)
-
-        results.append(
-            StepResult(step, attack, True, note, chance, spotted, succeeded, detected, helped, missing, points, heat)
-        )
-        if detected:
-            caught = True
+        campaign.move(step.attack_id, step.target_id)
+        if campaign.finished:
             break
-
-    return Report(
-        company=company,
-        defenses=list(defense_ids),
-        budget_used=budget_used,
-        red_budget_used=red_budget_used,
-        results=results,
-        nights=nights,
-        days_used=day if plan else 0,
-        caught=caught,
-        points=sum(result.points for result in results),
-        stolen=stolen,
-        encrypted=encrypted,
-    )
+    return campaign.report()
 
 
 @dataclass

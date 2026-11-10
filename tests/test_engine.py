@@ -2,7 +2,16 @@ import pytest
 
 from bastion.catalog import load_catalog
 from bastion.company import load_scenario
-from bastion.engine import PlanError, Step, detect_chance, heat_gain, run_attack, simulate, success_chance
+from bastion.engine import (
+    Campaign,
+    PlanError,
+    Step,
+    detect_chance,
+    heat_gain,
+    run_attack,
+    simulate,
+    success_chance,
+)
 
 
 class Rolls:
@@ -121,9 +130,53 @@ def test_defenses_raise_the_average_score(company, catalog):
 
 
 def test_red_team_budget_is_enforced(company, catalog):
-    plan = [Step("ransomware", "db-01")] * 4
+    arsenal = ["ransomware", "exploit-web", "privilege-escalation", "exfiltration", "phishing", "port-scan"]
     with pytest.raises(PlanError):
-        run_attack(company, catalog, [], plan)
+        Campaign(company, catalog, [], arsenal)
+
+
+def test_reusing_an_attack_costs_no_extra_budget(company, catalog):
+    plan = [Step("phishing", "emily", 1), Step("phishing", "george", 2), Step("phishing", "jacob", 3)]
+    report = run_attack(company, catalog, [], plan, rng=win_every_step(3))
+    assert report.red_budget_used == 10
+
+
+def test_campaign_plays_one_move_at_a_time(company, catalog):
+    campaign = Campaign(company, catalog, ["mfa"], ["phishing", "exfiltration"], rng=win_every_step(2))
+    first = campaign.move("phishing", "jacob")
+    assert first.succeeded
+    assert campaign.preview("exfiltration", "db-01").possible
+    campaign.end_day()
+    assert campaign.day == 2
+    campaign.move("exfiltration", "db-01")
+    assert campaign.report().points == 26
+
+
+def test_campaign_rejects_attacks_outside_the_arsenal(company, catalog):
+    campaign = Campaign(company, catalog, [], ["phishing"])
+    with pytest.raises(PlanError):
+        campaign.move("ransomware", "db-01")
+
+
+def test_campaign_limits_moves_per_day(company, catalog):
+    campaign = Campaign(company, catalog, [], ["port-scan"], rng=win_every_step(3))
+    for _ in range(3):
+        campaign.move("port-scan", "web-01")
+    with pytest.raises(PlanError):
+        campaign.move("port-scan", "web-01")
+
+
+def test_campaign_ends_after_the_last_day(company, catalog):
+    campaign = Campaign(company, catalog, [], ["port-scan"])
+    for _ in range(company.max_days):
+        campaign.end_day()
+    assert campaign.finished
+    assert campaign.day == company.max_days
+
+
+def test_preview_shows_impossible_moves(company, catalog):
+    campaign = Campaign(company, catalog, [], ["ransomware"])
+    assert not campaign.preview("ransomware", "db-01").possible
 
 
 def test_heat_builds_up(company, catalog):
