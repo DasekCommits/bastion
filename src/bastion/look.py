@@ -121,6 +121,13 @@ def _trait(value: float) -> Text:
     return Text("poor", style=RED)
 
 
+def budget_note(team: str, budget: int, span: list[int] | None, color: str) -> Text:
+    text = Text.assemble((f"{team} budget this game: ", MUTED), (str(budget), f"bold {color}"))
+    if span:
+        text.append(f"  (can be {span[0]} to {span[1]})", style=MUTED)
+    return text
+
+
 def _dots(filled: int, total: int, color: str) -> Text:
     return Text.assemble(("●" * filled, color), ("○" * (total - filled), FAINT))
 

@@ -53,6 +53,8 @@ class Company:
     servers: list[Server]
     employees: list[Employee]
     data: list[DataAsset]
+    budget_range: list[int] | None = None
+    red_budget_range: list[int] | None = None
 
     def server(self, server_id: str) -> Server:
         for server in self.servers:
@@ -75,6 +77,12 @@ class Company:
 
 def roll_mistakes(company: Company, rng) -> Company:
     rolled = copy.deepcopy(company)
+    if rolled.budget_range:
+        low, high = rolled.budget_range
+        rolled.budget = rng.randrange(low, high + 1, 5)
+    if rolled.red_budget_range:
+        low, high = rolled.red_budget_range
+        rolled.red_budget = rng.randrange(low, high + 1, 5)
     candidates = [e for e in rolled.employees if e.admin_chance and not e.needs_admin]
     for employee in candidates:
         employee.is_admin = False
@@ -93,6 +101,13 @@ class ScenarioError(ValueError):
 def validate(company: Company) -> None:
     if company.tier not in TIERS:
         raise ScenarioError(f"Unknown tier '{company.tier}', expected one of {TIERS}")
+
+    for name in ("budget_range", "red_budget_range"):
+        span = getattr(company, name)
+        if span is None:
+            continue
+        if len(span) != 2 or span[0] > span[1] or any(value % 5 for value in span):
+            raise ScenarioError(f"{name} must be [low, high] in steps of 5")
 
     server_ids = [server.id for server in company.servers]
     if len(server_ids) != len(set(server_ids)):
@@ -132,6 +147,8 @@ def load_company(path: Path) -> Company:
         servers=[Server(**item) for item in raw["servers"]],
         employees=[Employee(**item) for item in raw["employees"]],
         data=[DataAsset(**item) for item in raw["data"]],
+        budget_range=raw.get("budget_range"),
+        red_budget_range=raw.get("red_budget_range"),
     )
     validate(company)
     return company

@@ -82,10 +82,10 @@ Pick a company and a difficulty, then everything happens with the arrow keys: yo
 
 ### Companies
 
-| Company | Tier | People | Blue / Red budget | Days |
+| Company | Tier | People | Blue / Red budget (rolled each game, steps of 5) | Days |
 |---|---|---|---|---|
-| Olive Byte, an online olive oil shop | small | 5 | 50 / 40 | 5 |
-| Harbor Clinic, a private medical clinic | medium | 10 | 80 / 60 | 7 |
+| Olive Byte, an online olive oil shop | small | 5 | 40-60 / 40-60 | 5 |
+| Harbor Clinic, a private medical clinic | medium | 10 | 70-90 / 60-80 | 7 |
 
 The medium tier adds a VPN gateway, macro documents, infected USB sticks, bribed insiders and data wiping, plus macro blocking, USB control and data loss prevention on the Blue side.
 

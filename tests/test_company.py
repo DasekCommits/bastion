@@ -38,3 +38,21 @@ def test_awareness_must_be_in_range(company):
     company.employees[0].awareness = 1.5
     with pytest.raises(ScenarioError):
         validate(company)
+
+
+def test_budgets_are_rolled_in_steps_of_five(company):
+    import random
+
+    from bastion.company import roll_mistakes
+
+    rng = random.Random(3)
+    blue = {roll_mistakes(company, rng).budget for _ in range(300)}
+    red = {roll_mistakes(company, rng).red_budget for _ in range(300)}
+    assert blue == {40, 45, 50, 55, 60}
+    assert red == {40, 45, 50, 55, 60}
+
+
+def test_budget_range_must_use_steps_of_five(company):
+    company.budget_range = [42, 60]
+    with pytest.raises(ScenarioError):
+        validate(company)

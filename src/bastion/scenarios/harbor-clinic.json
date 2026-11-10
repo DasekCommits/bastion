@@ -5,6 +5,8 @@
   "description": "A private medical clinic with ten staff, a patient portal and an X-ray room. Patient records are worth a lot on the black market.",
   "budget": 80,
   "red_budget": 60,
+  "budget_range": [70, 90],
+  "red_budget_range": [60, 80],
   "max_days": 7,
   "moves_per_day": 3,
   "team_size": 2,

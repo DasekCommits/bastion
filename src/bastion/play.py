@@ -130,12 +130,14 @@ class Game:
     def pick_defenses(self) -> list[str]:
         self.ui.say(look.team_rule("blue", f"protect {self.company.name}"))
         self.ui.say(look.company_panel(self.company, self.explain, reveal_admins=self.easy))
+        self.ui.say(look.budget_note("Blue", self.company.budget, self.company.budget_range, look.BLUE))
         return self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, "Done, switch to Red")
 
     def pick_arsenal(self) -> list[str]:
         self.ui.say()
         self.ui.say(look.team_rule("red", "switch sides and break in"))
         self.ui.say(Text("You buy each attack once and can reuse it on any day.", style=look.MUTED))
+        self.ui.say(look.budget_note("Red", self.company.red_budget, self.company.red_budget_range, look.RED))
         return self.ui.pick("Buy your arsenal", self.attack_options(), self.company.red_budget, True, "Done, start the attack")
 
     def action_options(self, campaign: Campaign) -> list[Option]:

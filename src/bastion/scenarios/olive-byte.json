@@ -5,6 +5,8 @@
   "description": "A family business that sells olive oil online. Five people, one website, and a lot of customer data.",
   "budget": 50,
   "red_budget": 40,
+  "budget_range": [40, 60],
+  "red_budget_range": [40, 60],
   "max_days": 5,
   "moves_per_day": 3,
   "team_size": 1,
