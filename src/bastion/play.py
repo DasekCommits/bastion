@@ -7,16 +7,19 @@ from dataclasses import dataclass
 from rich.console import Console
 from rich.text import Text
 
-from bastion import advice, look
+from bastion import advice, ai, look, scoring
 from bastion.catalog import Catalog, load_catalog, load_edge
 from bastion.company import Company, list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, NightResult, StepResult
+from bastion.gamelog import log_game
+from bastion.profile import load_profile, save_profile
 from bastion.look import percent
 
 END_DAY = "end-day"
 GIVE_UP = "give-up"
 BACK = "back"
 DIFFICULTIES = ("easy", "medium", "hard")
+SIDES = ("blue", "red", "random", "practice")
 TITLE_WIDTH = 30
 
 
@@ -83,10 +86,22 @@ def _to_choice(option: Option):
 
 
 class Game:
-    def __init__(self, company: Company, catalog: Catalog, difficulty: str, ui, rng: random.Random | None = None):
+    def __init__(
+        self,
+        company: Company,
+        catalog: Catalog,
+        difficulty: str,
+        ui,
+        rng: random.Random | None = None,
+        side: str = "practice",
+    ):
         if difficulty not in DIFFICULTIES:
             raise ValueError(f"Difficulty must be one of {DIFFICULTIES}")
+        if side not in SIDES:
+            raise ValueError(f"Side must be one of {SIDES}")
         self.rng = rng or random.Random()
+        self.random_side = side == "random"
+        self.side = self.rng.choice(("blue", "red")) if self.random_side else side
         self.company = roll_mistakes(company, self.rng)
         self.catalog = catalog
         self.level = difficulty
@@ -127,15 +142,18 @@ class Game:
             ))
         return options
 
-    def pick_defenses(self) -> list[str]:
+    def pick_defenses(self, done_label: str = "Done, switch to Red") -> list[str]:
         self.ui.say(look.team_rule("blue", f"protect {self.company.name}"))
         self.ui.say(look.company_panel(self.company, self.explain, reveal_admins=self.easy))
         self.ui.say(look.budget_note("Blue", self.company.budget, self.company.budget_range, look.BLUE))
-        return self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, "Done, switch to Red")
+        return self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, done_label)
 
-    def pick_arsenal(self) -> list[str]:
+    def pick_arsenal(self, subtitle: str = "switch sides and break in") -> list[str]:
         self.ui.say()
-        self.ui.say(look.team_rule("red", "switch sides and break in"))
+        self.ui.say(look.team_rule("red", subtitle))
+        if self.side == "red":
+            self.ui.say(look.company_panel(self.company, self.explain, reveal_admins=self.easy))
+            self.ui.say(Text("The defenders already picked their defenses. You cannot see them. A scan shows what is visible from outside.", style=look.MUTED))
         self.ui.say(Text("You buy each attack once and can reuse it on any day.", style=look.MUTED))
         self.ui.say(look.budget_note("Red", self.company.red_budget, self.company.red_budget_range, look.RED))
         return self.ui.pick("Buy your arsenal", self.attack_options(), self.company.red_budget, True, "Done, start the attack")
@@ -247,18 +265,66 @@ class Game:
         if night:
             self.show_night(night)
 
+    def show_ai_move(self, result: StepResult) -> None:
+        target = self.target_name(result.step.target_id)
+        if self.easy:
+            self.ui.say(look.move_header(result, target))
+            self.ui.say(look.outcome_text(result, True, True))
+            if result.possible:
+                self.ui.say(look.detection_text(result))
+            self.ui.say()
+            return
+        if result.detected:
+            self.ui.suspense([f"Your tools raise an alert on {target}"])
+            self.ui.say(look.blue_alert(result, target, named=self.explain))
+
+    def show_blue_night(self, night: NightResult) -> None:
+        self.ui.say(look.blue_night(night, self.easy))
+
+    def watch_attack(self, campaign: Campaign) -> None:
+        red = ai.RedAI(ai.RED_AI_KNOWLEDGE[self.level])
+        self.ui.say(Text("The attacker is out there. You only see what your tools catch.", style=look.MUTED))
+        self.ui.say()
+        ai.play_out(campaign, red, on_move=self.show_ai_move, on_night=self.show_blue_night)
+
     def run(self) -> Campaign:
-        defenses = self.pick_defenses()
-        arsenal = self.pick_arsenal()
-        edge = load_edge(self.company.tier, self.level)
+        if self.random_side:
+            self.ui.say(look.random_side_note(self.side))
+        if self.side == "blue":
+            defenses = self.pick_defenses("Done, start the game")
+            arsenal = ai.pick_arsenal(self.company, self.catalog, self.rng)
+        elif self.side == "red":
+            defenses = ai.pick_defenses(self.company, self.catalog, self.rng)
+            arsenal = self.pick_arsenal("break in")
+        else:
+            defenses = self.pick_defenses()
+            arsenal = self.pick_arsenal()
+        edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
         campaign = Campaign(self.company, self.catalog, defenses, arsenal, rng=self.rng, edge=edge)
         self.ui.say()
-        self.play_turns(campaign)
+        if self.side == "blue":
+            self.watch_attack(campaign)
+        else:
+            self.play_turns(campaign)
         self.ui.say()
         blue = advice.blue_tips(campaign) if self.easy else []
         red = advice.red_tips(campaign) if self.easy else []
         self.ui.say(look.final_screen(campaign.report(), self.catalog, self.level, blue, red))
+        self.finish(campaign)
         return campaign
+
+    def finish(self, campaign: Campaign) -> None:
+        log_game(campaign, self.level, "random-" + self.side if self.random_side else self.side)
+        if self.side == "practice":
+            return
+        if self.side == "blue":
+            score = scoring.blue_score(campaign, self.random_side)
+        else:
+            score = scoring.red_score(campaign, self.random_side)
+        profile = load_profile()
+        unlocked = profile.record(self.company.tier, score.won, score.total)
+        save_profile(profile)
+        self.ui.say(look.score_panel(score, profile, unlocked))
 
 
 def main(argv: list[str] | None = None, ui=None) -> int:
@@ -267,6 +333,7 @@ def main(argv: list[str] | None = None, ui=None) -> int:
     parser.add_argument("--difficulty", choices=DIFFICULTIES, default=None)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--fast", action="store_true", help="no suspense pauses")
+    parser.add_argument("--side", choices=SIDES, default=None)
     args = parser.parse_args(argv)
 
     ui = ui or Terminal(delay=0 if args.fast else 1.0)
@@ -277,15 +344,23 @@ def main(argv: list[str] | None = None, ui=None) -> int:
             Option("Medium", "medium", description="A fairer fight. Explanations but no numbers. At the end: what happened."),
             Option("Hard", "hard", description="The defenders have the edge. No help at all. At the end: only the result."),
         ])
+        side = args.side or ui.select("Side", [
+            Option("Blue", "blue", description="Defend the company. The computer attacks."),
+            Option("Red", "red", description="Break in. The computer picked the defenses."),
+            Option("Random", "random", description="Blue or Red by coin flip. Double points if you win."),
+            Option("Practice", "practice", description="Play both sides. No points, no unlocks."),
+        ])
+        profile = load_profile()
         if args.scenario:
             company = load_scenario(args.scenario)
         else:
             choice = ui.select("Company", [
-                Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people", description=c.description)
+                Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people", description=c.description,
+                       disabled=profile.lock_reason(c.tier))
                 for c in list_scenarios()
             ])
             company = load_scenario(choice)
-        game = Game(company, load_catalog(), difficulty, ui, random.Random(args.seed))
+        game = Game(company, load_catalog(), difficulty, ui, random.Random(args.seed), side=side)
         game.run()
     except KeyboardInterrupt:
         ui.say(Text("\nGame stopped.", style=look.MUTED))

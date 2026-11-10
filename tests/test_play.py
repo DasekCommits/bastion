@@ -119,7 +119,7 @@ def test_day_ends_by_itself_when_moves_run_out(company, catalog):
 
 
 def test_main_asks_difficulty_and_plays(company):
-    script = Script("hard", "olive-byte", ["firewall"], ["port-scan"], GIVE_UP)
+    script = Script("hard", "practice", "olive-byte", ["firewall"], ["port-scan"], GIVE_UP)
     assert main(["--seed", "1"], ui=script) == 0
     before_red = script.text.split("RED TEAM")[0]
     assert "BLUE TEAM" in before_red and "%" not in before_red
@@ -190,3 +190,72 @@ def test_medium_and_hard_hide_accidental_admins(company, catalog):
         game = Game(company, catalog, level, script, random.Random(1))
         game.ui.say(look.company_panel(game.company, game.explain, reveal_admins=game.easy))
         assert ("by mistake" in script.text) == hidden
+
+
+def test_blue_side_watches_the_computer_attack_and_scores(company, catalog):
+    from bastion.profile import load_profile
+
+    script = Script(["mfa", "email-filter"])
+    campaign = Game(company, catalog, "medium", script, random.Random(2), side="blue").run()
+    assert campaign.finished or campaign.results
+    assert "SCORE" in script.text and "BLUE TEAM" in script.text
+    assert load_profile().games == 1
+
+
+def test_red_side_plays_against_hidden_defenses(company, catalog):
+    script = Script(["phishing", "exfiltration"], GIVE_UP)
+    game = Game(company, catalog, "easy", script, random.Random(3), side="red")
+    campaign = game.run()
+    assert campaign.defense_ids
+    assert "SCORE" in script.text and "RED TEAM" in script.text
+
+
+def test_random_side_doubles_points_only_on_a_win(company, catalog):
+    from bastion.scoring import _total
+
+    game = Game(company, catalog, "easy", Script(), random.Random(1), side="random")
+    assert game.side in ("blue", "red") and game.random_side
+    assert _total("red", True, 40, {"speed": 10}, 1.5, random_side=True).total == 150
+    assert _total("red", False, 40, {}, 1.0, random_side=True).total == 40
+
+
+def test_bigger_companies_unlock_after_enough_wins():
+    from bastion.profile import Profile
+
+    profile = Profile()
+    assert profile.is_unlocked("small") and not profile.is_unlocked("medium")
+    for _ in range(4):
+        assert profile.record("small", True, 10) == []
+    assert profile.record("small", True, 10) == ["medium"]
+    for _ in range(9):
+        profile.record("medium", True, 10)
+    assert not profile.is_unlocked("large")
+    assert profile.record("medium", True, 10) == ["large"]
+
+
+def test_locked_companies_are_greyed_out_in_the_menu():
+    script = Script("easy", "practice")
+    script.answers.append("olive-byte")
+    script.answers += [["mfa"], ["phishing"], GIVE_UP]
+    main(["--seed", "1"], ui=script)
+    company_menu = next(options for message, options in script.seen if message == "Company")
+    locked = {o.value for o in company_menu if o.disabled}
+    assert locked == {"harbor-clinic", "meridian-bank"}
+
+
+def test_games_are_logged_and_extremes_are_found(company, catalog):
+    from bastion.gamelog import find_extremes, read_games
+
+    play_short_game("easy", company, catalog)
+    games = read_games()
+    assert games and games[-1]["company"] == "olive-byte"
+    fake = [dict(games[-1], side="pvp", red_won=True, defenses=["mfa"]) for _ in range(25)]
+    assert any("mfa" in line and "100%" in line for line in find_extremes(fake))
+    assert find_extremes(fake[:5]) == []
+
+
+def test_balance_command_runs(capsys):
+    from bastion.__main__ import main as cli
+
+    assert cli(["balance", "--all"]) == 0
+    assert "games logged" in capsys.readouterr().out

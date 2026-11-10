@@ -1,5 +1,7 @@
 # Bastion
 
+[![CI](https://github.com/DasekCommits/bastion/actions/workflows/ci.yml/badge.svg)](https://github.com/DasekCommits/bastion/actions/workflows/ci.yml)
+
 **Build a defense. Switch sides. Break it.**
 
 Bastion is a purple-team training game. You play the Blue Team and secure a fictional company, then you switch to the Red Team and attack the defense you just built. At the end you get a post-mortem report that shows where your defense held, where it broke, and which gaps were left open, mapped to [MITRE ATT&CK](https://attack.mitre.org/).
@@ -72,7 +74,16 @@ python -m bastion play
 python -m bastion play --scenario harbor-clinic --difficulty medium --seed 7 --fast
 ```
 
-Pick a company and a difficulty, then everything happens with the arrow keys: your defenses as Blue, your arsenal as Red, then one move at a time.
+Pick a difficulty, a side and a company, then everything happens with the arrow keys.
+
+| Side | What you do |
+|---|---|
+| **Blue** | Pick the defenses. The computer attacks, and you only see what your tools catch. |
+| **Red** | Break in. The computer already picked defenses you cannot see. |
+| **Random** | A coin decides Blue or Red. Double points if you win. |
+| **Practice** | Play both sides. No points and no unlocks. |
+
+Win 5 games on the small company to unlock the medium one, and 10 on the medium company to unlock the large one. Progress is saved in `~/.bastion/profile.json`.
 
 | | During the game | At the end |
 |---|---|---|
@@ -80,7 +91,7 @@ Pick a company and a difficulty, then everything happens with the arrow keys: yo
 | **Medium** | Explanations, no numbers | Post-mortem without advice |
 | **Hard** | Nothing | Only the result |
 
-Difficulty also changes the odds. Each company and difficulty has an attacker edge in `data/balance.json`, tuned with thousands of simulated games so the attacker gets away with something about this often:
+Difficulty also changes the odds, so Easy is easier for you whichever side you play. Each company, difficulty and side has an attacker edge in `data/balance.json`, tuned with thousands of games between computer players so that you win about this often:
 
 | | Small | Medium | Large |
 |---|---|---|---|
@@ -111,6 +122,22 @@ The medium tier adds a VPN gateway, macro documents, infected USB sticks, bribed
 - **Recon shows only the outside.** A port scan reveals defenses visible from the internet (firewall, WAF, patch level, email filtering, MFA on login pages). Internal defenses such as SIEM or segmentation stay hidden, and EDR is only noticed once you are inside a machine. Scanning a login page makes password attacks more effective.
 - **Pivots.** Config files on a web server or VPN can hold passwords that open internal systems, unless the network is segmented.
 
+### Scoring
+
+- **Blue:** the share of data that survived (0-100), plus 10 for catching the attacker, 2 per spotted attempt (up to 10) and up to 10 for unspent budget.
+- **Red:** the share of data stolen or destroyed (0-100), plus up to 10 for finishing early and 10 for owning the whole domain. Never getting caught multiplies the score by 1.5.
+- **Random side:** a win counts double.
+- Red wins a game by stealing or destroying anything at all. Otherwise Blue wins.
+
+### Balance tools
+
+```bash
+python -m bastion check-balance        # play thousands of computer games, fail if a win rate drifts from its target
+python -m bastion balance --all        # read the game log and list choices that win or lose far too often
+```
+
+Every finished game is written to `~/.bastion/games.jsonl`. CI runs the tests and the balance check on every push.
+
 ## Safety
 
 Bastion never attacks real systems. The network is simulated, and payloads only run against an isolated rule engine, never against a live server.
@@ -133,16 +160,19 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 - [x] Medium tier (Harbor Clinic) and Large tier (Meridian Savings Bank, Active Directory)
 - [x] Realism: per-person traits, random admin mistakes, outside-only recon, pivots
 - [x] Balance tuned with simulated games, 5-95% chance floor
-- [ ] Full scoring system (Blue and Red points, stealth and speed bonuses)
-- [ ] Tier unlocks
+- [x] Full scoring system (Blue and Red points, stealth and speed bonuses)
+- [x] Play one side against the computer, random side for double points
+- [x] Tier unlocks
 - [ ] WAF rule sandbox (real payloads vs. real rules)
 - [ ] Web API and playable browser UI
 - [ ] Accounts, public leaderboard and ELO ranking
-- [ ] Live deployment and CI
+- [x] CI with tests and an automatic balance check
+- [x] Game logs and a report of choices that win or lose too often
+- [ ] Live deployment
 
 ## Status
 
-Playable from the command line: three companies, three difficulties, 22 attacks and 25 defenses. Next up is the full scoring system.
+Playable from the command line: three companies, three difficulties, Blue, Red or random against the computer, 22 attacks and 25 defenses. Next up is the WAF rule sandbox.
 
 ## License
 

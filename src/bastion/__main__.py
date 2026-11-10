@@ -20,12 +20,43 @@ def parse_plan(text: str) -> list[Step]:
     return plan
 
 
+def balance(argv: list[str]) -> int:
+    from bastion.gamelog import find_extremes, read_games
+
+    parser = argparse.ArgumentParser(prog="bastion balance", description="Find choices that win or lose far too often.")
+    parser.add_argument("--min-games", type=int, default=20)
+    parser.add_argument("--all", action="store_true", help="include games against the computer, not only player versus player")
+    args = parser.parse_args(argv)
+    games = read_games()
+    lines = find_extremes(games, args.min_games, versus_players_only=not args.all)
+    print(f"{len(games)} games logged.")
+    print("\n".join(lines) if lines else "Nothing extreme yet.")
+    return 0
+
+
+def check_balance(argv: list[str]) -> int:
+    from bastion.tuning import check
+
+    parser = argparse.ArgumentParser(prog="bastion check-balance", description="Fail if any win rate drifts from its target.")
+    parser.add_argument("--games", type=int, default=300)
+    parser.add_argument("--tolerance", type=float, default=0.1)
+    args = parser.parse_args(argv)
+    rows = check(args.games, args.tolerance)
+    for company, side, level, goal, rate, ok in rows:
+        print(f"{'ok ' if ok else 'OFF'} {company:14} {side:4} {level:6} target {goal:.0%}  got {rate:.0%}")
+    return 0 if all(row[-1] for row in rows) else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] == "play":
         from bastion.play import main as play
 
         return play(argv[1:])
+    if argv and argv[0] == "balance":
+        return balance(argv[1:])
+    if argv and argv[0] == "check-balance":
+        return check_balance(argv[1:])
 
     parser = argparse.ArgumentParser(prog="bastion", description="Build a defense. Switch sides. Break it.")
     parser.add_argument("--scenario", default="olive-byte")

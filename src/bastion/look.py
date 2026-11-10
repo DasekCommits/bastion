@@ -311,3 +311,50 @@ def tips_panel(blue: list[str], red: list[str]) -> Panel:
     red_text = Text("\n".join(f"• {tip}" for tip in red))
     grid.add_row(blue_text, red_text)
     return Panel(grid, title="[bold]WHAT YOU COULD DO[/]", title_align="left", border_style=AMBER, padding=(1, 2))
+
+
+def random_side_note(side: str) -> Text:
+    color = BLUE if side == "blue" else RED
+    return Text.assemble(("The coin says: ", MUTED), (f"you play {side.upper()}", f"bold {color}"), ("  (double points if you win)", MUTED))
+
+
+def blue_alert(result: StepResult, target_name: str, named: bool) -> Text:
+    what = result.attack.name if named else "Something suspicious"
+    if result.kicked:
+        return Text.assemble(("  CAUGHT ", f"bold white on {BLUE}"), (f"  {what} on {target_name}. You kicked the attacker out.", BLUE))
+    return Text.assemble(("  ALERT ", f"bold black on {AMBER}"), (f"  {what} against {target_name} was blocked.", AMBER))
+
+
+def blue_night(night: NightResult, easy: bool) -> Text:
+    text = Text(f"  ☾ Night {night.day}: your team reviews the logs", style=MUTED)
+    if easy:
+        text.append(f" ({percent(night.hunt_chance)} chance to find the attacker)", style=MUTED)
+    if night.found:
+        text.append("\n  FOUND ", style=f"bold white on {BLUE}")
+        text.append("  The attacker was hiding in the network. You threw them out.", style=BLUE)
+    return text
+
+
+def score_panel(score, profile, unlocked: list[str]) -> Panel:
+    color = BLUE if score.side == "blue" else RED
+    verdict = Text("YOU WIN" if score.won else "YOU LOSE", style=f"bold {GREEN if score.won else RED}")
+    lines = Text()
+    lines.append(f"{score.side.upper()} TEAM  ", style=f"bold {color}")
+    lines.append_text(verdict)
+    lines.append(f"\n\nBase  {score.base}", style=MUTED)
+    for name, value in score.bonuses.items():
+        lines.append(f"\n+{value}  {name}", style=MUTED)
+    if score.multiplier != 1:
+        lines.append(f"\n×{score.multiplier:g}  multiplier", style=MUTED)
+    lines.append("\n\nPoints this game  ", style=MUTED)
+    lines.append(str(score.total), style=f"bold {AMBER}")
+    lines.append(f"\nTotal points  {profile.points}   Games  {profile.games}   ", style=MUTED)
+    lines.append("Wins  " + ", ".join(f"{tier} {count}" for tier, count in profile.wins.items()) if profile.wins else "Wins  none yet", style=MUTED)
+    for tier in unlocked:
+        lines.append(f"\n\nUNLOCKED  the {tier} company is now open!", style=f"bold {GREEN}")
+    for tier in ("medium", "large"):
+        reason = profile.lock_reason(tier)
+        if reason and tier not in unlocked:
+            lines.append(f"\nLocked: {tier}, {reason}", style=FAINT)
+            break
+    return Panel(lines, title="[bold]SCORE[/]", title_align="left", border_style=color, padding=(1, 2))
