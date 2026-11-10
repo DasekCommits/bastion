@@ -84,3 +84,27 @@ def test_disable_and_isolate_by_real_names(game):
     assert "offline" in game.isolate(db)
     assert "lost" in game.disable_account("emily")
     assert game.campaign.kicked_out
+
+
+def test_footprint_shows_the_logs_a_move_just_created(game):
+    game.campaign.rng = Rolls(0.0, 0.99)
+    game.red_move("brute-force", "maria")
+    lines = game.footprint_lines()
+    assert lines and any("security/" in line and "4625" in line for line in lines)
+    assert all(line.startswith("  ") for line in lines)
+
+
+def test_footprint_marks_what_defenders_cannot_see():
+    import random
+
+    from bastion.catalog import load_catalog
+    from bastion.company import load_scenario
+    from bastion.engine import Campaign
+
+    company = load_scenario("olive-byte")
+    company.red_budget = 300
+    campaign = Campaign(company, load_catalog(), [], ["phishing"], rng=random.Random(1), active_blue=True)
+    blind = RealismGame(campaign, random.Random(1))
+    blind.campaign.rng = Rolls(0.0, 0.99)
+    blind.red_move("phishing", "emily")
+    assert any("not watching" in line for line in blind.footprint_lines())

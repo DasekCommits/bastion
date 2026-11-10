@@ -27,10 +27,20 @@ class RealismGame:
 
     def red_move(self, attack_id: str, target_id: str):
         source_ip, source_host = self._source()
+        before = len(self.telemetry.events)
         result = self.campaign.move(attack_id, target_id)
         users = [self.world.accounts[e].username for e in sorted(self.campaign.foothold.employees)]
         self.telemetry.attack(result, source_ip, source_host, users)
+        self.last_footprint = self.telemetry.events[before:]
         return result
+
+    def footprint_lines(self) -> list[str]:
+        visible = set(self.world.visible_indexes(self.campaign.defense_ids))
+        lines = []
+        for event in getattr(self, "last_footprint", []):
+            seen = "" if event["index"] in visible else "  (their tools are not watching this)"
+            lines.append(f"  {event['index']}/{event['sourcetype']}: {event['_raw'].split(' ', 1)[1]}{seen}")
+        return lines
 
     def end_day(self):
         night = self.campaign.end_day()

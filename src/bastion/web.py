@@ -245,6 +245,10 @@ class Session:
             lines.append("Done." if result.succeeded else "It did not work.")
             if result.succeeded and result.note:
                 lines.append(result.note)
+            footprint = self.real.footprint_lines()
+            if footprint:
+                lines.append("Your footprint (what the Blue Team's logs just recorded):")
+                lines += footprint
         lines += [f"! {n}" for n in self._blue_reacts(until_done=False)]
         if c.kicked_out:
             lines.append("! The Blue Team closed every way you had in.")

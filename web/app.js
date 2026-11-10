@@ -793,7 +793,10 @@
 
   function termPush(lines, prompt) {
     if (prompt) S.term.lines.push({ kind: "cmd", text: prompt });
-    for (const line of lines) S.term.lines.push({ kind: line.startsWith("! ") ? "alert" : "out", text: line });
+    for (const line of lines) {
+      const kind = line.startsWith("! ") ? "alert" : line.startsWith("  ") || line.startsWith("Your footprint") ? "trace" : "out";
+      S.term.lines.push({ kind, text: line });
+    }
     S.term.lines = S.term.lines.slice(-400);
   }
 
