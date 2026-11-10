@@ -12,6 +12,7 @@ from bastion import advice, ai, look, scoring
 from bastion.catalog import Catalog, load_catalog, load_edge
 from bastion.company import Company, list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, NightResult, StepResult
+from bastion.clearance import plant_sealed_file, record_secrets
 from bastion.gamelog import log_game
 from bastion.profile import home, load_profile, save_profile
 from bastion.waf import evaluate, library_ruleset, load_corpus, load_library, load_rules
@@ -114,7 +115,7 @@ class Game:
         self.random_side = side == "random"
         self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[difficulty], self.rng)
         self.side = self.rng.choice(("blue", "red")) if self.random_side else side
-        self.company = roll_mistakes(company, self.rng)
+        self.company = plant_sealed_file(roll_mistakes(company, self.rng), difficulty)
         self.catalog = catalog
         self.level = difficulty
         self.easy = difficulty == "easy"
@@ -443,8 +444,11 @@ class Game:
             score = scoring.red_score(campaign, self.random_side)
         profile = load_profile()
         unlocked = profile.record(self.company.tier, self.level, score.won, score.total)
+        notes = record_secrets(campaign, profile, self.level, self.side)
         save_profile(profile)
         self.ui.say(look.score_panel(score, profile, unlocked))
+        for note in notes:
+            self.ui.say(Text(f"  {note}", style=f"italic {look.AMBER}"))
 
 
 def waf_lab(ui) -> int:
@@ -547,6 +551,8 @@ def choose_settings(ui, given=None) -> tuple[str, str, str]:
                disabled=level_lock["medium"]),
         Option("Hard", "hard", description="The defenders have the edge. No help at all. At the end: only the result.",
                disabled=level_lock["hard"]),
+        Option("CLASSIFIED", "realism", description="Some files are not on any inventory.",
+               disabled="clearance granted, opening soon" if profile.realism_open() else "unlock conditions unknown"),
     ])
     side = (given and given.side) or ui.select("Side", [
         Option("Blue", "blue", description="Defend the company. The computer attacks."),
@@ -560,7 +566,7 @@ def choose_settings(ui, given=None) -> tuple[str, str, str]:
             Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people", description=c.description,
                    disabled=profile.lock_reason(c.tier, difficulty))
             for c in list_scenarios()
-        ] + [Option("CLASSIFIED", "classified", tag="??? people",
+        ] + [Option("CLASSIFIED", "classified", tag="??? people", description="Some scripts talk.",
                     disabled="clearance granted, opening soon" if profile.cleared() else "unlock conditions unknown")])
     return difficulty, side, company_id
 

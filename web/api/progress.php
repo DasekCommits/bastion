@@ -14,6 +14,7 @@ $body = json_decode((string) file_get_contents('php://input', false, null, 0, 40
 $points = $body['points'] ?? null;
 $games = $body['games'] ?? null;
 $wins = $body['wins'] ?? null;
+$secrets = $body['secrets'] ?? [];
 
 if (!is_int($points) || !is_int($games) || !is_array($wins) || $points < 0 || $games < 0 || $points > 10000000 || $games > 1000000) {
     send_json(['error' => 'That progress does not look right.'], 422);
@@ -29,10 +30,20 @@ foreach ($wins as $name => $count) {
     }
     $clean[$name] = ($clean[$name] ?? 0) + $count;
 }
+$cleanSecrets = [];
+if (!is_array($secrets)) {
+    send_json(['error' => 'That progress does not look right.'], 422);
+}
+foreach ($secrets as $name => $count) {
+    if (!in_array($name, ['sealed', 'script'], true) || !is_int($count) || $count < 0 || $count > $games) {
+        send_json(['error' => 'That progress does not look right.'], 422);
+    }
+    $cleanSecrets[$name] = $count;
+}
 if ($games < (int) $user['games']) {
     send_json(['error' => 'Progress can only go forward.'], 409);
 }
 
-$stmt = db()->prepare('UPDATE users SET points = ?, games = ?, wins = ? WHERE id = ?');
-$stmt->execute([$points, $games, json_encode((object) $clean), $user['id']]);
+$stmt = db()->prepare('UPDATE users SET points = ?, games = ?, wins = ?, secrets = ? WHERE id = ?');
+$stmt->execute([$points, $games, json_encode((object) $clean), json_encode((object) $cleanSecrets), $user['id']]);
 send_json(['ok' => true]);

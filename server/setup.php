@@ -22,4 +22,9 @@ db()->exec(
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
 );
 
+$columns = db()->query("SHOW COLUMNS FROM users LIKE 'secrets'")->fetchAll();
+if (!$columns) {
+    db()->exec('ALTER TABLE users ADD COLUMN secrets TEXT NULL AFTER wins');
+}
+
 echo "Tables ready.\n";

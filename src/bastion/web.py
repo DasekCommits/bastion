@@ -3,6 +3,7 @@ import random
 
 from bastion import advice, ai, scoring
 from bastion.catalog import load_catalog, load_edge
+from bastion.clearance import plant_sealed_file, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, PlanError
 from bastion.profile import Profile
@@ -57,10 +58,12 @@ class Session:
             for level in ("easy", "medium", "hard")
         }
         return json.dumps({"companies": companies, "locks": locks, "levels": levels, "profile": self._profile(),
-                           "goal": self.profile.next_goal(), "cleared": self.profile.cleared()})
+                           "goal": self.profile.next_goal(), "cleared": self.profile.cleared(),
+                           "realism": self.profile.realism_open()})
 
     def _profile(self) -> dict:
-        return {"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins}
+        return {"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins,
+                "secrets": self.profile.secrets}
 
     def start(self, company_id: str, level: str, side: str, seed: int | None = None) -> str:
         self.rng = random.Random(seed)
@@ -69,7 +72,7 @@ class Session:
         self.explain = level in ("easy", "medium")
         self.random_side = side == "random"
         self.side = self.rng.choice(("blue", "red")) if self.random_side else side
-        self.company = roll_mistakes(load_scenario(company_id), self.rng)
+        self.company = plant_sealed_file(roll_mistakes(load_scenario(company_id), self.rng), level)
         self.defense_ids: list[str] = []
         self.arsenal: list[str] = []
         self.campaign = None
@@ -401,10 +404,11 @@ class Session:
         if self.side != "practice":
             s = scoring.blue_score(c, self.random_side) if self.side == "blue" else scoring.red_score(c, self.random_side)
             unlocked = self.profile.record(self.company.tier, self.level, s.won, s.total)
+            unlocked += record_secrets(c, self.profile, self.level, self.side)
             score = {"side": s.side, "won": s.won, "base": s.base, "bonuses": s.bonuses, "multiplier": s.multiplier, "total": s.total}
         locks = {"goal": self.profile.next_goal()}
         return json.dumps({
             "result": result, "post_mortem": post_mortem, "tips": tips, "score": score,
             "unlocked": unlocked, "locks": locks, "profile": self._profile(), "blue_actions": blue_actions,
-            "profile_json": json.dumps({"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins}),
+            "profile_json": json.dumps(self._profile()),
         })

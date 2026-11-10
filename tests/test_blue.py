@@ -148,10 +148,58 @@ def test_the_bank_logs_can_hide_the_clearance_message(catalog):
     assert not egg.real
 
 
-def test_clearance_needs_twenty_bank_hard_wins():
+def test_sealed_file_is_planted_only_in_bank_hard():
+    import random
+
+    from bastion.clearance import SEALED_ID, plant_sealed_file
+
+    bank = load_scenario("meridian-bank")
+    always = random.Random(0)
+    always.random = lambda: 0.0
+    assert any(a.id == SEALED_ID for a in plant_sealed_file(bank, "hard", always).data)
+    assert not any(a.id == SEALED_ID for a in plant_sealed_file(bank, "medium", always).data)
+    assert not any(a.id == SEALED_ID for a in bank.data)
+
+
+def test_stealing_the_sealed_file_counts_toward_realism(catalog):
+    import random
+
+    from bastion.clearance import SEALED_ID, plant_sealed_file, record_secrets
     from bastion.profile import Profile
 
-    p = Profile(wins={"large/hard": 19})
-    assert not p.cleared()
-    p.record("large", "hard", True, 10)
-    assert p.cleared()
+    always = random.Random(0)
+    always.random = lambda: 0.0
+    bank = plant_sealed_file(load_scenario("meridian-bank"), "hard", always)
+    vault = next(a.location for a in bank.data if a.id == SEALED_ID)
+    bank.red_budget = 500
+    campaign = Campaign(bank, catalog, [], ["phishing", "exfiltration"], rng=random.Random(1), active_blue=True)
+    campaign.rng = Rolls(0.0, 0.99, 0.0, 0.99)
+    campaign.move("phishing", "sofia")
+    result = campaign.move("exfiltration", vault)
+    assert "not on any inventory" in result.note
+    profile = Profile(secrets={"sealed": 9})
+    assert not profile.realism_open()
+    notes = record_secrets(campaign, profile, "hard", "red")
+    assert notes and "10/10" in notes[0] and profile.realism_open()
+
+
+def test_isolating_the_talking_script_counts_toward_clearance(catalog):
+    import random
+
+    from bastion import soc
+    from bastion.clearance import record_secrets
+    from bastion.profile import Profile
+
+    bank = load_scenario("meridian-bank")
+    old = soc.EGG_CHANCE
+    soc.EGG_CHANCE = 1.0
+    try:
+        campaign = Campaign(bank, catalog, [], ["phishing"], rng=random.Random(2), active_blue=True)
+    finally:
+        soc.EGG_CHANCE = old
+    egg = next(e for e in campaign.logs if "-enc" in e.text)
+    campaign.blue("isolate", egg.target_id)
+    profile = Profile(secrets={"sealed": 10, "script": 2})
+    notes = record_secrets(campaign, profile, "hard", "blue")
+    assert notes and "3/3" in notes[0] and profile.cleared()
+    assert record_secrets(campaign, Profile(), "medium", "blue") == []

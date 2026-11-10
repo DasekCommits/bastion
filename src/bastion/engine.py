@@ -356,6 +356,8 @@ def _apply(attack: Attack, target_id: str, company: Company, foothold: Foothold,
         return points, f"Wiped: {names}."
     if attack.tactic == "exfiltration":
         note = f"Stolen: {names}."
+        if any(asset.id == "sealed-file" for asset in assets):
+            note += " Strange: one of these files is not on any inventory."
         for asset in assets:
             if asset.grants is None or asset.grants in foothold.servers:
                 continue
@@ -420,6 +422,8 @@ class Campaign:
         self.disruption = 0
         self.kicked_out = False
         self.egg_shown = False
+        self.egg_day: int | None = None
+        self.egg_target: str | None = None
         if active_blue:
             self._add_noise()
 
@@ -630,7 +634,10 @@ class Campaign:
             self.logs.append(soc.noise_entry(len(self.logs) + 1, self.day, self.company, self.defenses, self.rng))
         if self.company.tier == "large" and not self.egg_shown and soc.EGG_RNG.random() < soc.EGG_CHANCE:
             self.egg_shown = True
-            self.logs.append(soc.egg_entry(len(self.logs) + 1, self.day, self.company))
+            egg = soc.egg_entry(len(self.logs) + 1, self.day, self.company)
+            self.egg_day = self.day
+            self.egg_target = self.company.server(egg.target_id).name
+            self.logs.append(egg)
 
     def unseen_logs(self) -> list[soc.LogEntry]:
         return [entry for entry in self.logs if not entry.seen]

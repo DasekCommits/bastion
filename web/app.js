@@ -191,11 +191,13 @@
         <p class="profile-line">${p.points} points · ${p.games} games · wins: ${esc(wins)}${menu.goal ? `<br>${esc(menu.goal)}` : ""}</p>
       </div>
       <div class="settings">
-        <div class="setting"><h3>Difficulty</h3><div class="choices">${LEVELS.map((l) => card("level", l)).join("")}</div></div>
+        <div class="setting"><h3>Difficulty</h3><div class="choices">${LEVELS.map((l) => card("level", l)).join("")}
+          <button class="choice classified" disabled><span class="tag">classified</span><strong>████████</strong>
+          <small>${menu.realism ? "Clearance granted. Opening soon." : "Unlock conditions: unknown. Some files are not on any inventory."}</small></button></div></div>
         <div class="setting"><h3>Side</h3><div class="choices">${SIDES.map((s) => card("side", s)).join("")}</div></div>
         <div class="setting"><h3>Company</h3><div class="choices">${companies}
           <button class="choice classified" disabled><span class="tag">classified · ??? people</span><strong>█████████ ███</strong>
-          <small>${menu.cleared ? "Clearance granted. The doors open soon." : "Unlock conditions: unknown."}</small></button></div></div>
+          <small>${menu.cleared ? "Clearance granted. The doors open soon." : "Unlock conditions: unknown. Some scripts talk."}</small></button></div></div>
       </div>
       <div class="btn-row"><button class="btn" id="go" ${ready ? "" : "disabled"}>Start the game</button></div>
     </section>`);

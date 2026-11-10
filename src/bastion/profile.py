@@ -19,7 +19,8 @@ UNLOCKS = {
 }
 
 
-CLEARANCE = (("large", "hard"), 20)
+SEALED_GOAL = 10
+SCRIPT_GOAL = 3
 
 
 def home() -> Path:
@@ -39,6 +40,7 @@ class Profile:
     points: int = 0
     games: int = 0
     wins: dict[str, int] = field(default_factory=dict)
+    secrets: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         migrated = {}
@@ -63,9 +65,15 @@ class Profile:
         (need_tier, need_level), count = UNLOCKS[(tier, level)]
         return f"win {count} games on {describe(need_tier, need_level)} first ({self.wins_on(need_tier, need_level)}/{count})"
 
+    def add_secret(self, name: str, amount: int) -> int:
+        self.secrets[name] = self.secrets.get(name, 0) + amount
+        return self.secrets[name]
+
+    def realism_open(self) -> bool:
+        return self.secrets.get("sealed", 0) >= SEALED_GOAL
+
     def cleared(self) -> bool:
-        (tier, level), count = CLEARANCE
-        return self.wins_on(tier, level) >= count
+        return self.realism_open() and self.secrets.get("script", 0) >= SCRIPT_GOAL
 
     def level_open(self, level: str) -> bool:
         return any(self.is_unlocked(tier, level) for tier in TIERS)
