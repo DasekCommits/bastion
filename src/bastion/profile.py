@@ -49,6 +49,11 @@ class Profile:
             migrated[target] = migrated.get(target, 0) + count
         self.wins = migrated
 
+    def is_open(self, tier: str, level: str) -> bool:
+        if level == "realism":
+            return self.realism_open()
+        return self.is_unlocked(tier, level)
+
     def wins_on(self, tier: str, level: str) -> int:
         return self.wins.get(key(tier, level), 0)
 

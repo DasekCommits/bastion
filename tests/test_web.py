@@ -78,3 +78,27 @@ def test_red_never_learns_which_hidden_defense_stopped_it():
     for person in ("emily", "george", "maria"):
         event = json.loads(session.move("phishing", person))
         assert "blockers" not in event
+
+
+def test_realism_blue_searches_real_logs_and_acts():
+    session = Session(json.dumps({"points": 0, "games": 0, "wins": {}, "secrets": {"sealed": 10}}))
+    menu = json.loads(session.menu())
+    assert menu["realism"] and menu["locks"]["realism"]["meridian-bank"] is None
+    session.start("olive-byte", "realism", "blue", seed=8)
+    assert json.loads(session.set_defenses(json.dumps(["siem", "mfa"])))["ok"]
+    state = json.loads(session.begin())
+    assert "security" in state["indexes"] and state["hosts"][0]["hostname"].startswith("OLI-")
+    found = json.loads(session.realism_search("index=security EventCode=4624 | stats count by user"))
+    assert found["total"] >= 5 and "count" in found["columns"]
+    assert "error" in json.loads(session.realism_search("index=security | nonsense"))
+    acted = json.loads(session.realism_act("block", "192.0.2.1"))
+    assert "Blocked" in acted["text"]
+    assert "error" in json.loads(session.realism_act("isolate", "NOPE-01"))
+    state = acted["state"]
+    guard = 0
+    while not state["finished"] and guard < 300:
+        state = json.loads(session.realism_wait())
+        guard += 1
+    final = json.loads(session.finish())
+    assert final["score"]["side"] == "blue"
+    assert "small/realism" in json.loads(final["profile_json"])["wins"] or not final["score"]["won"]

@@ -25,7 +25,7 @@ foreach ($wins as $name => $count) {
     if (in_array($name, TIERS, true)) {
         $name .= '/easy';
     }
-    if (!preg_match('/^(small|medium|large)\/(easy|medium|hard)$/', $name) || !is_int($count) || $count < 0 || $count > $games) {
+    if (!preg_match('/^(small|medium|large)\/(easy|medium|hard|realism)$/', $name) || !is_int($count) || $count < 0 || $count > $games) {
         send_json(['error' => 'That progress does not look right.'], 422);
     }
     $clean[$name] = ($clean[$name] ?? 0) + $count;

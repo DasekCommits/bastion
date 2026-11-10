@@ -6,6 +6,8 @@ from bastion.catalog import load_catalog, load_edge
 from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, PlanError
+from bastion.realism.game import RealismGame
+from bastion.realism.spl import QueryError
 from bastion.profile import Profile
 from bastion.report import format_report, percent
 
@@ -53,6 +55,8 @@ class Session:
             level: {c.id: self.profile.lock_reason(c.tier, level) for c in scenarios}
             for level in ("easy", "medium", "hard")
         }
+        locks["realism"] = {c.id: None if self.profile.is_open(c.tier, "realism") else "unlock conditions unknown"
+                            for c in scenarios}
         levels = {
             level: None if self.profile.level_open(level) else self.profile.lock_reason("small", level)
             for level in ("easy", "medium", "hard")
@@ -67,9 +71,12 @@ class Session:
 
     def start(self, company_id: str, level: str, side: str, seed: int | None = None) -> str:
         self.rng = random.Random(seed)
-        self.level = level
-        self.easy = level == "easy"
-        self.explain = level in ("easy", "medium")
+        self.realism = level == "realism"
+        self.shown_level = level
+        self.level = "hard" if self.realism else level
+        self.easy = self.level == "easy"
+        self.explain = self.level in ("easy", "medium")
+        self.real = None
         self.random_side = side == "random"
         self.side = self.rng.choice(("blue", "red")) if self.random_side else side
         self.company = plant_sealed_file(roll_mistakes(load_scenario(company_id), self.rng), level)
@@ -158,21 +165,89 @@ class Session:
         self.campaign = Campaign(self.company, self.catalog, self.defense_ids, self.arsenal, rng=self.rng, edge=edge,
                                  active_blue=True)
         self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[self.level], self.rng)
+        if self.realism:
+            self.real = RealismGame(self.campaign, self.rng)
         if self.side == "blue":
             self.red_ai = ai.RedAI(ai.RED_AI_KNOWLEDGE[self.level])
             self.events: list[dict] = []
             self.verdicts: dict[int, str] = {}
             self.phase = "start"
             self._advance()
-            return self.blue_state()
+            return self.realism_state() if self.realism else self.blue_state()
         return self.turn()
+
+    def _red(self, attack_id: str, target_id: str):
+        if self.real:
+            return self.real.red_move(attack_id, target_id)
+        return self.campaign.move(attack_id, target_id)
+
+    def _end(self):
+        night = self.real.end_day() if self.real else self.campaign.end_day()
+        if night:
+            self.events.append(self._night(night))
+
+    def _after_blue_action(self) -> None:
+        c = self.campaign
+        if not c.finished and (self.phase == "after_red" or c.blue_moves_left <= 0):
+            if self.phase == "day_end" and c.blue_moves_left <= 0:
+                self.phase = "start"
+                self._end()
+            self._advance()
+
+    def realism_state(self) -> str:
+        c, world = self.campaign, self.real.world
+        events, self.events = self.events, []
+        return json.dumps({
+            "phase": self.phase, "finished": c.finished or self.gave_up,
+            "day": c.day, "max_days": self.company.max_days,
+            "time_left": c.blue_moves_left, "time_total": c.blue_moves_per_day,
+            "indexes": world.visible_indexes(c.defense_ids),
+            "hosts": [{"hostname": h.hostname, "ip": h.ip, "public_ip": h.public_ip, "name": h.name,
+                       "isolated": h.id in c.foothold.isolated} for h in world.hosts.values()],
+            "accounts": [{"username": a.username, "name": a.name, "workstation": a.workstation, "ip": a.workstation_ip}
+                         for a in world.accounts.values()],
+            "blocked": sorted(self.real.blocked_ips), "events": events, "kicked_out": c.kicked_out,
+            "domain": world.domain,
+        })
+
+    def realism_search(self, query: str) -> str:
+        try:
+            result = self.real.search(query)
+        except QueryError as error:
+            return json.dumps({"error": str(error)})
+        return json.dumps(result, default=str)
+
+    def realism_act(self, kind: str, value: str) -> str:
+        if self.campaign.finished:
+            return json.dumps({"error": "The attack is over."})
+        try:
+            if kind == "block":
+                text = self.real.block_ip(value)
+            elif kind == "disable":
+                text = self.real.disable_account(value)
+            elif kind == "isolate":
+                text = self.real.isolate(value)
+            else:
+                return json.dumps({"error": f"Unknown action '{kind}'."})
+        except (PlanError, KeyError, ValueError) as error:
+            return json.dumps({"error": str(error)})
+        self._after_blue_action()
+        return json.dumps({"text": text, "kind": kind, "value": value, "state": json.loads(self.realism_state())})
+
+    def realism_wait(self) -> str:
+        if not self.campaign.finished:
+            if self.phase == "day_end":
+                self.phase = "start"
+                self._end()
+            self._advance()
+        return self.realism_state()
 
     def _advance(self) -> None:
         c = self.campaign
         while not c.finished:
             move = self.red_ai.next_move(c)
             if move is not None:
-                result = c.move(*move)
+                result = self._red(*move)
                 if self.easy:
                     self.events.append(self._move_event(result))
                 else:
@@ -185,9 +260,7 @@ class Session:
                 self.phase = "day_end"
                 return
             self.phase = "start"
-            night = c.end_day()
-            if night:
-                self.events.append(self._night(night))
+            self._end()
 
     def _entry_view(self, entry) -> dict:
         view = {"id": entry.id, "day": entry.day, "source": entry.source, "text": entry.text,
@@ -227,23 +300,14 @@ class Session:
         if kind == "investigate":
             self.verdicts[int(target)] = action.text
         outcome = {"kind": action.kind, "target": action.target, "text": action.text, "useful": action.useful}
-        if not c.finished and (self.phase == "after_red" or c.blue_moves_left <= 0):
-            if self.phase == "day_end" and c.blue_moves_left <= 0:
-                self.phase = "start"
-                night = c.end_day()
-                if night:
-                    self.events.append(self._night(night))
-            self._advance()
+        self._after_blue_action()
         return json.dumps({"action": outcome, "fresh": fresh, "state": json.loads(self.blue_state())})
 
     def blue_wait(self) -> str:
-        c = self.campaign
-        if not c.finished:
+        if not self.campaign.finished:
             if self.phase == "day_end":
                 self.phase = "start"
-                night = c.end_day()
-                if night:
-                    self.events.append(self._night(night))
+                self._end()
             self._advance()
         return self.blue_state()
 
@@ -403,7 +467,7 @@ class Session:
         ]
         if self.side != "practice":
             s = scoring.blue_score(c, self.random_side) if self.side == "blue" else scoring.red_score(c, self.random_side)
-            unlocked = self.profile.record(self.company.tier, self.level, s.won, s.total)
+            unlocked = self.profile.record(self.company.tier, self.shown_level, s.won, s.total)
             unlocked += record_secrets(c, self.profile, self.level, self.side)
             score = {"side": s.side, "won": s.won, "base": s.base, "bonuses": s.bonuses, "multiplier": s.multiplier, "total": s.total}
         locks = {"goal": self.profile.next_goal()}

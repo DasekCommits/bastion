@@ -24,6 +24,7 @@
     notice: "",
   };
 
+  const REALISM = { id: "realism", name: "Realism", text: "Real logs, a real search bar, real addresses. No hints, no hand-holding." };
   const LEVELS = [
     { id: "easy", name: "Easy", text: "Attacks work more often. You see the odds, the heat and advice at the end." },
     { id: "medium", name: "Medium", text: "A fairer fight. Moves are explained, but no numbers." },
@@ -160,15 +161,20 @@
     const p = menu.profile;
     const NAMES = { small: "Olive Byte", medium: "Harbor Clinic", large: "Meridian Bank" };
     const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
-    if (S.settings.level && menu.levels[S.settings.level]) S.settings.level = null;
+    if (S.settings.level && S.settings.level !== "realism" && menu.levels[S.settings.level]) S.settings.level = null;
+    if (S.settings.level === "realism" && !menu.realism) S.settings.level = null;
+    if (S.settings.level === "realism" && S.settings.side && S.settings.side !== "blue") S.settings.side = null;
     const level = S.settings.level || "easy";
-    const card = (group, item, extra = "") => {
+    const card = (group, item, extra = "", cls = "") => {
       const lockedLevel = group === "level" && menu.levels[item.id];
+      if (group === "side" && S.settings.level === "realism" && item.id !== "blue") {
+        return `<button class="choice" disabled><strong>${esc(item.name)}</strong><small>Realism is Blue only for now. The Red terminal opens soon.</small></button>`;
+      }
       if (lockedLevel) {
         return `<button class="choice" disabled><strong>${esc(item.name)}</strong><small>Locked: ${esc(lockedLevel)}</small></button>`;
       }
       const on = S.settings[group] === item.id;
-      return `<button class="choice ${item.cls || ""}" data-group="${group}" data-id="${item.id}" aria-pressed="${on}" ${extra}${on ? ' style="border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)"' : ""}>
+      return `<button class="choice ${item.cls || ""} ${cls}" data-group="${group}" data-id="${item.id}" aria-pressed="${on}" ${extra}${on ? ' style="border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)"' : ""}>
         <strong>${esc(item.name)}</strong><small>${esc(item.text)}</small></button>`;
     };
     const companies = menu.companies.map((c) => {
@@ -192,8 +198,8 @@
       </div>
       <div class="settings">
         <div class="setting"><h3>Difficulty</h3><div class="choices">${LEVELS.map((l) => card("level", l)).join("")}
-          <button class="choice classified" disabled><span class="tag">classified</span><strong>████████</strong>
-          <small>${menu.realism ? "Clearance granted. Opening soon." : "Unlock conditions: unknown. Some files are not on any inventory."}</small></button></div></div>
+          ${menu.realism ? card("level", REALISM, "", "classified-open") : `<button class="choice classified" disabled><span class="tag">classified</span><strong>████████</strong>
+          <small>Unlock conditions: unknown. Some files are not on any inventory.</small></button>`}</div></div>
         <div class="setting"><h3>Side</h3><div class="choices">${SIDES.map((s) => card("side", s)).join("")}</div></div>
         <div class="setting"><h3>Company</h3><div class="choices">${companies}
           <button class="choice classified" disabled><span class="tag">classified · ??? people</span><strong>█████████ ███</strong>
@@ -309,6 +315,7 @@
         const res = api("set_defenses", JSON.stringify(ids));
         if (!res.ok) { document.getElementById("warn").textContent = res.error; return; }
         if (S.start.side === "practice") renderArsenal();
+        else if (S.settings.level === "realism") startSiem(api("begin"));
         else startDefending(api("begin"));
       },
     });
@@ -659,6 +666,122 @@
     S.blue.pending = null;
     takeState(api("blue_wait"));
     renderBlue();
+  }
+
+  const EXAMPLES = [
+    ["Failed logins by address", "index=security EventCode=4625 | stats count by src_ip | sort -count"],
+    ["Password spraying", "index=security EventCode=4625 | stats dc(user) as users by src_ip | where users > 5"],
+    ["Successful logins from outside", "index=security EventCode=4624 src_ip!=10.* | table _time user src_ip dest"],
+    ["Encoded PowerShell", 'index=sysmon "-enc" | table _time host user ParentImage CommandLine'],
+    ["Mail with attachments", "index=mail attachment!=none | table _time sender recipient subject attachment verdict"],
+    ["Web attacks", 'index=web status=500 OR useragent=sqlmap* | table _time clientip uri status'],
+    ["Big uploads", "index=firewall bytes_out>10000000 | table _time src_ip dest_ip bytes_out"],
+    ["Kerberos and replication", "index=security EventCode=4769 OR EventCode=4662 | table _time user EventCode ServiceName TicketEncryptionType src_ip"],
+    ["Top blocked addresses", "index=firewall action=blocked | top src_ip"],
+  ];
+  const IP_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+  function startSiem(state) {
+    S.siem = { state, query: "index=security EventCode=4625 | stats count by src_ip | sort -count", result: null, feed: "", error: "" };
+    runSearch();
+  }
+
+  function siemGauges(st) {
+    const pips = (on, total, cls = "") => `<span class="pips ${cls}">${Array.from({ length: total }, (_, i) => `<i class="${i < on ? "on" : ""}"></i>`).join("")}</span>`;
+    gauges.innerHTML = `<span class="gauge">Day <b>${st.day}/${st.max_days}</b> ${pips(st.day, st.max_days)}</span>
+      <span class="gauge">Analyst time ${pips(st.time_left, st.time_total, "time")}</span>`;
+    gauges.hidden = false;
+  }
+
+  function runSearch() {
+    const res = api("realism_search", S.siem.query);
+    if (res.error) { S.siem.error = res.error; S.siem.result = null; }
+    else { S.siem.error = ""; S.siem.result = res; }
+    renderSiem();
+  }
+
+  function cell(value) {
+    if (value === null || value === undefined) return '<td class="muted">-</td>';
+    const text = Array.isArray(value) ? value.join(", ") : String(value);
+    if (IP_RE.test(text)) return `<td><button class="ip" data-ip="${esc(text)}">${esc(text)}</button></td>`;
+    return `<td>${esc(text)}</td>`;
+  }
+
+  function resultsHtml() {
+    const s = S.siem;
+    if (s.error) return `<p class="why" style="margin:0">${esc(s.error)}</p>`;
+    if (!s.result) return "";
+    const r = s.result;
+    const shown = r.rows.slice(0, 100);
+    const count = `<p class="muted" style="margin:0 0 8px;font:12px var(--mono)">${r.total} result${r.total === 1 ? "" : "s"}${r.total > shown.length ? `, showing ${shown.length}` : ""}</p>`;
+    if (!shown.length) return count + '<p class="muted">Nothing matched. Check the index name and the field values.</p>';
+    if (r.columns) {
+      return count + `<div class="results"><table class="sheet mono"><tr>${r.columns.map((c) => `<th>${esc(c)}</th>`).join("")}</tr>
+        ${shown.map((row) => `<tr>${r.columns.map((c) => cell(row[c])).join("")}</tr>`).join("")}</table></div>`;
+    }
+    return count + `<div class="results raw">${shown.map((e) => `<div class="rawline"><span class="tag">${esc(e.index)} · ${esc(e.host)}</span>${esc(e._raw)}</div>`).join("")}</div>`;
+  }
+
+  function renderSiem() {
+    const st = S.siem.state;
+    siemGauges(st);
+    const hosts = st.hosts.filter((h) => !h.isolated);
+    const actions = st.finished
+      ? `<div class="panel"><h3>${st.kicked_out ? "You kicked the attacker out." : "The attack is over."}</h3><div class="btn-row"><button class="btn" id="result">See the result</button></div></div>`
+      : `<div class="panel"><h3>Respond</h3><p class="muted" style="margin:0 0 12px;font-size:13px">Searching is free. Each action below takes analyst time. ${st.phase === "day_end" ? "The attacker has stopped for today." : ""}</p>
+        <form class="act" data-kind="block"><label>Block an address at the firewall</label><div class="row"><input id="block-ip" placeholder="203.0.113.7" autocomplete="off"><button class="btn">Block</button></div></form>
+        <form class="act" data-kind="disable"><label>Disable an account</label><div class="row"><select id="disable-user">${st.accounts.map((a) => `<option value="${esc(a.username)}">${esc(a.username)} (${esc(a.name)})</option>`).join("")}</select><button class="btn">Disable</button></div></form>
+        <form class="act" data-kind="isolate"><label>Isolate a machine</label><div class="row"><select id="isolate-host">${hosts.map((h) => `<option value="${esc(h.hostname)}">${esc(h.hostname)} (${esc(h.name)})</option>`).join("")}</select><button class="btn">Isolate</button></div></form>
+        <div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="wait">${st.phase === "day_end" ? "End the day" : "Let time pass"}</button></div></div>`;
+    show(`<section class="step siem">
+      <div class="panel">
+        <form id="search" class="searchbar"><input id="query" value="${esc(S.siem.query)}" spellcheck="false" autocomplete="off" aria-label="Search"><button class="btn">Search</button></form>
+        <div class="chips">${EXAMPLES.map(([label], i) => `<button class="chip" data-example="${i}">${esc(label)}</button>`).join("")}</div>
+        <p class="muted" style="margin:8px 0 0;font:12px var(--mono)">You can search: ${st.indexes.map((i) => `index=${esc(i)}`).join(" · ")}. Fields work like user=emily, src_ip=203.0.113.*, bytes_out>1000000.</p>
+      </div>
+      <div class="layout">
+        <div class="panel"><h3>Results</h3>${resultsHtml()}</div>
+        <div class="step">${actions}
+          <div class="panel"><h3>What happened</h3><div class="log" id="log">${S.siem.feed || '<p class="muted" style="margin:0">Your SIEM is collecting. Somewhere in there is an attacker.</p>'}</div></div>
+          <details class="panel"><summary><b>Inventory</b> <span class="muted">machines and accounts</span></summary>
+            <table class="sheet mono"><tr><th>Host</th><th>Internal</th><th>Public</th><th>What</th></tr>
+            ${st.hosts.map((h) => `<tr><td>${esc(h.hostname)}${h.isolated ? ' <span class="why">isolated</span>' : ""}</td><td>${esc(h.ip)}</td><td>${esc(h.public_ip || "-")}</td><td>${esc(h.name)}</td></tr>`).join("")}</table>
+            <table class="sheet mono" style="margin-top:12px"><tr><th>User</th><th>Name</th><th>Workstation</th><th>IP</th></tr>
+            ${st.accounts.map((a) => `<tr><td>${esc(a.username)}</td><td>${esc(a.name)}</td><td>${esc(a.workstation)}</td><td>${esc(a.ip)}</td></tr>`).join("")}</table>
+            ${st.blocked.length ? `<p class="muted" style="font:12px var(--mono)">Blocked: ${st.blocked.map(esc).join(", ")}</p>` : ""}
+          </details>
+        </div>
+      </div></section>`);
+    document.getElementById("search").addEventListener("submit", (e) => { e.preventDefault(); S.siem.query = document.getElementById("query").value; runSearch(); });
+    app.querySelectorAll("[data-example]").forEach((el) => el.addEventListener("click", () => { S.siem.query = EXAMPLES[Number(el.dataset.example)][1]; runSearch(); }));
+    app.querySelectorAll("button.ip").forEach((el) => el.addEventListener("click", () => { const box = document.getElementById("block-ip"); if (box) { box.value = el.dataset.ip; box.focus(); } }));
+    app.querySelectorAll("form.act").forEach((form) => form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const kind = form.dataset.kind;
+      const value = kind === "block" ? document.getElementById("block-ip").value : kind === "disable" ? document.getElementById("disable-user").value : document.getElementById("isolate-host").value;
+      siemAct(kind, value);
+    }));
+    document.getElementById("wait")?.addEventListener("click", () => { siemTake(api("realism_wait")); renderSiem(); });
+    document.getElementById("result")?.addEventListener("click", () => renderFinal(api("finish")));
+  }
+
+  function siemFeed(html) {
+    S.siem.feed = html + S.siem.feed;
+  }
+
+  function siemTake(state) {
+    for (const event of state.events) siemFeed(blueFeed(event));
+    S.siem.state = state;
+  }
+
+  function siemAct(kind, value) {
+    if (!value || !value.trim()) return;
+    const res = api("realism_act", kind, value);
+    if (res.error) { siemFeed(`<div class="entry"><span class="why">${esc(res.error)}</span></div>`); return renderSiem(); }
+    const names = { block: "Block", disable: "Disable", isolate: "Isolate" };
+    siemFeed(`<div class="entry"><span class="stamp blue">${names[kind]}</span><span class="what">${esc(value)}</span><br><span class="detail">${esc(res.text)}</span></div>`);
+    siemTake(res.state);
+    if (S.siem.result) runSearch(); else renderSiem();
   }
 
   function renderFinal(final) {
