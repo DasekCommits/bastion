@@ -119,7 +119,7 @@ def test_day_ends_by_itself_when_moves_run_out(company, catalog):
 
 
 def test_main_asks_difficulty_and_plays(company):
-    script = Script("play", "hard", "practice", "olive-byte", ["firewall"], ["port-scan"], GIVE_UP)
+    script = Script("play", "hard", "practice", "olive-byte", ["firewall"], ["port-scan"], GIVE_UP, "quit")
     assert main(["--seed", "1"], ui=script) == 0
     before_red = script.text.split("RED TEAM")[0]
     assert "BLUE TEAM" in before_red and "%" not in before_red
@@ -236,7 +236,7 @@ def test_bigger_companies_unlock_after_enough_wins():
 def test_locked_companies_are_greyed_out_in_the_menu():
     script = Script("play", "easy", "practice")
     script.answers.append("olive-byte")
-    script.answers += [["mfa"], ["phishing"], GIVE_UP]
+    script.answers += [["mfa"], ["phishing"], GIVE_UP, "quit"]
     main(["--seed", "1"], ui=script)
     company_menu = next(options for message, options in script.seen if message == "Company")
     locked = {o.value for o in company_menu if o.disabled}
@@ -284,7 +284,7 @@ def test_waf_lab_scores_and_remembers_your_rules():
 def test_waf_lab_from_the_menu_does_not_touch_points():
     from bastion.profile import load_profile
 
-    script = WafScript("lab", ["script"])
+    script = WafScript("lab", ["script"], "quit")
     assert main([], ui=script) == 0
     assert load_profile().games == 0
 
@@ -312,3 +312,13 @@ def test_real_waf_picker_with_keys(company, catalog):
         with create_app_session(input=keys, output=DummyOutput()):
             chosen = Picker("WAF", options, None, status=status).run()
     assert chosen == ["url-decode", "lowercase"]
+
+
+def test_play_again_keeps_the_settings_and_starts_a_new_game():
+    from bastion.profile import load_profile
+
+    script = Script("play", "easy", "red", "olive-byte", ["phishing"], GIVE_UP, "again", ["phishing"], GIVE_UP, "menu", "quit")
+    assert main(["--seed", "4"], ui=script) == 0
+    assert load_profile().games == 2
+    assert script.text.count("YOU WIN") + script.text.count("YOU LOSE") == 2
+    assert "See you next time" in script.text

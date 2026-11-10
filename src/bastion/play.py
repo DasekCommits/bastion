@@ -20,6 +20,9 @@ from bastion.look import percent
 END_DAY = "end-day"
 GIVE_UP = "give-up"
 BACK = "back"
+PLAY_AGAIN = "again"
+MENU = "menu"
+QUIT = "quit"
 DIFFICULTIES = ("easy", "medium", "hard")
 SIDES = ("blue", "red", "random", "practice")
 TITLE_WIDTH = 30
@@ -408,43 +411,69 @@ def main(argv: list[str] | None = None, ui=None) -> int:
     args = parser.parse_args(argv)
 
     ui = ui or Terminal(delay=0 if args.fast else 1.0)
+    rng = random.Random(args.seed)
+    catalog = load_catalog()
     try:
         ui.say(look.title_screen(args.difficulty))
-        if not (args.difficulty or args.side or args.scenario):
-            mode = ui.select("Menu", [
-                Option("Play", "play", description="Defend or attack a company."),
-                Option("WAF Lab", "lab", description="Practice: learn how a web firewall stops hackers. Does not change your points."),
+        settings = None
+        given = args if (args.difficulty or args.side or args.scenario) else None
+        while True:
+            if settings is None:
+                if given is None:
+                    mode = ui.select("Menu", [
+                        Option("Play", "play", description="Defend or attack a company."),
+                        Option("WAF Lab", "lab", description="Practice: learn how a web firewall stops hackers. Does not change your points."),
+                        Option("Quit", QUIT),
+                    ])
+                    if mode == QUIT:
+                        break
+                    if mode == "lab":
+                        waf_lab(ui)
+                        if ui.select("What next?", [Option("Main menu", MENU), Option("Quit", QUIT)]) == QUIT:
+                            break
+                        continue
+                settings = choose_settings(ui, given)
+                given = None
+            difficulty, side, company_id = settings
+            Game(load_scenario(company_id), catalog, difficulty, ui, random.Random(rng.random()), side=side).run()
+            ui.say()
+            choice = ui.select("What next?", [
+                Option("Play again", PLAY_AGAIN, description="Same company, difficulty and side, new game."),
+                Option("Main menu", MENU, description="Pick another company, difficulty or side."),
+                Option("Quit", QUIT),
             ])
-            if mode == "lab":
-                waf_lab(ui)
-                return 0
-        difficulty = args.difficulty or ui.select("Difficulty", [
-            Option("Easy", "easy", description="Attacks work more often. Explanations, chances and heat. At the end: advice."),
-            Option("Medium", "medium", description="A fairer fight. Explanations but no numbers. At the end: what happened."),
-            Option("Hard", "hard", description="The defenders have the edge. No help at all. At the end: only the result."),
-        ])
-        side = args.side or ui.select("Side", [
-            Option("Blue", "blue", description="Defend the company. The computer attacks."),
-            Option("Red", "red", description="Break in. The computer picked the defenses."),
-            Option("Random", "random", description="Blue or Red by coin flip. Double points if you win."),
-            Option("Practice", "practice", description="Play both sides. No points, no unlocks."),
-        ])
-        profile = load_profile()
-        if args.scenario:
-            company = load_scenario(args.scenario)
-        else:
-            choice = ui.select("Company", [
-                Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people", description=c.description,
-                       disabled=profile.lock_reason(c.tier))
-                for c in list_scenarios()
-            ])
-            company = load_scenario(choice)
-        game = Game(company, load_catalog(), difficulty, ui, random.Random(args.seed), side=side)
-        game.run()
+            if choice == QUIT:
+                break
+            if choice == MENU:
+                settings = None
     except KeyboardInterrupt:
         ui.say(Text("\nGame stopped.", style=look.MUTED))
         return 130
+    ui.say(Text("See you next time.", style=look.MUTED))
     return 0
+
+
+def choose_settings(ui, given=None) -> tuple[str, str, str]:
+    difficulty = (given and given.difficulty) or ui.select("Difficulty", [
+        Option("Easy", "easy", description="Attacks work more often. Explanations, chances and heat. At the end: advice."),
+        Option("Medium", "medium", description="A fairer fight. Explanations but no numbers. At the end: what happened."),
+        Option("Hard", "hard", description="The defenders have the edge. No help at all. At the end: only the result."),
+    ])
+    side = (given and given.side) or ui.select("Side", [
+        Option("Blue", "blue", description="Defend the company. The computer attacks."),
+        Option("Red", "red", description="Break in. The computer picked the defenses."),
+        Option("Random", "random", description="Blue or Red by coin flip. Double points if you win."),
+        Option("Practice", "practice", description="Play both sides. No points, no unlocks."),
+    ])
+    company_id = given and given.scenario
+    if not company_id:
+        profile = load_profile()
+        company_id = ui.select("Company", [
+            Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people", description=c.description,
+                   disabled=profile.lock_reason(c.tier))
+            for c in list_scenarios()
+        ])
+    return difficulty, side, company_id
 
 
 if __name__ == "__main__":
