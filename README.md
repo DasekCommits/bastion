@@ -44,7 +44,7 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 ## Roadmap
 
 - [x] Project setup
-- [ ] Company model (assets, employees, network) and the Small tier
+- [x] Company model (assets, employees, network) and the Small tier
 - [ ] Medium and Large tiers, tier unlocks
 - [ ] Defense and attack catalog with MITRE ATT&CK mapping
 - [ ] Simulation engine and post-mortem report

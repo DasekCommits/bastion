@@ -1,0 +1,101 @@
+{
+  "id": "olive-byte",
+  "name": "Olive Byte",
+  "tier": "small",
+  "description": "A family business that sells olive oil online. Five people, one website, and a lot of customer data.",
+  "budget": 100,
+  "team_size": 1,
+  "servers": [
+    {
+      "id": "web-01",
+      "name": "Web shop",
+      "role": "web",
+      "internet_facing": true,
+      "software": ["nginx 1.18", "ShopCMS 4.2", "PHP 7.4"]
+    },
+    {
+      "id": "db-01",
+      "name": "Database",
+      "role": "database",
+      "internet_facing": false,
+      "software": ["MySQL 5.7"]
+    },
+    {
+      "id": "mail",
+      "name": "Cloud email",
+      "role": "email",
+      "internet_facing": true,
+      "software": ["Cloud mail service"]
+    },
+    {
+      "id": "office-pc",
+      "name": "Office PC",
+      "role": "workstation",
+      "internet_facing": false,
+      "software": ["Windows 10", "Office", "Remote Desktop"]
+    }
+  ],
+  "employees": [
+    {
+      "id": "maria",
+      "name": "Maria",
+      "role": "Owner",
+      "is_admin": true,
+      "access": ["web-01", "db-01", "mail", "office-pc"]
+    },
+    {
+      "id": "jacob",
+      "name": "Jacob",
+      "role": "Developer",
+      "is_admin": true,
+      "access": ["web-01", "db-01"]
+    },
+    {
+      "id": "emily",
+      "name": "Emily",
+      "role": "Customer Support",
+      "is_admin": false,
+      "access": ["web-01", "mail"]
+    },
+    {
+      "id": "george",
+      "name": "George",
+      "role": "Accountant",
+      "is_admin": false,
+      "access": ["mail", "office-pc"]
+    },
+    {
+      "id": "sophie",
+      "name": "Sophie",
+      "role": "Intern",
+      "is_admin": true,
+      "access": ["web-01", "db-01"]
+    }
+  ],
+  "data": [
+    {
+      "id": "customers",
+      "name": "Customer names, addresses and phone numbers",
+      "location": "db-01",
+      "value": 7
+    },
+    {
+      "id": "payment-tokens",
+      "name": "Saved payment cards",
+      "location": "db-01",
+      "value": 10
+    },
+    {
+      "id": "admin-passwords",
+      "name": "Shop admin password hashes",
+      "location": "db-01",
+      "value": 9
+    },
+    {
+      "id": "invoices",
+      "name": "Supplier invoices",
+      "location": "office-pc",
+      "value": 4
+    }
+  ]
+}
