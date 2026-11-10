@@ -128,8 +128,13 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 - [x] Company model (assets, employees, network) and the Small tier
 - [x] Defense and attack catalog with MITRE ATT&CK mapping
 - [x] Simulation engine and post-mortem report
-- [ ] Red Team budget and the full scoring system
-- [ ] Medium and Large tiers, tier unlocks
+- [x] Red Team budget, heat, multi-day campaigns and night hunts
+- [x] Interactive arrow-key mode with Easy, Medium and Hard
+- [x] Medium tier (Harbor Clinic) and Large tier (Meridian Savings Bank, Active Directory)
+- [x] Realism: per-person traits, random admin mistakes, outside-only recon, pivots
+- [x] Balance tuned with simulated games, 5-95% chance floor
+- [ ] Full scoring system (Blue and Red points, stealth and speed bonuses)
+- [ ] Tier unlocks
 - [ ] WAF rule sandbox (real payloads vs. real rules)
 - [ ] Web API and playable browser UI
 - [ ] Accounts, public leaderboard and ELO ranking
@@ -137,7 +142,7 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 
 ## Status
 
-Early development. The Small tier is playable from the command line, including an interactive arrow-key mode. The Medium and Large tiers are playable too.
+Playable from the command line: three companies, three difficulties, 22 attacks and 25 defenses. Next up is the full scoring system.
 
 ## License
 
