@@ -373,6 +373,7 @@ class Campaign:
         self.heat = 0.0
         self.used: dict[str, int] = {}
         self.known_defenses: set[str] = set()
+        self.lost: set[str] = set()
         self.burned: set[tuple[str, str]] = set()
         self.day = 1
         self.moves_today = 0
@@ -401,6 +402,18 @@ class Campaign:
             if attack.trait == "password_hygiene":
                 return True
         return False
+
+    def _count_once(self, attack: Attack, target_id: str, points: int, outcome: str) -> tuple[int, str]:
+        if attack.id == "bec":
+            hit = [asset for asset in self.company.data if asset.fraud]
+        else:
+            hit = [asset for asset in self.company.data if asset.location == target_id and not asset.fraud]
+        new = [asset for asset in hit if asset.id not in self.lost]
+        self.lost.update(asset.id for asset in hit)
+        fresh = sum(asset.value for asset in new)
+        if fresh < points:
+            outcome += " This data was already lost earlier, so it only counts once." if not fresh else " Some of this data was already lost earlier and only counts once."
+        return fresh, outcome
 
     def _scanned_roles(self) -> set[str]:
         return {self.company.server(server_id).role for server_id in self.foothold.scanned}
@@ -486,6 +499,8 @@ class Campaign:
             note = "These files are already encrypted."
         elif succeeded:
             points, outcome = _apply(attack, target_id, self.company, self.foothold, self.defense_ids)
+            if points:
+                points, outcome = self._count_once(attack, target_id, points, outcome)
             if attack.tactic == "reconnaissance":
                 outcome = f"{outcome} {self._reveal_outside(target_id)}"
             outcome = f"{outcome} {self._reveal_inside()}".strip()

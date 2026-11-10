@@ -463,3 +463,14 @@ def test_advice_only_suggests_defenses_the_company_can_buy(company, catalog):
     small = {d.id for d in catalog.defenses_for("small")}
     assert set(result.missing) <= small
     assert "Phishing-resistant" not in " ".join(blue_tips(campaign))
+
+
+def test_stealing_then_encrypting_counts_the_data_once(company, catalog):
+    company.red_budget = 100
+    campaign = Campaign(company, catalog, [], ["phishing", "exfiltration", "ransomware"], rng=win_every_step(3))
+    campaign.move("phishing", "sophie")
+    assert campaign.move("exfiltration", "db-01").points == 26
+    second = campaign.move("ransomware", "db-01")
+    assert second.points == 0 and "only counts once" in second.note
+    report = campaign.report()
+    assert report.points <= report.max_points
