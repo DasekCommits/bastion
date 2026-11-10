@@ -31,6 +31,9 @@ class Script:
         assert answer or not need_one
         return answer
 
+    def suspense(self, lines):
+        self.lines.extend(f"... {line}" for line in lines)
+
     def say(self, content=""):
         buffer = io.StringIO()
         Console(file=buffer, width=120, color_system=None).print(content)
@@ -141,3 +144,11 @@ def test_scan_warns_when_exploit_was_not_bought(company, catalog):
     game = Game(company, catalog, "easy", Script())
     campaign = Campaign(company, catalog, [], ["port-scan"], seed=1)
     assert "did not buy" in game.move_hint(campaign, "port-scan")
+
+
+def test_suspense_comes_before_the_outcome(company, catalog):
+    script = Script(["mfa"], ["phishing"], "phishing", "sophie", GIVE_UP)
+    Game(company, catalog, "easy", script, random.Random(1)).run()
+    text = script.text
+    assert text.index("Waiting for Sophie to click") < text.index("SUCCESS" if "SUCCESS" in text else "FAILED")
+    assert "Is the Blue Team watching?" in text

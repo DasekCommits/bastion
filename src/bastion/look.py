@@ -25,8 +25,10 @@ LOGO = """\
 ██████╔╝██║  ██║███████║   ██║   ██║╚██████╔╝██║ ╚████║
 ╚═════╝ ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝"""
 
+
 def percent(value: float) -> str:
     return f"{value * 100:.0f}%"
+
 
 def questionary_style():
     from questionary import Style
@@ -43,6 +45,7 @@ def questionary_style():
         ("separator", f"fg:{FAINT}"),
     ])
 
+
 def title_screen(difficulty: str | None = None) -> Panel:
     parts = [
         Text(LOGO, style=f"bold {AMBER}"),
@@ -53,9 +56,11 @@ def title_screen(difficulty: str | None = None) -> Panel:
         parts.append(Text(f"\n{difficulty.upper()} MODE", style=MUTED))
     return Panel(Group(*parts), box=box.HEAVY, border_style=FAINT, padding=(1, 3), expand=False)
 
+
 def team_rule(team: str, subtitle: str) -> Rule:
     color = BLUE if team == "blue" else RED
     return Rule(f"[bold {color}]{team.upper()} TEAM[/]  [{MUTED}]{subtitle}[/]", style=color)
+
 
 def company_panel(company: Company, easy: bool) -> Panel:
     servers = Table(box=box.SIMPLE_HEAD, header_style=f"bold {BLUE}", pad_edge=False)
@@ -91,13 +96,16 @@ def company_panel(company: Company, easy: bool) -> Panel:
         padding=(1, 2),
     )
 
+
 def _dots(filled: int, total: int, color: str) -> Text:
     return Text.assemble(("●" * filled, color), ("○" * (total - filled), FAINT))
+
 
 def heat_bar(heat: float, width: int = 12) -> Text:
     filled = round(heat * width)
     color = GREEN if heat < 0.34 else AMBER if heat < 0.67 else RED
     return Text.assemble(("█" * filled, color), ("░" * (width - filled), FAINT), (f" {percent(heat)}", color))
+
 
 def status_bar(campaign: Campaign, easy: bool) -> Rule:
     company = campaign.company
@@ -111,6 +119,7 @@ def status_bar(campaign: Campaign, easy: bool) -> Rule:
         line.append("   HEAT ", style=MUTED)
         line.append_text(heat_bar(campaign.heat))
     return Rule(line, style=FAINT)
+
 
 def foothold_panel(campaign: Campaign) -> Text:
     foothold = campaign.foothold
@@ -130,27 +139,64 @@ def foothold_panel(campaign: Campaign) -> Text:
         text.append("  No foothold yet. Find a way in first.\n", style=MUTED)
     return text
 
-def result_text(result: StepResult, target_name: str, easy: bool) -> Text:
-    text = Text.assemble(("  ", ""), (result.attack.name, "bold"), (" → ", MUTED), (target_name, ""), "\n")
+
+def move_header(result: StepResult, target_name: str) -> Text:
+    return Text.assemble(("  ", ""), (result.attack.name, "bold"), (" → ", MUTED), (target_name, ""))
+
+
+def outcome_text(result: StepResult, easy: bool) -> Text:
+    text = Text()
     if not result.possible:
         text.append("  WASTED ", style=f"bold black on {AMBER}")
-        text.append(f" {result.note}\n", style=AMBER)
+        text.append(f" {result.note}", style=AMBER)
         return text
     if result.succeeded:
-        text.append(" SUCCESS ", style=f"bold black on {GREEN}")
+        text.append("  SUCCESS ", style=f"bold black on {GREEN}")
     else:
-        text.append(" FAILED ", style=f"bold white on {FAINT}")
+        text.append("  FAILED ", style=f"bold white on {FAINT}")
     if easy:
         text.append(f"  chance was {percent(result.success_chance)}", style=MUTED)
-    text.append("\n")
     if result.succeeded and result.note:
-        text.append(f"  {result.note}\n")
+        text.append(f"\n  {result.note}")
     if easy and not result.succeeded and result.helped:
-        text.append(f"  Stopped by: {', '.join(result.helped)}\n", style=BLUE)
-    if result.detected:
-        text.append(" DETECTED ", style=f"bold white on {RED}")
-        text.append("  The Blue Team spotted you and kicked you out.\n", style=RED)
+        text.append(f"\n  Stopped by: {', '.join(result.helped)}", style=BLUE)
     return text
+
+
+def detection_text(result: StepResult) -> Text:
+    if result.detected:
+        return Text.assemble(
+            ("  DETECTED ", f"bold white on {RED}"),
+            ("  The Blue Team spotted you and kicked you out.", RED),
+        )
+    return Text("  Nobody noticed.", style=MUTED)
+
+
+def suspense_lines(result: StepResult, target_name: str) -> list[str]:
+    tactic = result.attack.tactic
+    who = target_name.split(",")[0]
+    if result.attack.id == "phishing":
+        return [f"Sending a fake email to {who}", f"Waiting for {who} to click"]
+    if tactic == "reconnaissance":
+        return [f"Scanning {who} for open ports"]
+    if tactic == "initial-access":
+        return [f"Sending the exploit to {who}", "Waiting for a shell"]
+    if tactic == "credential-access":
+        return [f"Trying passwords against {who}'s account", "Waiting for a login to work"]
+    if tactic == "privilege-escalation":
+        return [f"Running a local exploit on {who}", "Trying to become administrator"]
+    if tactic == "lateral-movement":
+        return [f"Logging in to {who} with a stolen account"]
+    if tactic == "exfiltration":
+        return [f"Copying data out of {who}", "Sending it to your server"]
+    if tactic == "impact":
+        return [f"Encrypting files on {who}", "Dropping the ransom note"]
+    return [f"Attacking {who}"]
+
+
+WATCHING = "Is the Blue Team watching?"
+NIGHT_WATCH = "The office is empty. The Blue Team is reviewing the logs"
+
 
 def night_panel(night: NightResult, easy: bool) -> Panel:
     lines = Text()
@@ -167,8 +213,10 @@ def night_panel(night: NightResult, easy: bool) -> Panel:
         lines.append("The night passes quietly.", style=MUTED)
     return Panel(lines, title=f"[{MUTED}]☾ Night {night.day}[/]", title_align="left", border_style=FAINT, padding=(0, 2))
 
+
 def _score_color(score: int) -> str:
     return GREEN if score >= 70 else AMBER if score >= 40 else RED
+
 
 def final_screen(report: Report, catalog: Catalog) -> Group:
     score = report.defense_score

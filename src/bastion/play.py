@@ -1,6 +1,7 @@
 import argparse
 import random
 import sys
+import time
 from dataclasses import dataclass
 
 from rich.console import Console
@@ -30,10 +31,19 @@ class Option:
 
 
 class Terminal:
-    def __init__(self):
+    def __init__(self, delay: float = 1.0):
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8")
         self.console = Console(highlight=False)
+        self.delay = delay
+
+    def suspense(self, lines: list[str]) -> None:
+        if self.delay <= 0:
+            return
+        with self.console.status("", spinner="dots", spinner_style=look.AMBER) as status:
+            for line in lines:
+                status.update(f"[{look.MUTED}]{line}…[/]")
+                time.sleep(self.delay)
 
     def select(self, message: str, options: list[Option]) -> str:
         import questionary
@@ -186,9 +196,19 @@ class Game:
         return target_id
 
     def show_result(self, result: StepResult) -> None:
-        self.ui.say(look.result_text(result, self.target_name(result.step.target_id), self.easy))
+        target = self.target_name(result.step.target_id)
+        self.ui.say(look.move_header(result, target))
+        if result.possible:
+            self.ui.suspense(look.suspense_lines(result, target))
+        self.ui.say(look.outcome_text(result, self.easy))
+        if result.possible:
+            self.ui.suspense([look.WATCHING])
+            self.ui.say(look.detection_text(result))
+        self.ui.say()
 
     def show_night(self, night: NightResult) -> None:
+        self.ui.say()
+        self.ui.suspense([look.NIGHT_WATCH])
         self.ui.say(look.night_panel(night, self.easy))
 
     def play_turns(self, campaign: Campaign) -> None:
@@ -231,9 +251,10 @@ def main(argv: list[str] | None = None, ui=None) -> int:
     parser.add_argument("--scenario", default="olive-byte")
     parser.add_argument("--difficulty", choices=DIFFICULTIES, default=None)
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--fast", action="store_true", help="no suspense pauses")
     args = parser.parse_args(argv)
 
-    ui = ui or Terminal()
+    ui = ui or Terminal(delay=0 if args.fast else 1.0)
     try:
         ui.say(look.title_screen(args.difficulty))
         difficulty = args.difficulty or ui.select("Difficulty", [
