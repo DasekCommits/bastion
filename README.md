@@ -65,6 +65,18 @@ pytest
 
 Commas separate moves and `|` separates days (an empty day means waiting). You get a day-by-day post-mortem of the attack and a summary of 1,000 replays.
 
+### Interactive play
+
+```bash
+python -m bastion play
+python -m bastion play --difficulty hard --seed 7
+```
+
+Pick everything with the arrow keys: first your defenses as Blue, then your arsenal as Red, then one move at a time over up to five days.
+
+- **Easy:** every defense and attack is explained, and before each move you see the success chance, the chance of being spotted and how hot you will be. Moves that cannot work are greyed out with the reason.
+- **Hard:** no explanations and no numbers. Impossible moves are allowed and simply waste a turn. You only learn what happened, and the full post-mortem at the end.
+
 ## Safety
 
 Bastion never attacks real systems. The network is simulated, and payloads only run against an isolated rule engine, never against a live server.
@@ -91,7 +103,7 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 
 ## Status
 
-Early development. The Small tier is playable from the command line.
+Early development. The Small tier is playable from the command line, including an interactive arrow-key mode.
 
 ## License
 
