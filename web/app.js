@@ -108,6 +108,29 @@
     window.scrollTo({ top: keepScroll ? y : 0 });
   }
 
+  // choose which connections the network map draws
+  app.addEventListener("change", (e) => {
+    const sel = e.target.closest(".map-focus");
+    if (!sel || !S.map) return;
+    S.map.focus = sel.value;
+    app.querySelectorAll(".map-panel").forEach((el) => { el.innerHTML = mapInner(); });
+  });
+
+  // live filter: an <input class="row-filter" data-rows=".selector"> hides rows whose data-search misses the query
+  app.addEventListener("input", (e) => {
+    const box = e.target.closest(".row-filter");
+    if (!box) return;
+    const q = box.value.trim().toLowerCase();
+    let shown = 0;
+    app.querySelectorAll(box.dataset.rows).forEach((row) => {
+      const hit = !q || (row.dataset.search || "").includes(q);
+      row.hidden = !hit;
+      if (hit) shown += 1;
+    });
+    const count = box.parentElement.querySelector(".row-count");
+    if (count) count.textContent = q ? `${shown} shown` : "";
+  });
+
   async function boot() {
     const status = document.getElementById("boot-status");
     const fill = document.getElementById("boot-fill");
@@ -225,7 +248,8 @@
     S.start = api("start", company, level, side, Math.floor(Math.random() * 1e9));
     S.turn = null;
     S.attack = null;
-    S.map = { owned: new Set(), admin: new Set(), scanned: new Set(), taken: new Set(), targets: new Set(), ping: null };
+    S.map = { owned: new Set(), admin: new Set(), scanned: new Set(), taken: new Set(), targets: new Set(), ping: null, focus: S.start.company.people.length > 14 ? "none" : "all" };
+    S.targetSort = undefined;
     if (S.start.side === "red") renderArsenal();
     else renderDefenses();
   }
@@ -239,11 +263,14 @@
       <td>${s.exposed ? '<span class="word-yes">internet</span>' : '<span class="muted">inside</span>'}</td><td class="muted">${esc(s.software.join(", "))}</td></tr>`).join("");
     const hasTraits = company.people.some((p) => p.phishing);
     const hasLoyalty = company.people.some((p) => p.loyalty);
-    const people = company.people.map((p) => `<tr><td>${esc(p.name)} <span class="muted">${esc(p.role)}</span></td>
+    const people = company.people.map((p) => `<tr data-search="${esc((p.name + " " + p.role + " " + (p.department || "") + " " + p.access.join(" ")).toLowerCase())}"><td>${esc(p.name)} <span class="muted">${esc(p.role)}</span></td>
       <td>${p.admin === "yes" ? '<span class="word-yes">yes</span>' : `<span class="muted">${esc(p.admin)}</span>`}</td>
       <td class="muted">${esc(p.access.join(", "))}</td>
       ${hasTraits ? `<td>${word(p.phishing)}</td><td>${word(p.passwords)}</td>` : ""}
       ${hasLoyalty ? `<td>${word(p.loyalty)}</td>` : ""}</tr>`).join("");
+    const peopleSearch = company.people.length > 12
+      ? `<div class="filterbar"><input class="row-filter" data-rows="#people-tbl tbody tr" placeholder="Search ${company.people.length} people by name, role, team or server…"><span class="row-count muted"></span></div>`
+      : "";
     const data = company.data.length ? `<div class="panel"><h3>Valuable data</h3><table class="sheet"><tr><th>What</th><th>Where</th><th class="num">Value</th></tr>
       ${company.data.map((d) => `<tr><td>${esc(d.name)}</td><td class="muted">${esc(d.where)}</td><td class="num">${d.value}</td></tr>`).join("")}</table></div>` : "";
     return `<div class="brief">
@@ -252,8 +279,8 @@
         <div class="panel"><h3>Servers</h3><table class="sheet"><tr><th>Server</th><th>Reach</th><th>Software</th></tr>${servers}</table></div>
         ${data}
       </div>
-      <div class="panel"><h3>People</h3><table class="sheet"><tr><th>Person</th><th>Admin</th><th>Can log in to</th>
-        ${hasTraits ? "<th>Spots phishing</th><th>Passwords</th>" : ""}${hasLoyalty ? "<th>Loyalty</th>" : ""}</tr>${people}</table>
+      <div class="panel"><h3>People</h3>${peopleSearch}<table class="sheet" id="people-tbl"><thead><tr><th>Person</th><th>Admin</th><th>Can log in to</th>
+        ${hasTraits ? "<th>Spots phishing</th><th>Passwords</th>" : ""}${hasLoyalty ? "<th>Loyalty</th>" : ""}</tr></thead><tbody>${people}</tbody></table>
         ${company.hidden_admins ? '<p class="note">Someone may have admin rights by mistake, or nobody. You will find out once you are in.</p>' : ""}
       </div>
     </div>`;
@@ -360,10 +387,13 @@
     peopleRows.forEach((row, r) => spread(row, 275 + r * 82));
     const H = 275 + peopleRows.length * 82;
     const m = S.map;
+    const focus = m.focus;
     const edges = c.people.flatMap((p) => p.access.filter((id) => pos[id]).map((id) => {
+      if (focus === "none") return "";
+      if (focus && focus !== "all" && focus !== p.id && focus !== id) return "";
       const a = pos[p.id], b = pos[id];
       const hot = m.owned.has(p.id);
-      return `<line class="edge ${hot ? "hot" : ""}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+      return `<line class="edge ${hot ? "hot" : ""} ${focus && focus !== "all" ? "lit" : ""}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
     })).join("");
     const state = (id) => [m.admin.has(id) ? "admin" : m.owned.has(id) ? "owned" : "", m.targets.has(id) ? "target" : "", m.isolated && m.isolated.has(id) ? "isolated" : ""].join(" ");
     const extras = (id, p) => `${m.scanned.has(id) ? `<circle class="scan-ring" cx="${p.x}" cy="${p.y}" r="19"/>` : ""}
@@ -388,7 +418,17 @@
   }
 
   function mapInner() {
-    return `${mapSvg()}
+    const c = S.start.company;
+    const f = S.map.focus;
+    const opt = (v, label) => `<option value="${esc(v)}" ${f === v ? "selected" : ""}>${esc(label)}</option>`;
+    const control = c.people.length > 14
+      ? `<div class="filterbar"><label>Connections: <select class="map-focus">
+          ${opt("none", "none")}${opt("all", "all (busy)")}
+          <optgroup label="machines">${c.servers.map((s) => opt(s.id, s.name)).join("")}</optgroup>
+          <optgroup label="people">${c.people.map((p) => opt(p.id, p.name)).join("")}</optgroup>
+        </select></label></div>`
+      : "";
+    return `${control}${mapSvg()}
       <div class="legend"><span><i></i>untouched</span><span><i class="owned"></i>attacker inside</span><span><i class="admin"></i>attacker is admin</span><span><i class="scan"></i>scanned</span></div>`;
   }
 
@@ -455,10 +495,22 @@
       const targets = api("targets", S.attack);
       targets.filter((x) => !x.disabled).forEach((x) => S.map.targets.add(x.id));
       const attackName = t.actions.find((a) => a.id === S.attack).name;
-      side = `<div class="panel"><h3>${esc(attackName)}: pick a target</h3><div class="options">
-        ${targets.map((x) => {
+      const hasOdds = targets.some((x) => x.success !== undefined);
+      if (hasOdds && (S.targetSort === undefined)) S.targetSort = "success";
+      const reachable = targets.filter((x) => !x.disabled);
+      if (hasOdds && S.targetSort) {
+        const key = S.targetSort === "spotted" ? (x) => x.spotted : (x) => -x.success;
+        reachable.sort((a, b) => key(a) - key(b));
+      }
+      const ordered = hasOdds ? reachable.concat(targets.filter((x) => x.disabled)) : targets;
+      const controls = targets.length > 10
+        ? `<div class="filterbar"><input class="row-filter" data-rows="#target-list .option" placeholder="Search ${targets.length} targets…"><span class="row-count muted"></span>
+            ${hasOdds ? `<span class="sorters">sort: <button class="chip ${S.targetSort === "success" ? "on" : ""}" data-sort="success">best chance</button><button class="chip ${S.targetSort === "spotted" ? "on" : ""}" data-sort="spotted">least spotted</button></span>` : ""}</div>`
+        : "";
+      side = `<div class="panel"><h3>${esc(attackName)}: pick a target</h3>${controls}<div class="options" id="target-list">
+        ${ordered.map((x) => {
           const odds = x.success !== undefined ? `success ${pct(x.success)}<br>spotted ${pct(x.spotted)}<br>heat → ${pct(x.heat_after)}` : "";
-          return `<button class="option" data-target="${x.id}" ${x.disabled ? "disabled" : ""}>
+          return `<button class="option" data-target="${x.id}" data-search="${esc(x.label.toLowerCase())}" ${x.disabled ? "disabled" : ""}>
             <span></span><span><span class="name">${esc(x.label)}</span>
             ${x.disabled ? `<span class="why">${esc(x.disabled)}</span>` : x.hint ? `<span class="desc">${esc(x.hint)}</span>` : ""}</span>
             <span class="odds">${odds}</span></button>`;
@@ -483,6 +535,7 @@
       </div></section>`);
     app.querySelectorAll("[data-attack]").forEach((el) => el.addEventListener("click", () => { S.attack = el.dataset.attack; renderPlay(); }));
     app.querySelectorAll("[data-target]").forEach((el) => el.addEventListener("click", () => doMove(el.dataset.target)));
+    app.querySelectorAll("[data-sort]").forEach((el) => el.addEventListener("click", () => { S.targetSort = el.dataset.sort; renderPlay(); }));
     app.querySelectorAll(".map g.clickable").forEach((el) => el.addEventListener("click", () => doMove(el.dataset.id)));
     document.getElementById("back")?.addEventListener("click", () => { S.attack = null; renderPlay(); });
     document.getElementById("end-day")?.addEventListener("click", endDay);
