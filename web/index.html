@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bastion</title>
+  <meta name="description" content="A purple-team training game. Defend a company, switch sides, break in. Every attack and defense is mapped to MITRE ATT&CK.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.5 5.1 13.5 12 15 6.9-1.5 12-7.5 12-15V7z' fill='%2318202C'/%3E%3Cpath d='M16 6v20c-4.8-1.4-8-6-8-11V9.6z' fill='%232A55D9'/%3E%3Cpath d='M16 6v20c4.8-1.4 8-6 8-11V9.6z' fill='%23C93A2B'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="./" aria-label="Bastion home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 4 7v8c0 7.5 5.1 13.5 12 15 6.9-1.5 12-7.5 12-15V7z" fill="var(--ink)"/><path d="M16 6v20c-4.8-1.4-8-6-8-11V9.6z" fill="var(--blue)"/><path d="M16 6v20c4.8-1.4 8-6 8-11V9.6z" fill="var(--red)"/></svg>
+      <span>BASTION</span>
+    </a>
+    <div id="gauges" class="gauges" hidden></div>
+  </header>
+  <main id="app" tabindex="-1">
+    <section class="boot" id="boot">
+      <p class="eyebrow">Purple-team training</p>
+      <h1>Build a defense.<br><span class="blue">Switch sides.</span> <span class="red">Break it.</span></h1>
+      <p class="lede">Defend a company or break into one. Every move is a real technique from MITRE ATT&amp;CK, and every game ends with a post-mortem of what worked and why.</p>
+      <p class="boot-status" id="boot-status" role="status">Loading the game engine…</p>
+      <div class="boot-bar" aria-hidden="true"><span id="boot-fill"></span></div>
+    </section>
+  </main>
+  <footer class="foot">
+    <span>Bastion by <a href="https://dasek.dev">Filippos Dasek</a></span>
+    <a href="https://github.com/DasekCommits/bastion">Source on GitHub</a>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

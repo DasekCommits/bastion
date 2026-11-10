@@ -263,7 +263,7 @@ class Game:
         self.ui.say(look.move_header(result, target))
         if result.possible:
             self.ui.suspense(look.suspense_lines(result, target))
-        self.ui.say(look.outcome_text(result, self.easy, self.explain))
+        self.ui.say(look.outcome_text(result, self.easy, self.explain and self.side != "red"))
         if result.possible:
             self.ui.suspense([look.WATCHING])
             self.ui.say(look.detection_text(result))

@@ -4,6 +4,8 @@
 
 **Build a defense. Switch sides. Break it.**
 
+**Play it in your browser: [bastion.dasek.dev](https://bastion.dasek.dev)**
+
 Bastion is a purple-team training game. You play the Blue Team and secure a fictional company, then you switch to the Red Team and attack the defense you just built. At the end you get a post-mortem report that shows where your defense held, where it broke, and which gaps were left open, mapped to [MITRE ATT&CK](https://attack.mitre.org/).
 
 Once you are happy with your defense, you publish it to the public leaderboard, where anyone can try to break it.
@@ -144,6 +146,16 @@ Pick **WAF Lab** in the main menu to practise how a Web Application Firewall wor
 
 Experts can write their own regex rules in `~/.bastion/waf-rules.json` and test them with `python -m bastion waf`. Rules that hang on crafted input (ReDoS) are stopped after five seconds.
 
+### Web version
+
+The browser version runs the same Python engine inside the page with [Pyodide](https://pyodide.org), so nothing is installed and the rules are identical to the terminal game. `src/bastion/web.py` is the bridge between the page and the engine, and `web/` holds the page itself.
+
+```bash
+python tools/build_web.py      # writes build/web: index.html, app.js, style.css and the packaged engine
+```
+
+Progress is kept in the browser for now. Accounts, a shared leaderboard and server-side dice against cheating come next.
+
 ## Safety
 
 Bastion never attacks real systems. The network is simulated, and payloads only run against an isolated rule engine, never against a live server.
@@ -170,15 +182,15 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 - [x] Play one side against the computer, random side for double points
 - [x] Tier unlocks
 - [x] WAF Lab: build a web firewall against real payloads (practice mode)
-- [ ] Web API and playable browser UI
+- [x] Playable in the browser (Python in WebAssembly)
 - [ ] Accounts, public leaderboard and ELO ranking
 - [x] CI with tests and an automatic balance check
 - [x] Game logs and a report of choices that win or lose too often
-- [ ] Live deployment
+- [x] Live at bastion.dasek.dev
 
 ## Status
 
-Playable from the command line: three companies, three difficulties, Blue, Red or random against the computer, 22 attacks and 25 defenses. Next up is putting it online.
+Playable from the command line: three companies, three difficulties, Blue, Red or random against the computer, 22 attacks and 25 defenses. Next up are accounts and a shared leaderboard.
 
 ## License
 

@@ -462,7 +462,7 @@ class Campaign:
         attack = self.catalog.attacks[attack_id]
         step = Step(attack_id, target_id, self.day)
         helped = [d.id for d in self.defenses if attack.id in d.blocks or attack.id in d.detects]
-        missing = [d.id for d in self.catalog.defenses_against(attack.id) if d.id not in self.defense_ids]
+        missing = [d.id for d in self.catalog.defenses_against(attack.id, self.company.tier) if d.id not in self.defense_ids]
         self.moves_today += 1
         preview = self.preview(attack_id, target_id)
 

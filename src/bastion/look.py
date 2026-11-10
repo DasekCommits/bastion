@@ -8,7 +8,7 @@ from rich.text import Text
 from bastion.catalog import Catalog
 from bastion.company import Company
 from bastion.engine import Campaign, NightResult, Report, StepResult
-from bastion.report import format_report
+from bastion.report import format_report, percent
 
 BLUE = "#5aa9ff"
 RED = "#ff5f5f"
@@ -24,10 +24,6 @@ LOGO = """\
 ██╔══██╗██╔══██║╚════██║   ██║   ██║██║   ██║██║╚██╗██║
 ██████╔╝██║  ██║███████║   ██║   ██║╚██████╔╝██║ ╚████║
 ╚═════╝ ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝"""
-
-
-def percent(value: float) -> str:
-    return f"{value * 100:.0f}%"
 
 
 def questionary_style():
@@ -279,7 +275,8 @@ def final_screen(report: Report, catalog: Catalog, level: str = "easy", blue: li
     board.add_row(
         Text(f"{score}/100", style=f"bold {_score_color(score)}"),
         Text(f"{report.points}/{report.max_points}", style=f"bold {RED if report.points else GREEN}"),
-        Text("caught" if report.caught else "got away", style=f"bold {BLUE if report.caught else RED}"),
+        Text("caught" if report.caught else "got away" if report.points else "stayed outside",
+             style=f"bold {BLUE if report.caught else RED if report.points else MUTED}"),
     )
 
     result = Panel(board, title="[bold]RESULT[/]", border_style=_score_color(score), padding=(1, 2))

@@ -2,14 +2,14 @@ from bastion.catalog import Catalog
 from bastion.engine import Report
 
 
-def _percent(value: float) -> str:
+def percent(value: float) -> str:
     return f"{value * 100:.0f}%"
 
 
 def _night_lines(night) -> list[str]:
-    lines = [f"   Night {night.day}: heat {_percent(night.heat_before)} -> {_percent(night.heat_after)}"]
+    lines = [f"   Night {night.day}: heat {percent(night.heat_before)} -> {percent(night.heat_after)}"]
     if night.hunt_chance:
-        lines.append(f"   The Blue Team reviewed the logs ({_percent(night.hunt_chance)} chance to find you)")
+        lines.append(f"   The Blue Team reviewed the logs ({percent(night.hunt_chance)} chance to find you)")
     if night.found:
         lines.append("   FOUND  The Blue Team found the attacker in the logs and kicked them out.")
     lines.append("")
@@ -46,8 +46,8 @@ def format_report(report: Report, catalog: Catalog, lessons: bool = True) -> str
         else:
             outcome = "SUCCESS" if result.succeeded else "BLOCKED"
             lines.append(
-                f"   {outcome}  chance {_percent(result.success_chance)}, "
-                f"detection {_percent(result.detect_chance)}, heat {_percent(result.heat)}"
+                f"   {outcome}  chance {percent(result.success_chance)}, "
+                f"detection {percent(result.detect_chance)}, heat {percent(result.heat)}"
             )
             if result.note:
                 lines.append(f"   {result.note}")
@@ -99,11 +99,11 @@ def format_simulation(simulation, plan) -> str:
         "=" * 60,
         f"Average defense score: {simulation.average_score:.0f}/100",
         f"Worst run:             {simulation.worst_score}/100",
-        f"Data lost in:          {_percent(simulation.breach_rate)} of runs",
-        f"Attacker caught in:    {_percent(simulation.caught_rate)} of runs",
+        f"Data lost in:          {percent(simulation.breach_rate)} of runs",
+        f"Attacker caught in:    {percent(simulation.caught_rate)} of runs",
         "",
         "How often each step worked:",
     ]
     for step, rate in zip(plan, simulation.step_success):
-        lines.append(f"  {_percent(rate):>4}  {step.attack_id} -> {step.target_id}")
+        lines.append(f"  {percent(rate):>4}  {step.attack_id} -> {step.target_id}")
     return "\n".join(lines)

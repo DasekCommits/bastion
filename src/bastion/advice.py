@@ -1,5 +1,5 @@
 from bastion.engine import Campaign, has_admin_rights, person_factor, success_chance
-from bastion.look import percent
+from bastion.report import percent
 
 MAX_TIPS = 4
 
@@ -14,7 +14,7 @@ def blue_tips(campaign: Campaign) -> list[str]:
         if not (result.possible and result.succeeded):
             continue
         best = None
-        for defense in catalog.defenses_against(result.attack.id):
+        for defense in catalog.defenses_against(result.attack.id, company.tier):
             if defense.id in owned or defense.id in suggested:
                 continue
             block = defense.blocks.get(result.attack.id, 0)
@@ -48,7 +48,7 @@ def blue_tips(campaign: Campaign) -> list[str]:
 
     left = company.budget - campaign.budget_used
     tried = {result.attack.id for result in campaign.results}
-    useful = [d for d in catalog.defenses.values() if d.id not in owned and d.cost <= left and (set(d.blocks) | set(d.detects)) & tried]
+    useful = [d for d in catalog.defenses_for(company.tier) if d.id not in owned and d.cost <= left and (set(d.blocks) | set(d.detects)) & tried]
     cheapest = min(useful, key=lambda d: d.cost, default=None)
     if cheapest:
         tips.append(f"You left {left} of {company.budget} unspent. {cheapest.name} ({cheapest.cost}) still fit and counters what Red tried.")

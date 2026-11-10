@@ -453,3 +453,13 @@ def test_a_big_edge_keeps_careful_people_harder_to_phish(company, catalog):
     maria = campaign.preview("phishing", "maria").success_chance
     emily = campaign.preview("phishing", "emily").success_chance
     assert maria < emily < 0.95
+
+
+def test_advice_only_suggests_defenses_the_company_can_buy(company, catalog):
+    from bastion.advice import blue_tips
+
+    campaign = Campaign(company, catalog, [], ["phishing"], rng=Rolls(ALWAYS_WIN, NEVER_SEEN))
+    result = campaign.move("phishing", "emily")
+    small = {d.id for d in catalog.defenses_for("small")}
+    assert set(result.missing) <= small
+    assert "Phishing-resistant" not in " ".join(blue_tips(campaign))

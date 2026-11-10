@@ -71,10 +71,10 @@ class Catalog:
     def attacks_in_tactic(self, tactic: str) -> list[Attack]:
         return [attack for attack in self.attacks.values() if attack.tactic == tactic]
 
-    def defenses_against(self, attack_id: str) -> list[Defense]:
+    def defenses_against(self, attack_id: str, tier: str = "large") -> list[Defense]:
         return [
             defense
-            for defense in self.defenses.values()
+            for defense in self.defenses_for(tier)
             if attack_id in defense.blocks or attack_id in defense.detects
         ]
 
