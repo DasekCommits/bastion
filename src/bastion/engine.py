@@ -19,6 +19,7 @@ FLOOR = 0.05
 CEILING = 0.95
 NEEDS_FOOTHOLD = ("privilege-escalation", "lateral-movement", "exfiltration", "impact")
 BLUE_ACTIONS = ("logs", "investigate", "reset", "isolate", "hunt", "block")
+OUTSIDE_TACTICS = ("reconnaissance", "initial-access", "credential-access")
 
 
 class PlanError(ValueError):
@@ -422,6 +423,7 @@ class Campaign:
         self.disruption = 0
         self.kicked_out = False
         self.egg_shown = False
+        self.attacker_blocked = False
         self.egg_day: int | None = None
         self.egg_planned_day = 0
         if active_blue and company.tier == "large" and soc.EGG_RNG.random() < soc.EGG_CHANCE:
@@ -491,6 +493,8 @@ class Campaign:
             return Preview(False, "The Blue Team already blocked this exact attempt.", 0.0, 0.0, self.heat)
         if target_id in self.foothold.isolated:
             return Preview(False, "The Blue Team has isolated this machine. Nobody can reach it for now.", 0.0, 0.0, self.heat)
+        if self.attacker_blocked and attack.tactic in OUTSIDE_TACTICS and self.foothold.is_empty():
+            return Preview(False, "Your address is blocked at their firewall. Nothing from it gets through.", 0.0, 0.0, self.heat)
         possible, note = _is_possible(attack, target_id, self.company, self.foothold)
         if not possible:
             return Preview(False, note, 0.0, 0.0, self.heat)
