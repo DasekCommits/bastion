@@ -223,6 +223,9 @@ h3 { font-size: 17px; letter-spacing: 0.02em; }
 .map .node.owned { fill: var(--red-wash); stroke: var(--red); }
 .map .node.admin { fill: var(--red); stroke: var(--red); }
 .map .node.target { stroke: var(--blue); stroke-width: 3; }
+.map .node.isolated { fill: var(--paper-2); stroke: var(--ink-soft); stroke-dasharray: 4 3; }
+.pips.time i.on { background: var(--blue); border-color: var(--blue); }
+tr.fresh td { background: var(--amber-wash); }
 .map .scan-ring { fill: none; stroke: var(--amber); stroke-width: 1.5; stroke-dasharray: 3 3; }
 .map .taken { font: 700 10px var(--mono); fill: var(--red); }
 .map .ping { fill: none; stroke: var(--blue); stroke-width: 2; animation: ping 1.2s ease-out 2; }

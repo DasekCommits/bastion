@@ -20,9 +20,12 @@ def player_won(company, catalog, level: str, side: str, edge: float, seed: int) 
     rolled = roll_mistakes(company, rng)
     defenses = ai.pick_defenses(rolled, catalog, rng)
     arsenal = ai.pick_arsenal(rolled, catalog, rng)
-    knowledge = level if side == "red" else ai.RED_AI_KNOWLEDGE[level]
-    campaign = Campaign(rolled, catalog, defenses, arsenal, rng=rng, edge=edge)
-    ai.play_out(campaign, ai.RedAI(knowledge))
+    if side == "red":
+        red, blue = ai.RedAI(level), ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[level], random.Random(seed))
+    else:
+        red, blue = ai.RedAI(ai.RED_AI_KNOWLEDGE[level]), ai.BlueAI(level, random.Random(seed))
+    campaign = Campaign(rolled, catalog, defenses, arsenal, rng=rng, edge=edge, active_blue=True)
+    ai.play_out_active(campaign, red, blue)
     red_won = campaign.report().points > 0
     return red_won if side == "red" else not red_won
 

@@ -26,7 +26,7 @@ def test_red_game_through_the_web_bridge():
     assert json.loads(final["profile_json"])["games"] == 1
 
 
-def test_blue_game_plays_itself_and_hard_hides_everything():
+def test_blue_plays_analyst_turns_and_hard_hides_hints():
     session = Session(json.dumps({"points": 5, "games": 1, "wins": {"small": 5}}))
     menu = json.loads(session.menu())
     assert {c["id"] for c in menu["companies"] if not c["locked"]} == {"olive-byte", "harbor-clinic"}
@@ -34,12 +34,39 @@ def test_blue_game_plays_itself_and_hard_hides_everything():
     assert all(p["admin"] in ("yes", "?") for p in start["company"]["people"])
     assert "description" not in json.loads(session.defense_options())[0]
     assert json.loads(session.set_defenses(json.dumps(["mfa", "siem"])))["ok"]
-    played = json.loads(session.begin())
-    assert played["finished"]
-    assert all(e["type"] in ("alert", "night") for e in played["events"])
+    state = json.loads(session.begin())
+    assert not state["finished"] and state["time_left"] > 0
+    looked = json.loads(session.blue_act("logs"))
+    assert looked["action"]["kind"] == "logs"
+    assert all("hint" not in entry for entry in looked["fresh"])
+    state = looked["state"]
+    if state["logs"] and not state["finished"]:
+        investigated = json.loads(session.blue_act("investigate", str(state["logs"][0]["id"])))
+        assert investigated["action"]["text"]
+        state = investigated["state"]
+    guard = 0
+    while not state["finished"] and guard < 200:
+        state = json.loads(session.blue_wait())
+        guard += 1
+    assert state["finished"]
     final = json.loads(session.finish())
     assert final["post_mortem"] is None and final["tips"] is None
     assert final["profile"]["games"] == 2
+    assert any(a["kind"] == "logs" for a in final["blue_actions"])
+
+
+def test_red_sees_only_the_consequences_of_blue_actions():
+    session = Session()
+    session.start("olive-byte", "hard", "red", seed=11)
+    session.set_arsenal(json.dumps(["phishing", "exfiltration"]))
+    session.begin()
+    notices = []
+    for person in ("emily", "george", "maria", "sophie", "jacob"):
+        event = json.loads(session.move("phishing", person))
+        notices += event.get("blue", [])
+        if json.loads(session.turn())["finished"]:
+            break
+    assert all("password" in n or "blocked" in n or "cut off" in n or "digging" in n for n in notices)
 
 
 def test_red_never_learns_which_hidden_defense_stopped_it():

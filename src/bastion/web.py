@@ -19,6 +19,14 @@ SUSPENSE = {
 }
 
 
+RED_NOTICES = {
+    "reset": "{target}'s password was changed. You lost that account.",
+    "isolate": "{target} was cut off from the network. You cannot reach it.",
+    "block": "Your attempt was blocked. That exact trick will not work again.",
+    "hunt": "Someone is digging through {target}. They know you are there.",
+}
+
+
 def trait_word(value: float) -> str:
     if value >= 0.6:
         return "good"
@@ -137,18 +145,97 @@ class Session:
         if self.side == "blue":
             self.arsenal = ai.pick_arsenal(self.company, self.catalog, self.rng)
         edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
-        self.campaign = Campaign(self.company, self.catalog, self.defense_ids, self.arsenal, rng=self.rng, edge=edge)
+        self.campaign = Campaign(self.company, self.catalog, self.defense_ids, self.arsenal, rng=self.rng, edge=edge,
+                                 active_blue=True)
+        self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[self.level], self.rng)
         if self.side == "blue":
-            events = []
-            red = ai.RedAI(ai.RED_AI_KNOWLEDGE[self.level])
-            ai.play_out(
-                self.campaign,
-                red,
-                on_move=lambda result: events.extend(self._blue_view(result)),
-                on_night=lambda night: events.append(self._night(night)),
-            )
-            return json.dumps({"events": events, "finished": True})
+            self.red_ai = ai.RedAI(ai.RED_AI_KNOWLEDGE[self.level])
+            self.events: list[dict] = []
+            self.verdicts: dict[int, str] = {}
+            self.phase = "start"
+            self._advance()
+            return self.blue_state()
         return self.turn()
+
+    def _advance(self) -> None:
+        c = self.campaign
+        while not c.finished:
+            move = self.red_ai.next_move(c)
+            if move is not None:
+                result = c.move(*move)
+                if self.easy:
+                    self.events.append(self._move_event(result))
+                else:
+                    self.events.append({"type": "tick"})
+                if c.blue_moves_left > 0:
+                    self.phase = "after_red"
+                    return
+                continue
+            if c.blue_moves_left > 0 and self.phase != "day_end":
+                self.phase = "day_end"
+                return
+            self.phase = "start"
+            night = c.end_day()
+            if night:
+                self.events.append(self._night(night))
+
+    def _entry_view(self, entry) -> dict:
+        view = {"id": entry.id, "day": entry.day, "source": entry.source, "text": entry.text,
+                "target_id": entry.target_id, "investigated": entry.investigated,
+                "verdict": self.verdicts.get(entry.id)}
+        if self.easy:
+            view["hint"] = f"looks real {round(entry.confidence * 100)}%"
+        elif self.explain:
+            view["hint"] = "high" if entry.confidence >= 0.66 else "medium" if entry.confidence >= 0.4 else "low"
+        return view
+
+    def blue_state(self) -> str:
+        c = self.campaign
+        events, self.events = self.events, []
+        confirmed = sorted({e.target_id for e in c.logs if e.real and e.investigated and e.succeeded
+                            and e.attack_id != "port-scan"})
+        return json.dumps({
+            "phase": self.phase, "finished": c.finished or self.gave_up,
+            "day": c.day, "max_days": self.company.max_days,
+            "time_left": c.blue_moves_left, "time_total": c.blue_moves_per_day,
+            "new_logs": len(c.unseen_logs()),
+            "logs": [self._entry_view(e) for e in reversed(c.seen_logs())],
+            "events": events, "isolated": sorted(c.foothold.isolated), "confirmed": confirmed,
+            "kicked_out": c.kicked_out,
+        })
+
+    def blue_act(self, kind: str, target: str | None = None) -> str:
+        c = self.campaign
+        fresh = [self._entry_view(e) for e in c.unseen_logs()] if kind == "logs" else []
+        try:
+            action = c.blue(kind, target or None)
+        except (PlanError, KeyError, ValueError) as error:
+            return json.dumps({"error": str(error)})
+        if kind == "logs":
+            for item in fresh:
+                item["seen_now"] = True
+        if kind == "investigate":
+            self.verdicts[int(target)] = action.text
+        outcome = {"kind": action.kind, "target": action.target, "text": action.text, "useful": action.useful}
+        if not c.finished and (self.phase == "after_red" or c.blue_moves_left <= 0):
+            if self.phase == "day_end" and c.blue_moves_left <= 0:
+                self.phase = "start"
+                night = c.end_day()
+                if night:
+                    self.events.append(self._night(night))
+            self._advance()
+        return json.dumps({"action": outcome, "fresh": fresh, "state": json.loads(self.blue_state())})
+
+    def blue_wait(self) -> str:
+        c = self.campaign
+        if not c.finished:
+            if self.phase == "day_end":
+                self.phase = "start"
+                night = c.end_day()
+                if night:
+                    self.events.append(self._night(night))
+            self._advance()
+        return self.blue_state()
 
     def _label(self, target_id: str) -> str:
         for s in self.company.servers:
@@ -218,7 +305,25 @@ class Session:
             result = self.campaign.move(attack_id, target_id)
         except PlanError as error:
             return json.dumps({"error": str(error)})
-        return json.dumps(self._move_event(result))
+        event = self._move_event(result)
+        event["blue"] = self._blue_reacts(until_done=False)
+        event["kicked_out"] = self.campaign.kicked_out
+        return json.dumps(event)
+
+    def _blue_reacts(self, until_done: bool) -> list[str]:
+        notices = []
+        c = self.campaign
+        while not c.finished:
+            step = self.blue_ai.next_action(c)
+            if step is None:
+                break
+            action = c.blue(*step)
+            notice = RED_NOTICES.get(action.kind) if action.useful else None
+            if notice:
+                notices.append(notice.format(target=action.target))
+            if not until_done:
+                break
+        return notices
 
     def _move_event(self, result) -> dict:
         label = self._label(result.step.target_id)
@@ -258,8 +363,10 @@ class Session:
         return event
 
     def end_day(self) -> str:
-        night = self.campaign.end_day()
-        return json.dumps({"night": self._night(night) if night else None, "turn": json.loads(self.turn())})
+        notices = self._blue_reacts(until_done=True)
+        night = None if self.campaign.finished else self.campaign.end_day()
+        return json.dumps({"night": self._night(night) if night else None, "blue": notices,
+                           "kicked_out": self.campaign.kicked_out, "turn": json.loads(self.turn())})
 
     def give_up(self) -> str:
         self.gave_up = True
@@ -280,6 +387,10 @@ class Session:
             tips = {"blue": advice.blue_tips(c), "red": advice.red_tips(c)}
         score = None
         unlocked = []
+        blue_actions = [
+            {"day": a.day, "kind": a.kind, "target": a.target, "text": a.text, "useful": a.useful}
+            for a in c.blue_actions
+        ]
         if self.side != "practice":
             s = scoring.blue_score(c, self.random_side) if self.side == "blue" else scoring.red_score(c, self.random_side)
             unlocked = self.profile.record(self.company.tier, s.won, s.total)
@@ -287,6 +398,6 @@ class Session:
         locks = {tier: self.profile.lock_reason(tier) for tier in ("medium", "large")}
         return json.dumps({
             "result": result, "post_mortem": post_mortem, "tips": tips, "score": score,
-            "unlocked": unlocked, "locks": locks, "profile": self._profile(),
+            "unlocked": unlocked, "locks": locks, "profile": self._profile(), "blue_actions": blue_actions,
             "profile_json": json.dumps({"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins}),
         })

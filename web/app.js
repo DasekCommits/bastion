@@ -294,7 +294,7 @@
         const res = api("set_defenses", JSON.stringify(ids));
         if (!res.ok) { document.getElementById("warn").textContent = res.error; return; }
         if (S.start.side === "practice") renderArsenal();
-        else watchAttack(api("begin"));
+        else startDefending(api("begin"));
       },
     });
   }
@@ -340,7 +340,7 @@
       const hot = m.owned.has(p.id);
       return `<line class="edge ${hot ? "hot" : ""}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
     })).join("");
-    const state = (id) => [m.admin.has(id) ? "admin" : m.owned.has(id) ? "owned" : "", m.targets.has(id) ? "target" : ""].join(" ");
+    const state = (id) => [m.admin.has(id) ? "admin" : m.owned.has(id) ? "owned" : "", m.targets.has(id) ? "target" : "", m.isolated && m.isolated.has(id) ? "isolated" : ""].join(" ");
     const extras = (id, p) => `${m.scanned.has(id) ? `<circle class="scan-ring" cx="${p.x}" cy="${p.y}" r="19"/>` : ""}
       ${m.taken.has(id) ? `<text class="taken" x="${p.x + 15}" y="${p.y - 12}">TAKEN</text>` : ""}
       ${m.ping === id ? `<circle class="ping" cx="${p.x}" cy="${p.y}" r="14"/>` : ""}`;
@@ -395,7 +395,7 @@
     if (event.type === "night") {
       const odds = event.hunt !== undefined ? ` · ${pct(event.hunt)} chance to be found · heat ${pct(event.heat_before)} → ${pct(event.heat_after)}` : "";
       const found = event.found ? `<br><span class="stamp found">Found</span> The Blue Team found the attacker in the logs.` : "";
-      return `<div class="entry night">☾ Night ${event.day}: the Blue Team reviews the logs${odds}${found}</div>`;
+      return `<div class="entry night">☾ Night ${event.day}: ${event.hunt || event.found ? "their 24/7 SOC reviews the logs" : "the office is empty and nobody watches the logs"}${event.hunt ? odds : ""}${found}</div>`;
     }
     if (event.type === "alert") {
       return `<div class="entry"><span class="stamp ${event.kicked ? "blue" : "spotted"}">${event.kicked ? "Caught" : "Alert"}</span>
@@ -410,10 +410,10 @@
     const blockers = event.blockers && event.blockers.length ? `<br><span class="detail">Stopped by: ${esc(event.blockers.join(", "))}</span>` : "";
     const nothing = event.blockers && !event.blockers.length && event.possible && !event.succeeded ? `<br><span class="detail">Nothing blocked it. It just did not work this time.</span>` : "";
     let detection = "";
-    if (event.possible) {
-      if (event.kicked) detection = `<br><span class="stamp detected">Detected</span><span class="detail">The Blue Team spotted it and kicked the attacker out.</span>`;
-      else if (event.detected) detection = `<br><span class="stamp spotted">Spotted</span><span class="detail">The Blue Team blocked this attempt. Still outside, but they are more alert.</span>`;
-      else detection = `<br><span class="detail">Nobody noticed.</span>`;
+    if (event.possible && event.chance !== undefined) {
+      detection = event.detected
+        ? `<br><span class="stamp spotted">Logged</span><span class="detail">This left traces in their logs. Whether anyone reads them is another matter.</span>`
+        : `<br><span class="detail">No traces in their logs.</span>`;
     }
     return `<div class="entry"><span class="what">${esc(event.attack)} → ${esc(event.target)}</span><br>${stamp}${chance}
       ${event.note && event.possible ? `<br><span class="detail">${esc(event.note)}</span>` : ""}
@@ -490,7 +490,7 @@
       document.querySelector("#log .entry")?.remove();
     }
     applyEventToMap(event);
-    const entry = logEntry(event);
+    const entry = logEntry(event) + (event.blue || []).map(blueNotice).join("") + (event.kicked_out ? kickedNotice() : "");
     S.turn = api("turn");
     S.busy = false;
     if (S.turn.finished) { prependLog(entry); await sleep(STEP_MS); return renderFinal(api("finish")); }
@@ -498,39 +498,152 @@
     prependLog(entry);
   }
 
+  function blueNotice(text) {
+    return `<div class="entry"><span class="stamp blue">Blue Team</span><span class="detail">${esc(text)}</span></div>`;
+  }
+
+  function kickedNotice() {
+    return `<div class="entry"><span class="stamp detected">Kicked out</span><span class="detail">The Blue Team closed every way you had in.</span></div>`;
+  }
+
   function endDay() {
     const res = api("end_day");
     S.turn = res.turn;
     S.attack = null;
-    if (res.night) { renderPlay(); prependLog(logEntry(res.night)); }
-    if (S.turn.finished) renderFinal(api("finish"));
-    else if (!res.night) renderPlay();
+    const notices = (res.blue || []).map(blueNotice).join("") + (res.kicked_out ? kickedNotice() : "");
+    if (S.turn.finished) return renderFinal(api("finish"));
+    renderPlay();
+    const html = notices + (res.night ? logEntry(res.night) : "");
+    if (html) prependLog(html);
   }
 
-  async function watchAttack(played) {
-    const c = S.start.company;
-    S.turn = { day: 1, max_days: c.max_days, moves_per_day: c.moves_per_day, heat: null };
-    setGauges(S.turn);
-    show(`<section class="layout">
-      <div>${mapPanel()}</div>
-      <div class="step"><div class="panel"><h3>The attack</h3>
-        <p class="muted" style="margin:0 0 10px">The attacker is out there. You only see what your tools catch.</p>
-        <div class="log" id="log" aria-live="polite"></div>
-        <div class="btn-row" style="margin-top:12px"><button class="btn" id="result" disabled>See the result</button></div></div></div></section>`);
-    const mapHost = app.querySelector(".map-panel");
-    for (const event of played.events) {
-      if (event.type === "night") S.turn.day = Math.min(c.max_days, event.day + 1);
-      applyEventToMap(event);
-      S.map.ping = event.type === "alert" ? event.target_id : null;
-      mapHost.innerHTML = mapInner();
-      setGauges(S.turn);
-      prependLog(logEntry(event));
-      await sleep(event.type === "night" ? STEP_MS * 1.5 : STEP_MS * 2);
+  const BLUE_ACTIONS = [
+    { id: "logs", name: "See the logs", text: "Read what your tools recorded. Tools that nobody reads catch nobody." },
+    { id: "investigate", name: "Investigate an alert", text: "Find out if an alert is a real attack or a false alarm." },
+    { id: "reset", name: "Change a password", text: "If the attacker had this account, they lose it. If not, the employee loses some time." },
+    { id: "isolate", name: "Isolate a machine", text: "Cut a machine off the network until the end of tomorrow. Stops the attacker there, but work stops too." },
+    { id: "hunt", name: "Threat hunt on a machine", text: "Search a machine for an attacker that no alert has shown yet." },
+    { id: "block", name: "Block a sender or address", text: "Stop an attempt from outside from ever trying again." },
+  ];
+
+  function blueGauges(st) {
+    const pips = (on, total, cls = "") => `<span class="pips ${cls}">${Array.from({ length: total }, (_, i) => `<i class="${i < on ? "on" : ""}"></i>`).join("")}</span>`;
+    gauges.innerHTML = `<span class="gauge">Day <b>${st.day}/${st.max_days}</b> ${pips(st.day, st.max_days)}</span>
+      <span class="gauge">Analyst time ${pips(st.time_left, st.time_total, "time")}</span>
+      <span class="gauge">New logs <b>${st.new_logs}</b></span>`;
+    gauges.hidden = false;
+  }
+
+  function blueFeed(event) {
+    if (event.type === "tick") return `<div class="entry night">Time passes. Somewhere, someone is trying something.</div>`;
+    if (event.type === "night") {
+      if (event.found) return `<div class="entry"><span class="stamp blue">Found</span> Your SOC found the attacker overnight and threw them out.</div>`;
+      return `<div class="entry night">☾ Night ${event.day}: the office is empty and nobody watches the logs.</div>`;
     }
-    if (!played.events.length) prependLog('<div class="entry night">Quiet. Your tools saw nothing at all.</div>');
-    const button = document.getElementById("result");
-    button.disabled = false;
-    button.addEventListener("click", () => renderFinal(api("finish")));
+    if (event.type === "move") return `<div class="entry"><span class="detail">What the attacker just did (only Easy shows this):</span><br>${logEntry(event).replace(/^<div class="entry">|<\/div>$/g, "")}</div>`;
+    return "";
+  }
+
+  function blueActionHtml(action) {
+    const name = (BLUE_ACTIONS.find((a) => a.id === action.kind) || { name: action.kind }).name;
+    return `<div class="entry"><span class="stamp ${action.useful ? "blue" : "blocked"}">${esc(name)}</span>${action.target ? `<span class="what">${esc(action.target)}</span>` : ""}<br><span class="detail">${esc(action.text)}</span></div>`;
+  }
+
+  function logsTable(st) {
+    if (!st.logs.length) return '<p class="muted" style="margin:0">You have not read any logs yet. Your tools are recording, but nobody is looking.</p>';
+    const hint = st.logs.some((l) => l.hint);
+    return `<table class="sheet"><tr><th>#</th><th>Day</th><th>Source</th><th>What the tool saw</th>${hint ? "<th>Signal</th>" : ""}<th>Verdict</th></tr>
+      ${st.logs.map((l) => `<tr${l.seen_now ? ' class="fresh"' : ""}><td class="num">${l.id}</td><td>${l.day}</td><td class="muted">${esc(l.source)}</td><td>${esc(l.text)}</td>
+        ${hint ? `<td class="muted">${esc(l.hint || "")}</td>` : ""}
+        <td>${l.verdict ? `<span class="${l.verdict.startsWith("False") ? "muted" : "red"}">${esc(l.verdict)}</span>` : '<span class="muted">not checked</span>'}</td></tr>`).join("")}</table>`;
+  }
+
+  function startDefending(state) {
+    S.blue = { state, pending: null, feed: "" };
+    renderBlue();
+  }
+
+  function renderBlue() {
+    const st = S.blue.state;
+    const c = S.start.company;
+    blueGauges(st);
+    S.map.owned = new Set(st.confirmed);
+    S.map.isolated = new Set(st.isolated);
+    S.map.targets = new Set();
+    const pending = S.blue.pending;
+    let side;
+    if (st.finished) {
+      side = `<div class="panel"><h3>${st.kicked_out ? "You kicked the attacker out." : "The attack is over."}</h3>
+        <div class="btn-row"><button class="btn" id="result">See the result</button></div></div>`;
+    } else if (pending) {
+      let options = [];
+      if (pending === "investigate" || pending === "block") {
+        options = st.logs.filter((l) => pending === "block" || !l.investigated).map((l) => ({ id: String(l.id), label: `#${l.id} ${l.text}`, sub: `${l.source}, day ${l.day}${l.hint ? ` · ${l.hint}` : ""}` }));
+      } else if (pending === "reset") {
+        options = c.people.map((p) => ({ id: p.id, label: p.name, sub: p.role }));
+      } else {
+        options = c.servers.map((s) => ({ id: s.id, label: s.name, sub: s.id, disabled: pending === "isolate" && st.isolated.includes(s.id) ? "already isolated" : "" }));
+      }
+      if (pending !== "investigate" && pending !== "block") options.filter((o) => !o.disabled).forEach((o) => S.map.targets.add(o.id));
+      const action = BLUE_ACTIONS.find((a) => a.id === pending);
+      side = `<div class="panel"><h3>${esc(action.name)}: pick one</h3><div class="options">
+        ${options.map((o) => `<button class="option" data-blue-target="${esc(o.id)}" ${o.disabled ? "disabled" : ""}><span></span><span><span class="name">${esc(o.label)}</span><span class="desc">${esc(o.disabled || o.sub)}</span></span><span></span></button>`).join("") || '<p class="muted">Nothing to pick yet.</p>'}
+        </div><div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="back">Back</button></div></div>`;
+    } else {
+      const open = st.logs.filter((l) => !l.investigated).length;
+      const explain = S.settings.level !== "hard";
+      const disabled = { investigate: open ? "" : "read the logs first", block: st.logs.length ? "" : "read the logs first" };
+      const tag = { logs: st.new_logs ? `${st.new_logs} new` : "", investigate: open ? `${open} open` : "" };
+      const note = st.phase === "day_end" ? "The attacker has stopped for today. Use the rest of your time, or let the night come." : "Each time the attacker moves, you get one move.";
+      side = `<div class="panel"><h3>Your move as the analyst</h3><p class="muted" style="margin:0 0 10px;font-size:13px">${note}</p><div class="options">
+        ${BLUE_ACTIONS.map((a) => `<button class="option" data-blue="${a.id}" ${disabled[a.id] ? "disabled" : ""}><span></span><span><span class="name">${esc(a.name)}</span>
+          ${disabled[a.id] ? `<span class="why">${esc(disabled[a.id])}</span>` : explain ? `<span class="desc">${esc(a.text)}</span>` : ""}</span><span class="odds">${esc(tag[a.id] || "")}</span></button>`).join("")}
+        </div><div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="wait">${st.phase === "day_end" ? "End the day" : "Let time pass"}</button></div></div>`;
+    }
+    show(`<section class="layout">
+      <div class="step">${mapPanel()}<div class="panel"><h3>Logs you have read</h3>${logsTable(st)}</div></div>
+      <div class="step">${side}
+        <div class="panel"><h3>What happened</h3><div class="log" id="log" aria-live="polite">${S.blue.feed || '<p class="muted" style="margin:0">Your tools are recording. The attacker is out there.</p>'}</div></div>
+      </div></section>`);
+    app.querySelectorAll("[data-blue]").forEach((el) => el.addEventListener("click", () => {
+      if (el.dataset.blue === "logs") return blueAct("logs", null);
+      S.blue.pending = el.dataset.blue;
+      renderBlue();
+    }));
+    app.querySelectorAll("[data-blue-target]").forEach((el) => el.addEventListener("click", () => blueAct(S.blue.pending, el.dataset.blueTarget)));
+    app.querySelectorAll(".map g.clickable").forEach((el) => el.addEventListener("click", () => blueAct(S.blue.pending, el.dataset.id)));
+    document.getElementById("back")?.addEventListener("click", () => { S.blue.pending = null; renderBlue(); });
+    document.getElementById("wait")?.addEventListener("click", blueWait);
+    document.getElementById("result")?.addEventListener("click", () => renderFinal(api("finish")));
+  }
+
+  function addFeed(html) {
+    S.blue.feed = html + S.blue.feed;
+  }
+
+  function takeState(state) {
+    for (const event of state.events) addFeed(blueFeed(event));
+    S.blue.state = state;
+  }
+
+  function blueAct(kind, target) {
+    if (!kind || S.busy) return;
+    S.busy = true;
+    const res = api("blue_act", kind, target);
+    S.busy = false;
+    S.blue.pending = null;
+    if (res.error) { addFeed(`<div class="entry"><span class="why">${esc(res.error)}</span></div>`); return renderBlue(); }
+    addFeed(blueActionHtml(res.action));
+    const fresh = new Set(res.fresh.map((f) => f.id));
+    res.state.logs.forEach((l) => { if (fresh.has(l.id)) l.seen_now = true; });
+    takeState(res.state);
+    renderBlue();
+  }
+
+  function blueWait() {
+    S.blue.pending = null;
+    takeState(api("blue_wait"));
+    renderBlue();
   }
 
   function renderFinal(final) {
