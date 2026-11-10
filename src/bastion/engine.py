@@ -423,6 +423,9 @@ class Campaign:
         self.kicked_out = False
         self.egg_shown = False
         self.egg_day: int | None = None
+        self.egg_planned_day = 0
+        if active_blue and company.tier == "large" and soc.EGG_RNG.random() < soc.EGG_CHANCE:
+            self.egg_planned_day = soc.EGG_RNG.randint(1, company.max_days)
         self.egg_target: str | None = None
         if active_blue:
             self._add_noise()
@@ -632,7 +635,7 @@ class Campaign:
     def _add_noise(self) -> None:
         for _ in range(soc.NOISE_PER_DAY[self.company.tier]):
             self.logs.append(soc.noise_entry(len(self.logs) + 1, self.day, self.company, self.defenses, self.rng))
-        if self.company.tier == "large" and not self.egg_shown and soc.EGG_RNG.random() < soc.EGG_CHANCE:
+        if self.company.tier == "large" and not self.egg_shown and self.day == self.egg_planned_day:
             self.egg_shown = True
             egg = soc.egg_entry(len(self.logs) + 1, self.day, self.company)
             self.egg_day = self.day

@@ -19,6 +19,14 @@ class Rolls:
         return items[0]
 
 
+class FirstDay:
+    def random(self):
+        return 0.0
+
+    def randint(self, low, high):
+        return low
+
+
 @pytest.fixture
 def company():
     return load_scenario("olive-byte")
@@ -135,13 +143,12 @@ def test_the_bank_logs_can_hide_the_clearance_message(catalog):
     from bastion import soc
 
     bank = load_scenario("meridian-bank")
-    soc.EGG_RNG = random.Random(0)
-    old = soc.EGG_CHANCE
-    soc.EGG_CHANCE = 1.0
+    old, old_rng = soc.EGG_CHANCE, soc.EGG_RNG
+    soc.EGG_CHANCE, soc.EGG_RNG = 1.0, FirstDay()
     try:
         campaign = Campaign(bank, catalog, [], ["phishing"], rng=random.Random(1), active_blue=True)
     finally:
-        soc.EGG_CHANCE = old
+        soc.EGG_CHANCE, soc.EGG_RNG = old, old_rng
     egg = next(e for e in campaign.logs if "-enc" in e.text)
     encoded = egg.text.rsplit(" ", 1)[1]
     assert base64.b64decode(encoded).decode("utf-16-le").startswith("CLEARANCE:")
@@ -191,12 +198,12 @@ def test_isolating_the_talking_script_counts_toward_clearance(catalog):
     from bastion.profile import Profile
 
     bank = load_scenario("meridian-bank")
-    old = soc.EGG_CHANCE
-    soc.EGG_CHANCE = 1.0
+    old, old_rng = soc.EGG_CHANCE, soc.EGG_RNG
+    soc.EGG_CHANCE, soc.EGG_RNG = 1.0, FirstDay()
     try:
         campaign = Campaign(bank, catalog, [], ["phishing"], rng=random.Random(2), active_blue=True)
     finally:
-        soc.EGG_CHANCE = old
+        soc.EGG_CHANCE, soc.EGG_RNG = old, old_rng
     egg = next(e for e in campaign.logs if "-enc" in e.text)
     campaign.blue("isolate", egg.target_id)
     profile = Profile(secrets={"sealed": 10, "script": 2})
