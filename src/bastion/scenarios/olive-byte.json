@@ -41,6 +41,7 @@
       "name": "Maria",
       "role": "Owner",
       "is_admin": true,
+      "needs_admin": true,
       "access": ["web-01", "db-01", "mail", "office-pc"]
     },
     {
@@ -48,6 +49,7 @@
       "name": "Jacob",
       "role": "Developer",
       "is_admin": true,
+      "needs_admin": true,
       "access": ["web-01", "db-01"]
     },
     {

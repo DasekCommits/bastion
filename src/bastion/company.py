@@ -22,6 +22,7 @@ class Employee:
     role: str
     is_admin: bool
     access: list[str]
+    needs_admin: bool = False
 
 
 @dataclass
