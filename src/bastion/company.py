@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 SCENARIOS_DIR = Path(__file__).parent / "scenarios"
-TIERS = ("small", "medium", "large")
+TIERS = ("small", "medium", "large", "huge")
 
 
 @dataclass

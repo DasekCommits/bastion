@@ -270,7 +270,7 @@ def test_locked_companies_are_greyed_out_in_the_menu():
     main(["--seed", "1"], ui=script)
     company_menu = next(options for message, options in script.seen if message == "Company")
     locked = {o.value for o in company_menu if o.disabled}
-    assert locked == {"harbor-clinic", "meridian-bank", "classified"}
+    assert locked == {"harbor-clinic", "meridian-bank", "directorate-7"}
 
 
 def test_games_are_logged_and_extremes_are_found(company, catalog):

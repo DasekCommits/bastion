@@ -566,12 +566,16 @@ def choose_settings(ui, given=None) -> tuple[str, str, str]:
     ])
     company_id = given and given.scenario
     if not company_id:
-        company_id = ui.select("Company", [
-            Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people", description=c.description,
-                   disabled=profile.lock_reason(c.tier, difficulty))
-            for c in list_scenarios()
-        ] + [Option("CLASSIFIED", "classified", tag="??? people", description="Some scripts talk.",
-                    disabled="clearance granted, opening soon" if profile.cleared() else "unlock conditions unknown")])
+        options = []
+        for c in list_scenarios():
+            locked = profile.lock_reason(c.tier, difficulty)
+            if c.tier == "huge" and not profile.cleared():
+                options.append(Option("CLASSIFIED", c.id, tag="??? people",
+                                      description="Some scripts talk.", disabled="unlock conditions unknown"))
+            else:
+                options.append(Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people",
+                                      description=c.description, disabled=locked))
+        company_id = ui.select("Company", options)
     return difficulty, side, company_id
 
 

@@ -34,6 +34,7 @@ It runs in the terminal and in the browser, with the same Python engine in both.
 | Olive Byte, an online olive oil shop | small | 5 | 4 | 40-60 / 40-60 | 5 |
 | Harbor Clinic, a private medical clinic | medium | 10 | 7 | 70-90 / 60-80 | 7 |
 | Meridian Savings Bank, a regional bank on Active Directory | large | 20 | 12 | 130-170 / 100-140 | 10 |
+| Directorate-7, a government directorate (classified) | huge | 100 | 12 | 160-200 / 130-170 | 14 |
 
 Budgets are rolled every game in steps of 5.
 
@@ -73,6 +74,8 @@ Difficulty also changes the odds, so Easy is easier whichever side you play. Eac
 | Hard | 50% | 30% | 10% |
 
 No single move ever has less than a 5% or more than a 95% chance to succeed or to be spotted, so even a perfect setup on either side can still lose.
+
+A fourth difficulty, **Realism**, and a fourth company, **Directorate-7**, are classified: you unlock them by discovering them in play. In Realism you work a real SIEM with a Splunk-like search over realistic logs (Windows Event IDs, Sysmon, firewall, web, mail) as Blue, or a terminal that leaves those same traces as Red.
 
 ## Realism
 

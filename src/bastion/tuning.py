@@ -7,9 +7,10 @@ from bastion.company import list_scenarios, roll_mistakes
 from bastion.engine import Campaign
 
 TARGETS = {
-    "small": {"easy": 0.8, "medium": 0.7, "hard": 0.5},
-    "medium": {"easy": 0.7, "medium": 0.5, "hard": 0.3},
-    "large": {"easy": 0.6, "medium": 0.3, "hard": 0.1},
+    "small": {"easy": 0.8, "medium": 0.7, "hard": 0.5, "realism": 0.5},
+    "medium": {"easy": 0.7, "medium": 0.5, "hard": 0.3, "realism": 0.3},
+    "large": {"easy": 0.6, "medium": 0.3, "hard": 0.1, "realism": 0.1},
+    "huge": {"easy": 0.5, "medium": 0.25, "hard": 0.1, "realism": 0.08},
 }
 LEVELS = ("easy", "medium", "hard")
 SIDES = ("red", "blue")

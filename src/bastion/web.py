@@ -48,10 +48,14 @@ class Session:
 
     def menu(self) -> str:
         scenarios = list_scenarios()
-        companies = [
-            {"id": c.id, "name": c.name, "tier": c.tier, "people": len(c.employees), "description": c.description}
-            for c in scenarios
-        ]
+        companies = []
+        for c in scenarios:
+            if c.tier == "huge" and not self.profile.cleared():
+                companies.append({"id": c.id, "tier": c.tier, "classified": True,
+                                  "name": "█████████ ███", "people": "???", "description": "Some scripts talk."})
+            else:
+                companies.append({"id": c.id, "name": c.name, "tier": c.tier,
+                                  "people": len(c.employees), "description": c.description})
         locks = {
             level: {c.id: self.profile.lock_reason(c.tier, level) for c in scenarios}
             for level in ("easy", "medium", "hard")

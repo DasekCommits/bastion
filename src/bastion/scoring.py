@@ -59,7 +59,7 @@ def red_score(campaign: Campaign, random_side: bool = False) -> Score:
     every_server = {server.id for server in company.servers}
     bonuses = {
         "speed": round(MAX_SPEED_BONUS * days_left / company.max_days) if won else 0,
-        "owned the domain": DOMAIN_BONUS if company.tier == "large" and campaign.foothold.admin_on >= every_server else 0,
+        "owned the domain": DOMAIN_BONUS if company.tier in ("large", "huge") and campaign.foothold.admin_on >= every_server else 0,
     }
     stealth = STEALTH_MULTIPLIER if won and not campaign.caught else 1.0
     return _total("red", won, base, bonuses, stealth, random_side)

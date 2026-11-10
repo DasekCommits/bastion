@@ -3,9 +3,9 @@ import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-TIERS = ("small", "medium", "large")
+TIERS = ("small", "medium", "large", "huge")
 LEVELS = ("easy", "medium", "hard")
-TIER_NAMES = {"small": "Olive Byte", "medium": "Harbor Clinic", "large": "Meridian Bank"}
+TIER_NAMES = {"small": "Olive Byte", "medium": "Harbor Clinic", "large": "Meridian Bank", "huge": "Directorate-7"}
 
 UNLOCKS = {
     ("medium", "easy"): (("small", "easy"), 5),
@@ -51,13 +51,15 @@ class Profile:
 
     def is_open(self, tier: str, level: str) -> bool:
         if level == "realism":
-            return self.realism_open()
+            return self.realism_open() and (tier != "huge" or self.cleared())
         return self.is_unlocked(tier, level)
 
     def wins_on(self, tier: str, level: str) -> int:
         return self.wins.get(key(tier, level), 0)
 
     def is_unlocked(self, tier: str, level: str) -> bool:
+        if tier == "huge":
+            return self.cleared()
         rule = UNLOCKS.get((tier, level))
         if rule is None:
             return True
@@ -67,6 +69,8 @@ class Profile:
     def lock_reason(self, tier: str, level: str) -> str | None:
         if self.is_unlocked(tier, level):
             return None
+        if tier == "huge":
+            return "unlock conditions unknown"
         (need_tier, need_level), count = UNLOCKS[(tier, level)]
         return f"win {count} games on {describe(need_tier, need_level)} first ({self.wins_on(need_tier, need_level)}/{count})"
 

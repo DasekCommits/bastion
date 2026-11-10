@@ -178,6 +178,9 @@
         <strong>${esc(item.name)}</strong><small>${esc(item.text)}</small></button>`;
     };
     const companies = menu.companies.map((c) => {
+      if (c.classified) {
+        return `<button class="choice classified" disabled><span class="tag">classified · ??? people</span><strong>${esc(c.name)}</strong><small>Unlock conditions: unknown. ${esc(c.description)}</small></button>`;
+      }
       c.locked = menu.locks[level][c.id];
       const on = S.settings.company === c.id;
       return `<button class="choice" data-group="company" data-id="${c.id}" aria-pressed="${on}" ${c.locked ? "disabled" : ""}${on ? ' style="border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)"' : ""}>
@@ -201,9 +204,7 @@
           ${menu.realism ? card("level", REALISM, "", "classified-open") : `<button class="choice classified" disabled><span class="tag">classified</span><strong>████████</strong>
           <small>Unlock conditions: unknown. Some files are not on any inventory.</small></button>`}</div></div>
         <div class="setting"><h3>Side</h3><div class="choices">${SIDES.map((s) => card("side", s)).join("")}</div></div>
-        <div class="setting"><h3>Company</h3><div class="choices">${companies}
-          <button class="choice classified" disabled><span class="tag">classified · ??? people</span><strong>█████████ ███</strong>
-          <small>${menu.cleared ? "Clearance granted. The doors open soon." : "Unlock conditions: unknown. Some scripts talk."}</small></button></div></div>
+        <div class="setting"><h3>Company</h3><div class="choices">${companies}</div></div>
       </div>
       <div class="btn-row"><button class="btn" id="go" ${ready ? "" : "disabled"}>Start the game</button></div>
       <div class="panel quests"><h3>Classified quests</h3><table class="sheet"><tr><th>Quest</th><th>What to do</th><th class="num">Progress</th><th>Reward</th></tr>
