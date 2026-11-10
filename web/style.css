@@ -176,6 +176,11 @@ h3 { font-size: 17px; letter-spacing: 0.02em; }
 .choice small { color: var(--ink-soft); font-size: 13px; }
 .choice .tag { font: 12px var(--mono); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
 .choice.blue-side { border-left: 4px solid var(--blue); }
+.choice.selected { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.choice.selected small, .choice.selected .tag, .choice.selected .muted { color: var(--paper-2); }
+.choice.selected.blue-side { border-left-color: var(--blue); }
+.choice.selected.red-side { border-left-color: var(--red); }
+
 .choice.classified { background: repeating-linear-gradient(-45deg, var(--card), var(--card) 10px, var(--paper-2) 10px, var(--paper-2) 20px); opacity: 0.85; }
 .choice.classified strong { letter-spacing: 0.1em; }
 .choice.red-side { border-left: 4px solid var(--red); }

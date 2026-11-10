@@ -213,7 +213,7 @@
         return `<button class="choice" disabled><strong>${esc(item.name)}</strong><small>Locked: ${esc(lockedLevel)}</small></button>`;
       }
       const on = S.settings[group] === item.id;
-      return `<button class="choice ${item.cls || ""} ${cls}" data-group="${group}" data-id="${item.id}" aria-pressed="${on}" ${extra}${on ? ' style="border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)"' : ""}>
+      return `<button class="choice ${item.cls || ""} ${cls} ${on ? "selected" : ""}" data-group="${group}" data-id="${item.id}" aria-pressed="${on}" ${extra}>
         <strong>${esc(item.name)}</strong><small>${esc(item.text)}</small></button>`;
     };
     const companies = menu.companies.map((c) => {
@@ -222,7 +222,7 @@
       }
       c.locked = menu.locks[level][c.id];
       const on = S.settings.company === c.id;
-      return `<button class="choice" data-group="company" data-id="${c.id}" aria-pressed="${on}" ${c.locked ? "disabled" : ""}${on ? ' style="border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)"' : ""}>
+      return `<button class="choice ${on ? "selected" : ""}" data-group="company" data-id="${c.id}" aria-pressed="${on}" ${c.locked ? "disabled" : ""}>
         <span class="tag">${esc(c.tier)} · ${c.people} people</span>
         <strong>${esc(c.name)}</strong>
         <small>${esc(c.locked ? `Locked: ${c.locked}` : c.description)}</small></button>`;
