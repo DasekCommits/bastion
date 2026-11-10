@@ -92,7 +92,9 @@ The medium tier adds a VPN gateway, macro documents, infected USB sticks, bribed
 ### Realism
 
 - **People differ.** Each employee has their own awareness of phishing and password habits, so the best target depends on the attack.
-- **Mistakes are random.** Whether a non-IT employee was accidentally given admin rights is rolled every game, so you cannot memorise it.
+- **Mistakes are random.** At most one non-IT employee may have been given admin rights by mistake, rolled every game. Only Easy shows who; in Medium and Hard you find out once you are in.
+- **Getting spotted outside is not the end.** If the Blue Team spots an attempt before you are inside, they block that exact attempt and become more alert. Getting spotted once you are inside gets you kicked out. Nobody can find you in the logs at night if you never got in.
+- **Insiders.** Bribing an employee depends on their loyalty: a long-time director rarely sells out, an underpaid contractor might.
 - **Recon shows only the outside.** A port scan reveals defenses visible from the internet (firewall, WAF, patch level, email filtering, MFA on login pages). Internal defenses such as SIEM or segmentation stay hidden, and EDR is only noticed once you are inside a machine. Scanning a login page makes password attacks more effective.
 - **Pivots.** Config files on a web server or VPN can hold passwords that open internal systems, unless the network is segmented.
 
