@@ -1,6 +1,9 @@
+import io
 import random
 
 import pytest
+
+from rich.console import Console
 
 from bastion.catalog import load_catalog
 from bastion.company import load_scenario
@@ -26,8 +29,10 @@ class Script:
         assert validate(answer) is True
         return answer
 
-    def say(self, text=""):
-        self.lines.append(text)
+    def say(self, content=""):
+        buffer = io.StringIO()
+        Console(file=buffer, width=120, color_system=None).print(content)
+        self.lines.extend(buffer.getvalue().splitlines())
 
     @property
     def text(self):
@@ -48,7 +53,7 @@ def test_easy_shows_chances_and_hides_impossible_targets(company, catalog):
     game = Game(company, catalog, "easy", Script())
     campaign = Campaign(company, catalog, [], ["exploit-web"], seed=1)
     options = {option.value: option for option in game.target_options(campaign, "exploit-web")}
-    assert "success" in options["web-01"].title
+    assert "success" in options["web-01"].tag
     assert options["db-01"].disabled
 
 
@@ -56,7 +61,7 @@ def test_hard_shows_no_numbers_and_allows_every_target(company, catalog):
     game = Game(company, catalog, "hard", Script())
     campaign = Campaign(company, catalog, [], ["exploit-web"], seed=1)
     options = game.target_options(campaign, "exploit-web")
-    assert all("%" not in option.title and not option.disabled for option in options)
+    assert all("%" not in option.tag and not option.disabled for option in options)
     assert all(option.description is None for option in game.defense_options())
 
 
@@ -77,7 +82,8 @@ def test_full_easy_game_ends_with_post_mortem(company, catalog):
     )
     Game(company, catalog, "easy", script, random.Random(3)).run()
     assert "BASTION POST-MORTEM" in script.text
-    assert "Heat" in script.text or "FOUND" in script.text or "DETECTED" in script.text
+    assert "DEFENSE SCORE" in script.text
+    assert "Night 1" in script.text or "DETECTED" in script.text
 
 
 def test_day_ends_by_itself_when_moves_run_out(company, catalog):
@@ -91,7 +97,8 @@ def test_day_ends_by_itself_when_moves_run_out(company, catalog):
 def test_main_asks_difficulty_and_plays(company):
     script = Script("hard", ["firewall"], ["port-scan"], GIVE_UP)
     assert main(["--seed", "1"], ui=script) == 0
-    assert "%" not in "\n".join(script.lines[: script.lines.index("RED TEAM: now switch sides and break in")])
+    before_red = script.text.split("RED TEAM")[0]
+    assert "BLUE TEAM" in before_red and "%" not in before_red
 
 
 def test_easy_greys_out_moves_with_no_possible_target(company, catalog):
