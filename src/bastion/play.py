@@ -115,7 +115,6 @@ class Game:
         self.easy = difficulty == "easy"
         self.explain = difficulty in ("easy", "medium")
         self.ui = ui
-        self.waf_score: int | None = None
 
     def defense_options(self) -> list[Option]:
         options = []
@@ -154,23 +153,7 @@ class Game:
         self.ui.say(look.team_rule("blue", f"protect {self.company.name}"))
         self.ui.say(look.company_panel(self.company, self.explain, reveal_admins=self.easy))
         self.ui.say(look.budget_note("Blue", self.company.budget, self.company.budget_range, look.BLUE))
-        chosen = self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, done_label)
-        if "waf" in chosen:
-            self.waf_score = self.build_waf()
-        return chosen
-
-    def build_waf(self) -> int:
-        corpus = load_corpus()
-        expert_file = home() / "waf-rules.json"
-        if expert_file.exists():
-            how = self.ui.select("Your web application firewall", [
-                Option("Pick rules from the list", "list", description="Choose ready-made rules, explained in plain words."),
-                Option("Use my own rules file (expert)", "file", description=str(expert_file)),
-            ])
-            if how == "file":
-                report = evaluate(load_rules(expert_file), corpus)
-                self.ui.say(look.waf_summary(report))
-                return report.score
+        return self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, done_label)
 
         library = load_library()
         saved = home() / "waf-build.json"
@@ -349,7 +332,7 @@ class Game:
             defenses = self.pick_defenses()
             arsenal = self.pick_arsenal()
         edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
-        campaign = Campaign(self.company, self.catalog, defenses, arsenal, rng=self.rng, edge=edge, waf_score=self.waf_score)
+        campaign = Campaign(self.company, self.catalog, defenses, arsenal, rng=self.rng, edge=edge)
         self.ui.say()
         if self.side == "blue":
             self.watch_attack(campaign)
@@ -376,6 +359,45 @@ class Game:
         self.ui.say(look.score_panel(score, profile, unlocked))
 
 
+def waf_lab(ui) -> int:
+    corpus = load_corpus()
+    ui.say(look.waf_tutorial())
+    expert_file = home() / "waf-rules.json"
+    if expert_file.exists():
+        how = ui.select("How do you want to build it?", [
+            Option("Pick rules from the list", "list", description="Ready-made rules, explained in plain words."),
+            Option("Use my own rules file (expert)", "file", description=str(expert_file)),
+        ])
+        if how == "file":
+            report = evaluate(load_rules(expert_file), corpus)
+            ui.say(look.waf_summary(report))
+            return report.score
+
+    library = load_library()
+    saved = home() / "waf-build.json"
+    try:
+        preselected = json.loads(saved.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        preselected = []
+    options = [
+        Option(item.title, item.id, tag="clean up first" if item.kind == "clean" else "", description=item.explain)
+        for item in library
+    ]
+
+    def status(chosen: list[str]) -> list[tuple[str, str]]:
+        return look.waf_status_tokens(evaluate(library_ruleset(chosen, library), corpus))
+
+    chosen = ui.build_waf("Build your web application firewall", options, preselected, status)
+    try:
+        saved.parent.mkdir(parents=True, exist_ok=True)
+        saved.write_text(json.dumps(chosen), encoding="utf-8")
+    except OSError:
+        pass
+    report = evaluate(library_ruleset(chosen, library), corpus)
+    ui.say(look.waf_summary(report))
+    return report.score
+
+
 def main(argv: list[str] | None = None, ui=None) -> int:
     parser = argparse.ArgumentParser(prog="bastion play", description="Play Bastion with the arrow keys.")
     parser.add_argument("--scenario", default=None)
@@ -388,6 +410,14 @@ def main(argv: list[str] | None = None, ui=None) -> int:
     ui = ui or Terminal(delay=0 if args.fast else 1.0)
     try:
         ui.say(look.title_screen(args.difficulty))
+        if not (args.difficulty or args.side or args.scenario):
+            mode = ui.select("Menu", [
+                Option("Play", "play", description="Defend or attack a company."),
+                Option("WAF Lab", "lab", description="Practice: learn how a web firewall stops hackers. Does not change your points."),
+            ])
+            if mode == "lab":
+                waf_lab(ui)
+                return 0
         difficulty = args.difficulty or ui.select("Difficulty", [
             Option("Easy", "easy", description="Attacks work more often. Explanations, chances and heat. At the end: advice."),
             Option("Medium", "medium", description="A fairer fight. Explanations but no numbers. At the end: what happened."),

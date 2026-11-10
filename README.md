@@ -138,15 +138,11 @@ python -m bastion balance --all        # read the game log and list choices that
 
 Every finished game is written to `~/.bastion/games.jsonl`. CI runs the tests and the balance check on every push.
 
-### WAF rule sandbox
+### WAF Lab
 
-```bash
-python -m bastion waf
-```
+Pick **WAF Lab** in the main menu to practise how a Web Application Firewall works. A short tutorial explains SQL injection and XSS with a login example, then you build a firewall from plain-language rules and watch live how many of 40 real attack payloads it stops and how many of 25 innocent customers it blocks by mistake. It is practice only: in the game, every player's WAF is the same, so points stay fair.
 
-When you pick the Web application firewall as Blue, you build it on the spot from a list of rules explained in plain words, and watch live how many attacks it stops and how many innocent customers it blocks. Its score becomes the WAF's strength in that game: a 76/100 WAF stops about 76% of attacks on the web shop.
-
-Experts can instead write their own rules in `~/.bastion/waf-rules.json` (regular expressions plus normalization steps such as URL decoding). The sandbox fires 40 real SQL injection, XSS and path traversal payloads at them, including the tricks attackers use to slip past filters, plus 25 innocent customer requests. You see what got through, which innocent customers you blocked, and a score. Rules that hang on crafted input (ReDoS) are stopped after five seconds.
+Experts can write their own regex rules in `~/.bastion/waf-rules.json` and test them with `python -m bastion waf`. Rules that hang on crafted input (ReDoS) are stopped after five seconds.
 
 ## Safety
 
@@ -173,7 +169,7 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 - [x] Full scoring system (Blue and Red points, stealth and speed bonuses)
 - [x] Play one side against the computer, random side for double points
 - [x] Tier unlocks
-- [x] WAF rule sandbox (real payloads vs. your own rules)
+- [x] WAF Lab: build a web firewall against real payloads (practice mode)
 - [ ] Web API and playable browser UI
 - [ ] Accounts, public leaderboard and ELO ranking
 - [x] CI with tests and an automatic balance check

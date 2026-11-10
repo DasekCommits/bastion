@@ -360,13 +360,28 @@ def score_panel(score, profile, unlocked: list[str]) -> Panel:
     return Panel(lines, title="[bold]SCORE[/]", title_align="left", border_style=color, padding=(1, 2))
 
 
-def waf_intro() -> Text:
-    return Text(
-        "A WAF is a doorman for the web shop. Every message a visitor sends passes it first. "
-        "Pick what the doorman cleans up and what he blocks. 40 real attacks and 25 innocent customers "
-        "will try to get in. Your score here is how strong the WAF is in this game.",
-        style=MUTED,
-    )
+def waf_tutorial() -> Panel:
+    text = Text()
+    text.append("WAF LAB", style=f"bold {AMBER}")
+    text.append("  practice only, it does not change your points\n\n", style=MUTED)
+    text.append("1. A normal login\n", style="bold")
+    text.append("You type a name and a password. The site asks its database:\n", style=MUTED)
+    text.append("   find the user maria AND password 1234\n\n")
+    text.append("2. SQL injection\n", style="bold")
+    text.append("A hacker types ", style=MUTED)
+    text.append("' OR 1=1", style=f"bold {RED}")
+    text.append(" as the password. The question becomes:\n", style=MUTED)
+    text.append("   find the user maria AND password '' OR 1=1\n")
+    text.append("1=1 is always true, so the database lets them in without a password.\n\n", style=MUTED)
+    text.append("3. XSS\n", style="bold")
+    text.append("A hacker writes a product review containing ", style=MUTED)
+    text.append("<script>...</script>", style=f"bold {RED}")
+    text.append(". Every visitor's browser runs that code.\n\n", style=MUTED)
+    text.append("4. The WAF\n", style="bold")
+    text.append("A doorman in front of the site. He reads every message and blocks the suspicious ones, "
+                "without blocking real customers like Mr O'Brien. Pick what he cleans up and what he blocks. "
+                "40 real attacks and 25 innocent customers will try to get in.", style=MUTED)
+    return Panel(text, border_style=AMBER, padding=(1, 2))
 
 
 def waf_status_tokens(report) -> list[tuple[str, str]]:
@@ -392,5 +407,5 @@ def waf_summary(report) -> Text:
     color = GREEN if report.score >= 85 else AMBER if report.score >= 60 else RED
     return Text.assemble(
         ("Your WAF scored ", MUTED), (f"{report.score}/100", f"bold {color}"),
-        (f". In this game it stops about {min(95, report.score)}% of attacks on the web shop.", MUTED),
+        (f". It blocked {round(report.catch_rate * 100)}% of the hackers and {len(report.false_positives)} innocent customers.", MUTED),
     )

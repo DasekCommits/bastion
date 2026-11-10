@@ -119,7 +119,7 @@ def test_day_ends_by_itself_when_moves_run_out(company, catalog):
 
 
 def test_main_asks_difficulty_and_plays(company):
-    script = Script("hard", "practice", "olive-byte", ["firewall"], ["port-scan"], GIVE_UP)
+    script = Script("play", "hard", "practice", "olive-byte", ["firewall"], ["port-scan"], GIVE_UP)
     assert main(["--seed", "1"], ui=script) == 0
     before_red = script.text.split("RED TEAM")[0]
     assert "BLUE TEAM" in before_red and "%" not in before_red
@@ -234,7 +234,7 @@ def test_bigger_companies_unlock_after_enough_wins():
 
 
 def test_locked_companies_are_greyed_out_in_the_menu():
-    script = Script("easy", "practice")
+    script = Script("play", "easy", "practice")
     script.answers.append("olive-byte")
     script.answers += [["mfa"], ["phishing"], GIVE_UP]
     main(["--seed", "1"], ui=script)
@@ -268,26 +268,32 @@ class WafScript(Script):
         return answer
 
 
-def test_building_a_waf_sets_its_strength_in_the_game(company, catalog):
-    good = ["url-decode", "lowercase", "union", "or-true", "script", "event"]
-    script = WafScript(["waf"], good)
-    game = Game(company, catalog, "easy", script, random.Random(1), side="blue")
-    game.pick_defenses("Done")
-    assert 0 < game.waf_score < 100
-    assert "Your WAF scored" in script.text
-    weak = Campaign(company, catalog, ["waf"], ["exploit-web"], seed=1, waf_score=10)
-    strong = Campaign(company, catalog, ["waf"], ["exploit-web"], seed=1, waf_score=95)
-    assert strong.preview("exploit-web", "web-01").success_chance < weak.preview("exploit-web", "web-01").success_chance
-
-
-def test_waf_builder_remembers_your_last_rules(company, catalog):
+def test_waf_lab_scores_and_remembers_your_rules():
     import json
 
+    from bastion.play import waf_lab
     from bastion.profile import home
 
-    script = WafScript(["waf"], ["script"])
-    Game(company, catalog, "easy", script, random.Random(1), side="blue").pick_defenses("Done")
-    assert json.loads((home() / "waf-build.json").read_text()) == ["script"]
+    script = WafScript(["url-decode", "lowercase", "union", "or-true", "script", "event"])
+    score = waf_lab(script)
+    assert 0 < score < 100
+    assert "WAF LAB" in script.text and "Your WAF scored" in script.text
+    assert json.loads((home() / "waf-build.json").read_text())[0] == "url-decode"
+
+
+def test_waf_lab_from_the_menu_does_not_touch_points():
+    from bastion.profile import load_profile
+
+    script = WafScript("lab", ["script"])
+    assert main([], ui=script) == 0
+    assert load_profile().games == 0
+
+
+def test_the_game_waf_is_the_same_for_everyone(company, catalog):
+    script = Script(["waf"])
+    game = Game(company, catalog, "easy", script, random.Random(1), side="blue")
+    assert game.pick_defenses("Done") == ["waf"]
+    assert "WAF LAB" not in script.text
 
 
 def test_real_waf_picker_with_keys(company, catalog):
