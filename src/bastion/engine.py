@@ -2,6 +2,7 @@ import copy
 import random
 from dataclasses import dataclass, field
 
+from bastion import soc
 from bastion.catalog import Attack, Catalog, Defense
 from bastion.company import Company, Employee
 
@@ -17,6 +18,7 @@ BURN_HEAT = 0.15
 FLOOR = 0.05
 CEILING = 0.95
 NEEDS_FOOTHOLD = ("privilege-escalation", "lateral-movement", "exfiltration", "impact")
+BLUE_ACTIONS = ("logs", "investigate", "reset", "isolate", "hunt", "block")
 
 
 class PlanError(ValueError):
@@ -64,9 +66,40 @@ class Foothold:
     admin_on: set[str] = field(default_factory=set)
     employees: set[str] = field(default_factory=set)
     fraud_done: bool = False
+    direct: set[str] = field(default_factory=set)
+    direct_admin: set[str] = field(default_factory=set)
+    admin_accounts: set[str] = field(default_factory=set)
+    isolated: dict[str, int] = field(default_factory=dict)
 
     def is_empty(self) -> bool:
         return not self.servers and not self.employees
+
+    def gain(self, server_id: str, admin: bool = False) -> None:
+        if server_id in self.isolated:
+            return
+        self.direct.add(server_id)
+        self.servers.add(server_id)
+        if admin:
+            self.direct_admin.add(server_id)
+            self.admin_on.add(server_id)
+
+    def make_admin(self, server_id: str) -> None:
+        self.direct_admin.add(server_id)
+        self.admin_on.add(server_id)
+
+    def recompute(self, company: Company) -> None:
+        by_account = set()
+        admin_by_account = set()
+        for employee in company.employees:
+            if employee.id in self.employees:
+                by_account.update(employee.access)
+                if employee.id in self.admin_accounts:
+                    admin_by_account.update(employee.access)
+        blocked = set(self.isolated)
+        self.servers = (self.direct | by_account) - blocked
+        self.admin_on = (self.direct_admin | admin_by_account) - blocked
+        self.direct -= blocked
+        self.direct_admin -= blocked
 
 
 @dataclass
@@ -82,6 +115,8 @@ class Report:
     points: int
     stolen: list[str]
     encrypted: list[str]
+    blue_actions: list = field(default_factory=list)
+    disruption: int = 0
 
     @property
     def max_points(self) -> int:
@@ -275,43 +310,41 @@ def _apply(attack: Attack, target_id: str, company: Company, foothold: Foothold,
     if attack.id == "kerberoasting":
         services = [server for server in company.servers if server.role in DATA_ROLES]
         for server in services:
-            foothold.servers.add(server.id)
-            foothold.admin_on.add(server.id)
+            foothold.gain(server.id, admin=True)
         names = ", ".join(server.name for server in services)
         return 0, f"You cracked a service account password offline. It is admin on: {names}."
 
     if attack.id == "pass-the-hash":
-        foothold.servers.add(target_id)
-        foothold.admin_on.add(target_id)
+        foothold.gain(target_id, admin=True)
         return 0, "You reused a stolen password hash and logged in as an administrator."
 
     if attack.id == "dcsync":
         for server in company.servers:
-            foothold.servers.add(server.id)
-            foothold.admin_on.add(server.id)
+            foothold.gain(server.id, admin=True)
         return 0, "You copied every password in the company. You now own the whole domain."
 
     if attack.target == "employee":
         employee = next(employee for employee in company.employees if employee.id == target_id)
         foothold.employees.add(employee.id)
-        foothold.servers.update(employee.access)
+        reachable = [s for s in employee.access if s not in foothold.isolated]
+        foothold.servers.update(reachable)
         if has_admin_rights(employee, defense_ids):
-            foothold.admin_on.update(employee.access)
+            foothold.admin_accounts.add(employee.id)
+            foothold.admin_on.update(reachable)
             return 0, f"{employee.name}'s account is an administrator account."
         return 0, f"The attacker can now log in as {employee.name}."
 
     if attack.tactic == "initial-access":
-        foothold.servers.add(target_id)
+        foothold.gain(target_id)
         return 0, "The attacker has a foothold on this server."
 
     if attack.tactic == "privilege-escalation":
-        foothold.admin_on.add(target_id)
+        foothold.make_admin(target_id)
         return 0, "The attacker is now an administrator here."
 
     if attack.tactic == "lateral-movement":
-        foothold.servers.add(target_id)
-        if any(has_admin_rights(e, defense_ids) for e in _employees_with_access(company, foothold, target_id)):
-            foothold.admin_on.add(target_id)
+        admin = any(has_admin_rights(e, defense_ids) for e in _employees_with_access(company, foothold, target_id))
+        foothold.gain(target_id, admin=admin)
         return 0, "The attacker moved to a new machine."
 
     assets = [asset for asset in company.data if asset.location == target_id and not asset.fraud]
@@ -330,7 +363,7 @@ def _apply(attack: Attack, target_id: str, company: Company, foothold: Foothold,
             if "segmentation" in defense_ids:
                 note += f" The stolen password is useless: segmentation keeps the {reached} out of reach."
             else:
-                foothold.servers.add(asset.grants)
+                foothold.gain(asset.grants)
                 note += f" The stolen password opens the {reached}."
         return points, note
     return points, f"Encrypted: {names}."
@@ -355,8 +388,10 @@ class Campaign:
         seed: int | None = None,
         rng: random.Random | None = None,
         edge: float = 1.0,
+        active_blue: bool = False,
     ):
         self.edge = edge
+        self.active_blue = active_blue
         self.company = company
         self.catalog = catalog
         self.defense_ids = list(defense_ids)
@@ -379,6 +414,13 @@ class Campaign:
         self.moves_today = 0
         self.caught = False
         self.out_of_days = False
+        self.logs: list[soc.LogEntry] = []
+        self.blue_actions: list[soc.BlueAction] = []
+        self.blue_moves_today = 0
+        self.disruption = 0
+        self.kicked_out = False
+        if active_blue:
+            self._add_noise()
 
     @property
     def finished(self) -> bool:
@@ -439,6 +481,8 @@ class Campaign:
         attack = self.catalog.attacks[attack_id]
         if (attack_id, target_id) in self.burned:
             return Preview(False, "The Blue Team already blocked this exact attempt.", 0.0, 0.0, self.heat)
+        if target_id in self.foothold.isolated:
+            return Preview(False, "The Blue Team has isolated this machine. Nobody can reach it for now.", 0.0, 0.0, self.heat)
         possible, note = _is_possible(attack, target_id, self.company, self.foothold)
         if not possible:
             return Preview(False, note, 0.0, 0.0, self.heat)
@@ -510,6 +554,17 @@ class Campaign:
             if attack.tactic == "impact" and attack.target == "server" and points:
                 self.encrypted.append(target_id)
 
+        if self.active_blue:
+            if detected:
+                self._log_real(attack, target_id, succeeded, not was_inside)
+            result = StepResult(
+                step, attack, True, note, preview.success_chance, preview.detect_chance,
+                succeeded, detected, helped, missing, points, self.heat,
+                blockers=[d.id for d in self.defenses if attack.id in d.blocks],
+            )
+            self.results.append(result)
+            return result
+
         if detected and not was_inside:
             self.foothold = before
             self.burned.add((attack_id, target_id))
@@ -534,6 +589,9 @@ class Campaign:
             self.out_of_days = True
             return None
         night = _night(self.day, self.heat, self.defenses, self.rng, self.edge)
+        if self.active_blue and "soc" not in self.defense_ids:
+            night.hunt_chance = 0.0
+            night.found = False
         if self.foothold.is_empty():
             night.found = False
         self.nights.append(night)
@@ -541,7 +599,122 @@ class Campaign:
         self.caught = night.found
         self.day += 1
         self.moves_today = 0
+        if self.active_blue:
+            self.blue_moves_today = 0
+            self.foothold.isolated = {s: until for s, until in self.foothold.isolated.items() if until >= self.day}
+            self._add_noise()
         return night
+
+    @property
+    def blue_moves_per_day(self) -> int:
+        return self.company.team_size + 1
+
+    @property
+    def blue_moves_left(self) -> int:
+        return self.blue_moves_per_day - self.blue_moves_today
+
+    def _label(self, target_id: str) -> str:
+        for server in self.company.servers:
+            if server.id == target_id:
+                return server.name
+        return self.company.employee(target_id).name
+
+    def _log_real(self, attack: Attack, target_id: str, succeeded: bool, from_outside: bool) -> None:
+        entry = soc.real_entry(len(self.logs) + 1, self.day, attack, target_id, self._label(target_id),
+                               self.defenses, succeeded, from_outside, self.rng)
+        self.logs.append(entry)
+
+    def _add_noise(self) -> None:
+        for _ in range(soc.NOISE_PER_DAY[self.company.tier]):
+            self.logs.append(soc.noise_entry(len(self.logs) + 1, self.day, self.company, self.defenses, self.rng))
+
+    def unseen_logs(self) -> list[soc.LogEntry]:
+        return [entry for entry in self.logs if not entry.seen]
+
+    def seen_logs(self) -> list[soc.LogEntry]:
+        return [entry for entry in self.logs if entry.seen]
+
+    def _entry(self, entry_id: int) -> soc.LogEntry:
+        for entry in self.logs:
+            if entry.id == entry_id and entry.seen:
+                return entry
+        raise PlanError("You have not seen that log entry yet.")
+
+    def blue(self, kind: str, target: str | int | None = None) -> soc.BlueAction:
+        if not self.active_blue:
+            raise PlanError("The Blue Team only acts in active mode")
+        if self.finished:
+            raise PlanError("The campaign is over")
+        if kind not in BLUE_ACTIONS:
+            raise PlanError(f"Unknown Blue Team action '{kind}'")
+        if self.blue_moves_left <= 0:
+            raise PlanError("The Blue Team has no time left today")
+        was_inside = not self.foothold.is_empty()
+        action = getattr(self, f"_blue_{kind}")(target)
+        self.blue_moves_today += 1
+        self.blue_actions.append(action)
+        if was_inside and self.foothold.is_empty():
+            self.kicked_out = True
+            self.caught = True
+        return action
+
+    def _blue_logs(self, target) -> soc.BlueAction:
+        fresh = self.unseen_logs()
+        for entry in fresh:
+            entry.seen = True
+        text = f"{len(fresh)} new log entr{'y' if len(fresh) == 1 else 'ies'}." if fresh else "Nothing new in the logs."
+        return soc.BlueAction(self.day, "logs", "", text, bool(fresh))
+
+    def _blue_investigate(self, entry_id) -> soc.BlueAction:
+        entry = self._entry(int(entry_id))
+        entry.investigated = True
+        if not entry.real:
+            return soc.BlueAction(self.day, "investigate", entry.text, f"False alarm: {entry.innocent_reason}.", False)
+        attack = self.catalog.attacks[entry.attack_id]
+        label = self._label(entry.target_id)
+        if entry.succeeded:
+            outcome = "It worked." if entry.attack_id != "port-scan" else "The attacker mapped the server."
+        else:
+            outcome = "It failed, but someone is trying."
+        return soc.BlueAction(self.day, "investigate", entry.text,
+                              f"Real attack: {attack.name} ({attack.mitre_id}) against {label}. {outcome}", True)
+
+    def _blue_reset(self, employee_id) -> soc.BlueAction:
+        employee = self.company.employee(str(employee_id))
+        if employee.id in self.foothold.employees:
+            self.foothold.employees.discard(employee.id)
+            self.foothold.admin_accounts.discard(employee.id)
+            self.foothold.recompute(self.company)
+            return soc.BlueAction(self.day, "reset", employee.name, f"The attacker had {employee.name}'s account and just lost it.", True)
+        self.disruption += 1
+        return soc.BlueAction(self.day, "reset", employee.name, f"{employee.name}'s account was clean. They had to pick a new password for nothing.", False)
+
+    def _blue_isolate(self, server_id) -> soc.BlueAction:
+        server = self.company.server(str(server_id))
+        had = server.id in self.foothold.servers
+        self.foothold.isolated[server.id] = self.day + 1
+        self.foothold.recompute(self.company)
+        self.disruption += 1 if had else 2
+        if had:
+            return soc.BlueAction(self.day, "isolate", server.name, f"The attacker was on {server.name} and is now cut off. It stays offline until the end of tomorrow.", True)
+        return soc.BlueAction(self.day, "isolate", server.name, f"{server.name} was clean. It is offline until the end of tomorrow and work stops there.", False)
+
+    def _blue_hunt(self, server_id) -> soc.BlueAction:
+        server = self.company.server(str(server_id))
+        if server.id in self.foothold.servers and self.rng.random() < soc.hunt_chance(self.defense_ids):
+            entry = soc.LogEntry(len(self.logs) + 1, self.day, "Threat hunt", "admin",
+                                 f"Hidden attacker activity found on {server.name}", server.id, True, 0.95,
+                                 attack_id=None, succeeded=True, seen=True, investigated=True)
+            self.logs.append(entry)
+            return soc.BlueAction(self.day, "hunt", server.name, f"Found it: the attacker is on {server.name}.", True)
+        return soc.BlueAction(self.day, "hunt", server.name, f"Nothing found on {server.name}.", False)
+
+    def _blue_block(self, entry_id) -> soc.BlueAction:
+        entry = self._entry(int(entry_id))
+        if entry.real and entry.from_outside and entry.attack_id:
+            self.burned.add((entry.attack_id, entry.target_id))
+            return soc.BlueAction(self.day, "block", entry.text, "Blocked: that sender or address cannot try this again.", True)
+        return soc.BlueAction(self.day, "block", entry.text, "Blocked, but there was nothing behind it to stop.", False)
 
     def report(self) -> Report:
         return Report(
@@ -556,6 +729,8 @@ class Campaign:
             points=sum(result.points for result in self.results),
             stolen=self.stolen,
             encrypted=self.encrypted,
+            blue_actions=list(self.blue_actions),
+            disruption=self.disruption,
         )
 
     def plan(self) -> list[Step]:

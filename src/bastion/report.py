@@ -68,6 +68,14 @@ def format_report(report: Report, catalog: Catalog, lessons: bool = True) -> str
                 lines.append(f"--- DAY {night.day} ---")
             lines.extend(_night_lines(night))
 
+    if report.blue_actions:
+        lines.append("Blue Team actions:")
+        for action in report.blue_actions:
+            mark = "+" if action.useful else "-"
+            target = f" ({action.target})" if action.target else ""
+            lines.append(f"  day {action.day} {mark} {action.kind}{target}: {action.text}")
+        lines.append("")
+
     lines.append("-" * 60)
     if report.caught:
         lines.append("The attacker was caught.")

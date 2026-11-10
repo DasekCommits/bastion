@@ -323,7 +323,9 @@ def blue_alert(result: StepResult, target_name: str, named: bool) -> Text:
 
 
 def blue_night(night: NightResult, easy: bool) -> Text:
-    text = Text(f"  ☾ Night {night.day}: your team reviews the logs", style=MUTED)
+    if not night.hunt_chance and not night.found:
+        return Text(f"  ☾ Night {night.day}: the office is empty and nobody watches the logs. Only a 24/7 SOC would.", style=MUTED)
+    text = Text(f"  ☾ Night {night.day}: your SOC reviews the logs overnight", style=MUTED)
     if easy:
         text.append(f" ({percent(night.hunt_chance)} chance to find the attacker)", style=MUTED)
     if night.found:
@@ -406,3 +408,68 @@ def waf_summary(report) -> Text:
         ("Your WAF scored ", MUTED), (f"{report.score}/100", f"bold {color}"),
         (f". It blocked {round(report.catch_rate * 100)}% of the hackers and {len(report.false_positives)} innocent customers.", MUTED),
     )
+
+
+BLUE_ACTION_NAMES = {
+    "logs": "See the logs",
+    "investigate": "Investigate",
+    "reset": "Change password",
+    "isolate": "Isolate",
+    "hunt": "Threat hunt",
+    "block": "Block",
+}
+
+
+def confidence_hint(entry, level: str) -> str:
+    if level == "easy":
+        return f"looks real {round(entry.confidence * 100)}%"
+    if level == "medium":
+        return "high" if entry.confidence >= 0.66 else "medium" if entry.confidence >= 0.4 else "low"
+    return ""
+
+
+def blue_status_bar(campaign, easy: bool) -> Rule:
+    company = campaign.company
+    line = Text.assemble(
+        ("DAY ", MUTED), (f"{campaign.day}/{company.max_days} ", "bold"),
+        _dots(campaign.day, company.max_days, AMBER),
+        ("   ANALYST TIME ", MUTED),
+        _dots(campaign.blue_moves_left, campaign.blue_moves_per_day, BLUE),
+        ("   NEW LOG ENTRIES ", MUTED),
+        (str(len(campaign.unseen_logs())), f"bold {AMBER if campaign.unseen_logs() else MUTED}"),
+    )
+    return Rule(line, style=FAINT)
+
+
+def log_table(entries, level: str) -> Table:
+    table = Table(box=box.SIMPLE_HEAD, header_style=f"bold {BLUE}", pad_edge=False)
+    table.add_column("#", style=MUTED, justify="right")
+    table.add_column("Day", style=MUTED)
+    table.add_column("Source", style=MUTED)
+    table.add_column("What the tool saw")
+    if level != "hard":
+        table.add_column("Signal", style=AMBER)
+    for entry in entries:
+        row = [str(entry.id), str(entry.day), entry.source, entry.text]
+        if level != "hard":
+            row.append(confidence_hint(entry, level))
+        table.add_row(*row)
+    return table
+
+
+def blue_action_text(action) -> Text:
+    color = GREEN if action.useful else MUTED
+    name = BLUE_ACTION_NAMES.get(action.kind, action.kind)
+    return Text.assemble(("  ", ""), (f" {name.upper()} ", f"bold white on {BLUE}"), (f"  {action.text}", color))
+
+
+def red_notice(action) -> Text | None:
+    if not action.useful or action.kind not in ("reset", "isolate", "block", "hunt"):
+        return None
+    messages = {
+        "reset": f"{action.target}'s password was changed. You lost that account.",
+        "isolate": f"{action.target} was cut off from the network. You cannot reach it.",
+        "block": "Your attempt was blocked. That exact trick will not work again.",
+        "hunt": f"Someone is digging through {action.target}. They know you are there.",
+    }
+    return Text.assemble(("  BLUE TEAM ", f"bold white on {BLUE}"), (f"  {messages[action.kind]}", BLUE))

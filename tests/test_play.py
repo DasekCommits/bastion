@@ -192,13 +192,25 @@ def test_medium_and_hard_hide_accidental_admins(company, catalog):
         assert ("by mistake" in script.text) == hidden
 
 
-def test_blue_side_watches_the_computer_attack_and_scores(company, catalog):
+class AnalystScript(Script):
+    def __init__(self, *answers, plan=()):
+        super().__init__(*answers)
+        self.plan = list(plan)
+
+    def select(self, message, options):
+        if message in ("Your move as the analyst", "Which one?") and not self.answers:
+            self.answers.append(self.plan.pop(0) if self.plan else "wait")
+        return super().select(message, options)
+
+
+def test_blue_side_plays_analyst_turns_and_scores(company, catalog):
     from bastion.profile import load_profile
 
-    script = Script(["mfa", "email-filter"])
-    campaign = Game(company, catalog, "medium", script, random.Random(2), side="blue").run()
-    assert campaign.finished or campaign.results
-    assert "SCORE" in script.text and "BLUE TEAM" in script.text
+    script = AnalystScript(["mfa", "siem"], plan=["logs", "reset", "emily"])
+    campaign = Game(company, catalog, "easy", script, random.Random(2), side="blue").run()
+    assert campaign.finished
+    assert "ANALYST TIME" in script.text and "SCORE" in script.text
+    assert any(action.kind == "reset" for action in campaign.blue_actions)
     assert load_profile().games == 1
 
 

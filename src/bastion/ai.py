@@ -8,6 +8,7 @@ INSIDE_ONLY = ("kerberoasting", "dcsync", "pass-the-hash")
 GOOD_ENOUGH = 0.05
 HOT = 0.45
 RED_AI_KNOWLEDGE = {"easy": "hard", "medium": "medium", "hard": "easy"}
+BLUE_AI_KNOWLEDGE = {"easy": "hard", "medium": "medium", "hard": "easy"}
 
 
 def pick_defenses(company: Company, catalog: Catalog, rng: random.Random) -> list[str]:
@@ -157,4 +158,87 @@ def play_out(campaign: Campaign, red: RedAI, on_move=None, on_night=None) -> Cam
         result = campaign.move(*move)
         if on_move:
             on_move(result)
+    return campaign
+
+
+class BlueAI:
+    def __init__(self, knowledge: str, rng: random.Random | None = None):
+        self.knowledge = knowledge
+        self.rng = rng or random.Random(0)
+        self.handled: set[int] = set()
+        self.checked_after = -1
+        self.hunted: set[str] = set()
+
+    def _contain(self, campaign: Campaign) -> tuple[str, str | int] | None:
+        for entry in campaign.seen_logs():
+            if not entry.investigated or not entry.real or entry.id in self.handled:
+                continue
+            self.handled.add(entry.id)
+            if entry.from_outside and not entry.succeeded and entry.attack_id:
+                return "block", entry.id
+            if not entry.succeeded:
+                continue
+            target = entry.target_id
+            if any(e.id == target for e in campaign.company.employees):
+                return "reset", target
+            if entry.attack_id == "port-scan":
+                continue
+            return "isolate", target
+        return None
+
+    def _pick(self, entries):
+        if self.knowledge == "easy":
+            return max(entries, key=lambda e: e.confidence)
+        if self.knowledge == "medium":
+            return max(entries, key=lambda e: e.confidence + self.rng.uniform(-0.25, 0.25))
+        return self.rng.choice(entries)
+
+    def next_action(self, campaign: Campaign) -> tuple[str, str | int | None] | None:
+        if campaign.blue_moves_left <= 0 or campaign.finished:
+            return None
+        contain = self._contain(campaign)
+        if contain:
+            return contain
+        open_entries = [e for e in campaign.seen_logs() if not e.investigated]
+        if open_entries:
+            return "investigate", self._pick(open_entries).id
+        if self.checked_after < len(campaign.results) or campaign.blue_moves_today == 0:
+            self.checked_after = len(campaign.results)
+            return "logs", None
+        if self.knowledge != "hard":
+            valuable = sorted(
+                (s for s in campaign.company.servers if s.id not in self.hunted),
+                key=lambda s: -sum(d.value for d in campaign.company.data if d.location == s.id),
+            )
+            if valuable:
+                self.hunted.add(valuable[0].id)
+                return "hunt", valuable[0].id
+        return None
+
+
+def play_out_active(campaign: Campaign, red: RedAI, blue: BlueAI, on_move=None, on_blue=None, on_night=None) -> Campaign:
+    while not campaign.finished:
+        move = red.next_move(campaign)
+        if move is not None:
+            result = campaign.move(*move)
+            if on_move:
+                on_move(result)
+            step = blue.next_action(campaign)
+            if step and not campaign.finished:
+                action = campaign.blue(*step)
+                if on_blue:
+                    on_blue(action)
+            continue
+        while not campaign.finished:
+            step = blue.next_action(campaign)
+            if step is None:
+                break
+            action = campaign.blue(*step)
+            if on_blue:
+                on_blue(action)
+        if campaign.finished:
+            break
+        night = campaign.end_day()
+        if night and on_night:
+            on_night(night)
     return campaign

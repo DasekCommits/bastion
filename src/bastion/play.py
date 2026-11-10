@@ -21,6 +21,7 @@ END_DAY = "end-day"
 GIVE_UP = "give-up"
 BACK = "back"
 PLAY_AGAIN = "again"
+WAIT = "wait"
 MENU = "menu"
 QUIT = "quit"
 DIFFICULTIES = ("easy", "medium", "hard")
@@ -111,6 +112,7 @@ class Game:
             raise ValueError(f"Side must be one of {SIDES}")
         self.rng = rng or random.Random()
         self.random_side = side == "random"
+        self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[difficulty], self.rng)
         self.side = self.rng.choice(("blue", "red")) if self.random_side else side
         self.company = roll_mistakes(company, self.rng)
         self.catalog = catalog
@@ -294,8 +296,14 @@ class Game:
             if target == BACK:
                 continue
             self.show_result(campaign.move(action, target))
+            self.blue_ai_reacts(campaign)
+            if campaign.kicked_out:
+                self.ui.say(Text("The Blue Team kicked you out of the network.", style=f"bold {look.RED}"))
 
     def _end_day(self, campaign: Campaign) -> None:
+        self.blue_ai_reacts(campaign, until_done=True)
+        if campaign.finished:
+            return
         night = campaign.end_day()
         if night:
             self.show_night(night)
@@ -303,24 +311,101 @@ class Game:
     def show_ai_move(self, result: StepResult) -> None:
         target = self.target_name(result.step.target_id)
         if self.easy:
+            self.ui.say(Text("  What the attacker just did (only Easy shows this):", style=look.MUTED))
             self.ui.say(look.move_header(result, target))
             self.ui.say(look.outcome_text(result, True, True))
-            if result.possible:
-                self.ui.say(look.detection_text(result))
             self.ui.say()
             return
-        if result.detected:
-            self.ui.suspense([f"Your tools raise an alert on {target}"])
-            self.ui.say(look.blue_alert(result, target, named=self.explain))
+        self.ui.suspense(["Time passes. Somewhere, someone is trying something"])
 
     def show_blue_night(self, night: NightResult) -> None:
         self.ui.say(look.blue_night(night, self.easy))
 
-    def watch_attack(self, campaign: Campaign) -> None:
+    def blue_options(self, campaign: Campaign) -> list[Option]:
+        fresh = len(campaign.unseen_logs())
+        open_entries = [e for e in campaign.seen_logs() if not e.investigated]
+        explain = self.explain
+        return [
+            Option("See the logs", "logs", tag=f"{fresh} new" if fresh else "",
+                   description="Read what your tools recorded. Tools that nobody reads catch nobody." if explain else None),
+            Option("Investigate an alert", "investigate", tag=f"{len(open_entries)} open" if open_entries else "",
+                   description="Find out if an alert is a real attack or a false alarm." if explain else None,
+                   disabled=None if open_entries else "read the logs first"),
+            Option("Change a password", "reset",
+                   description="If the attacker had this account, they lose it. If not, the employee loses some time." if explain else None),
+            Option("Isolate a machine", "isolate",
+                   description="Cut a machine off the network until the end of tomorrow. Stops the attacker there, but work stops too." if explain else None),
+            Option("Threat hunt on a machine", "hunt",
+                   description="Search a machine for an attacker that no alert has shown yet." if explain else None),
+            Option("Block a sender or address", "block",
+                   description="Stop an attempt from outside from ever trying again." if explain else None,
+                   disabled=None if campaign.seen_logs() else "read the logs first"),
+            Option("Let time pass", WAIT,
+                   description="Save the rest of your time. The attacker keeps moving." if explain else None),
+        ]
+
+    def blue_target_options(self, campaign: Campaign, kind: str) -> list[Option]:
+        if kind in ("investigate", "block"):
+            entries = [e for e in campaign.seen_logs() if kind == "block" or not e.investigated]
+            return [Option(e.text, str(e.id), tag=f"{e.source}, day {e.day}  {look.confidence_hint(e, self.level)}") for e in entries] + [Option("Back", BACK)]
+        if kind == "reset":
+            return [Option(f"{e.name}, {e.role}", e.id) for e in self.company.employees] + [Option("Back", BACK)]
+        return [
+            Option(f"{s.name} ({s.id})", s.id, disabled="already isolated" if s.id in campaign.foothold.isolated else None)
+            for s in self.company.servers
+        ] + [Option("Back", BACK)]
+
+    def blue_turn(self, campaign: Campaign) -> bool:
+        while True:
+            self.ui.say(look.blue_status_bar(campaign, self.easy))
+            kind = self.ui.select("Your move as the analyst", self.blue_options(campaign))
+            if kind == WAIT:
+                return False
+            target = None
+            if kind != "logs":
+                target = self.ui.select("Which one?", self.blue_target_options(campaign, kind))
+                if target == BACK:
+                    continue
+            fresh = campaign.unseen_logs()
+            action = campaign.blue(kind, target)
+            if kind == "logs" and fresh:
+                self.ui.say(look.log_table(fresh, self.level))
+            self.ui.say(look.blue_action_text(action))
+            self.ui.say()
+            return True
+
+    def defend(self, campaign: Campaign) -> None:
         red = ai.RedAI(ai.RED_AI_KNOWLEDGE[self.level])
-        self.ui.say(Text("The attacker is out there. You only see what your tools catch.", style=look.MUTED))
+        self.ui.say(Text("The attacker is out there. Your tools write logs, but nobody reads them unless you do.", style=look.MUTED))
         self.ui.say()
-        ai.play_out(campaign, red, on_move=self.show_ai_move, on_night=self.show_blue_night)
+        while not campaign.finished:
+            move = red.next_move(campaign)
+            if move is not None:
+                self.show_ai_move(campaign.move(*move))
+                if not campaign.finished and campaign.blue_moves_left > 0:
+                    self.blue_turn(campaign)
+                continue
+            while not campaign.finished and campaign.blue_moves_left > 0:
+                if not self.blue_turn(campaign):
+                    break
+            if campaign.finished:
+                break
+            night = campaign.end_day()
+            if night:
+                self.show_blue_night(night)
+        if campaign.kicked_out:
+            self.ui.say(Text("You kicked the attacker out of the network.", style=f"bold {look.BLUE}"))
+
+    def blue_ai_reacts(self, campaign: Campaign, until_done: bool = False) -> None:
+        while campaign.active_blue and not campaign.finished:
+            step = self.blue_ai.next_action(campaign)
+            if step is None:
+                return
+            notice = look.red_notice(campaign.blue(*step))
+            if notice:
+                self.ui.say(notice)
+            if not until_done:
+                return
 
     def run(self) -> Campaign:
         if self.random_side:
@@ -335,10 +420,10 @@ class Game:
             defenses = self.pick_defenses()
             arsenal = self.pick_arsenal()
         edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
-        campaign = Campaign(self.company, self.catalog, defenses, arsenal, rng=self.rng, edge=edge)
+        campaign = Campaign(self.company, self.catalog, defenses, arsenal, rng=self.rng, edge=edge, active_blue=True)
         self.ui.say()
         if self.side == "blue":
-            self.watch_attack(campaign)
+            self.defend(campaign)
         else:
             self.play_turns(campaign)
         self.ui.say()
