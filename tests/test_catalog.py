@@ -42,3 +42,7 @@ def test_defense_against_unknown_attack_is_rejected(catalog):
     catalog.defenses["mfa"].blocks["time-travel"] = 0.5
     with pytest.raises(CatalogError):
         validate(catalog)
+
+
+def test_every_attack_has_a_cost(catalog):
+    assert all(attack.cost > 0 for attack in catalog.attacks.values())

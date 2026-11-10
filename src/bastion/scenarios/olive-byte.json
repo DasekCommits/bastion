@@ -4,6 +4,7 @@
   "tier": "small",
   "description": "A family business that sells olive oil online. Five people, one website, and a lot of customer data.",
   "budget": 100,
+  "red_budget": 100,
   "team_size": 1,
   "servers": [
     {

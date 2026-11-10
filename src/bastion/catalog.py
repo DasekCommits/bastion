@@ -28,6 +28,7 @@ class Attack:
     target: str
     base_success: float
     noise: float
+    cost: int
     description: str
 
     @property
@@ -80,6 +81,8 @@ def validate(catalog: Catalog) -> None:
             raise CatalogError(f"Attack '{attack.id}' has an unknown target '{attack.target}'")
         if not _is_chance(attack.base_success) or not _is_chance(attack.noise):
             raise CatalogError(f"Attack '{attack.id}' needs base_success and noise from 0 to 1")
+        if attack.cost <= 0:
+            raise CatalogError(f"Attack '{attack.id}' must cost more than 0")
 
     for defense in catalog.defenses.values():
         if defense.category not in CATEGORIES:

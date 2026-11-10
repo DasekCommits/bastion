@@ -5,6 +5,8 @@ from bastion.catalog import Attack, Catalog, Defense
 from bastion.company import Company, Employee
 
 BLIND_PENALTY = 0.5
+HEAT_PER_NOISE = 0.08
+REPEAT_HEAT = 0.1
 NEEDS_FOOTHOLD = ("privilege-escalation", "lateral-movement", "exfiltration", "impact")
 
 
@@ -31,6 +33,7 @@ class StepResult:
     helped: list[str]
     missing: list[str]
     points: int = 0
+    heat: float = 0.0
 
 
 @dataclass
@@ -49,6 +52,7 @@ class Report:
     company: Company
     defenses: list[str]
     budget_used: int
+    red_budget_used: int
     results: list[StepResult]
     caught: bool
     points: int
@@ -77,7 +81,7 @@ def check_defenses(company: Company, catalog: Catalog, defense_ids: list[str]) -
     return cost
 
 
-def check_plan(company: Company, catalog: Catalog, plan: list[Step]) -> None:
+def check_plan(company: Company, catalog: Catalog, plan: list[Step]) -> int:
     server_ids = {server.id for server in company.servers}
     employee_ids = {employee.id for employee in company.employees}
     for step in plan:
@@ -87,6 +91,10 @@ def check_plan(company: Company, catalog: Catalog, plan: list[Step]) -> None:
         valid_targets = server_ids if attack.target == "server" else employee_ids
         if step.target_id not in valid_targets:
             raise PlanError(f"'{step.target_id}' is not a valid {attack.target} for '{attack.id}'")
+    cost = sum(catalog.attacks[step.attack_id].cost for step in plan)
+    if cost > company.red_budget:
+        raise PlanError(f"This attack costs {cost}, but the Red Team budget is {company.red_budget}")
+    return cost
 
 
 def success_chance(attack: Attack, defenses: list[Defense]) -> float:
@@ -101,6 +109,11 @@ def detect_chance(attack: Attack, defenses: list[Defense]) -> float:
     for defense in defenses:
         missed *= 1 - defense.detects.get(attack.id, 0)
     return attack.noise * (1 - missed)
+
+
+def heat_gain(attack: Attack, defenses: list[Defense], times_used_before: int) -> float:
+    watchers = sum(1 for defense in defenses if defense.category == "detect")
+    return attack.noise * HEAT_PER_NOISE * (1 + watchers) + REPEAT_HEAT * times_used_before
 
 
 def has_admin_rights(employee: Employee, defense_ids: list[str]) -> bool:
@@ -192,13 +205,15 @@ def run_attack(
     rng: random.Random | None = None,
 ) -> Report:
     budget_used = check_defenses(company, catalog, defense_ids)
-    check_plan(company, catalog, plan)
+    red_budget_used = check_plan(company, catalog, plan)
     rng = rng or random.Random(seed)
     defenses = [catalog.defenses[defense_id] for defense_id in defense_ids]
     foothold = Foothold()
     results = []
     stolen, encrypted = [], []
     caught = False
+    heat = 0.0
+    used = {}
 
     for step in plan:
         attack = catalog.attacks[step.attack_id]
@@ -218,7 +233,9 @@ def run_attack(
             chance = 1.0
             note = "Already an administrator here, nothing to escalate."
 
-        spotted = detect_chance(attack, defenses)
+        heat = min(1.0, heat + heat_gain(attack, defenses, used.get(attack.id, 0)))
+        used[attack.id] = used.get(attack.id, 0) + 1
+        spotted = 1 - (1 - detect_chance(attack, defenses)) * (1 - heat)
         succeeded = rng.random() < chance
         detected = rng.random() < spotted
         points = 0
@@ -232,7 +249,7 @@ def run_attack(
                 encrypted.append(step.target_id)
 
         results.append(
-            StepResult(step, attack, True, note, chance, spotted, succeeded, detected, helped, missing, points)
+            StepResult(step, attack, True, note, chance, spotted, succeeded, detected, helped, missing, points, heat)
         )
         if detected:
             caught = True
@@ -242,6 +259,7 @@ def run_attack(
         company=company,
         defenses=list(defense_ids),
         budget_used=budget_used,
+        red_budget_used=red_budget_used,
         results=results,
         caught=caught,
         points=sum(result.points for result in results),

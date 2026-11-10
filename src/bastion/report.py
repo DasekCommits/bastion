@@ -12,20 +12,24 @@ def format_report(report: Report, catalog: Catalog) -> str:
         f"BASTION POST-MORTEM: {company.name} ({company.tier})",
         "=" * 60,
         f"Defenses: {', '.join(report.defenses) or 'none'}",
-        f"Budget used: {report.budget_used}/{company.budget}",
+        f"Blue budget used: {report.budget_used}/{company.budget}",
+        f"Red budget used:  {report.red_budget_used}/{company.red_budget}",
         "",
     ]
 
     for number, result in enumerate(report.results, start=1):
         attack = result.attack
-        lines.append(f"{number}. {attack.name} -> {result.step.target_id}   [{attack.mitre_id} {attack.tactic}]")
+        lines.append(
+            f"{number}. {attack.name} -> {result.step.target_id}   "
+            f"[{attack.mitre_id} {attack.tactic}, cost {attack.cost}]"
+        )
         if not result.possible:
             lines.append(f"   SKIPPED  {result.note}")
         else:
             outcome = "SUCCESS" if result.succeeded else "BLOCKED"
             lines.append(
                 f"   {outcome}  chance {_percent(result.success_chance)}, "
-                f"detection {_percent(result.detect_chance)}"
+                f"detection {_percent(result.detect_chance)}, heat {_percent(result.heat)}"
             )
             if result.note:
                 lines.append(f"   {result.note}")

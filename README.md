@@ -44,6 +44,7 @@ Both sides are limited and both sides score points.
 - **Stealth bonus:** x1.5 if you were never detected
 - **Speed bonus:** fewer steps, more points
 - **Attack budget:** every technique has a cost. A phishing email is cheap, a zero-day exploit is expensive, so attackers have to choose as carefully as defenders.
+- **Heat:** every step makes noise, and noise adds up. Repeating the same attack raises suspicion even faster, and detection tools such as SIEM and EDR make heat rise quicker. The longer and louder you are, the more likely you get caught.
 
 **Ranking** uses an ELO rating, as in chess: breaking a strong fortress is worth more than breaking a weak one.
 

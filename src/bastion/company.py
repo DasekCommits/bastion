@@ -40,6 +40,7 @@ class Company:
     tier: str
     description: str
     budget: int
+    red_budget: int
     team_size: int
     servers: list[Server]
     employees: list[Employee]
@@ -92,6 +93,7 @@ def load_company(path: Path) -> Company:
         tier=raw["tier"],
         description=raw["description"],
         budget=raw["budget"],
+        red_budget=raw["red_budget"],
         team_size=raw["team_size"],
         servers=[Server(**item) for item in raw["servers"]],
         employees=[Employee(**item) for item in raw["employees"]],

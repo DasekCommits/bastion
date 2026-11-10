@@ -7,6 +7,7 @@
     "target": "server",
     "base_success": 0.95,
     "noise": 0.6,
+    "cost": 5,
     "description": "Scan the company's public servers to find open ports and the software versions behind them."
   },
   {
@@ -17,6 +18,7 @@
     "target": "employee",
     "base_success": 0.6,
     "noise": 0.3,
+    "cost": 10,
     "description": "Send a fake email that tricks an employee into opening a malicious attachment or typing their password on a fake login page."
   },
   {
@@ -27,6 +29,7 @@
     "target": "server",
     "base_success": 0.7,
     "noise": 0.4,
+    "cost": 25,
     "description": "Use a known vulnerability in outdated software on an internet-facing server, such as an old CMS or PHP version."
   },
   {
@@ -37,6 +40,7 @@
     "target": "employee",
     "base_success": 0.4,
     "noise": 0.8,
+    "cost": 5,
     "description": "Try thousands of common passwords against a login page until one works."
   },
   {
@@ -47,6 +51,7 @@
     "target": "server",
     "base_success": 0.6,
     "noise": 0.4,
+    "cost": 20,
     "description": "Exploit a bug in the operating system or a service to turn a normal account into an administrator."
   },
   {
@@ -57,6 +62,7 @@
     "target": "server",
     "base_success": 0.6,
     "noise": 0.5,
+    "cost": 10,
     "description": "Use stolen credentials to log in to other machines on the network through Remote Desktop."
   },
   {
@@ -67,6 +73,7 @@
     "target": "server",
     "base_success": 0.8,
     "noise": 0.5,
+    "cost": 15,
     "description": "Copy valuable data out of the company over the attacker's own connection."
   },
   {
@@ -77,6 +84,7 @@
     "target": "server",
     "base_success": 0.8,
     "noise": 0.9,
+    "cost": 30,
     "description": "Encrypt the company's files and demand money to unlock them."
   },
   {
@@ -87,6 +95,7 @@
     "target": "employee",
     "base_success": 0.3,
     "noise": 0.3,
+    "cost": 10,
     "description": "Try usernames and passwords leaked from other websites, hoping an employee reused the same password at work."
   }
 ]
