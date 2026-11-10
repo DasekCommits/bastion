@@ -170,20 +170,16 @@ class BlueAI:
         self.hunted: set[str] = set()
 
     def _contain(self, campaign: Campaign) -> tuple[str, str | int] | None:
+        people = {e.id for e in campaign.company.employees}
         for entry in campaign.seen_logs():
-            if not entry.investigated or not entry.real or entry.id in self.handled:
+            if not entry.real or entry.id in self.handled:
                 continue
-            self.handled.add(entry.id)
+            if entry.succeeded and entry.attack_id not in (None, "port-scan"):
+                self.handled.add(entry.id)
+                return ("reset", entry.target_id) if entry.target_id in people else ("isolate", entry.target_id)
             if entry.from_outside and not entry.succeeded and entry.attack_id:
+                self.handled.add(entry.id)
                 return "block", entry.id
-            if not entry.succeeded:
-                continue
-            target = entry.target_id
-            if any(e.id == target for e in campaign.company.employees):
-                return "reset", target
-            if entry.attack_id == "port-scan":
-                continue
-            return "isolate", target
         return None
 
     def _pick(self, entries):
@@ -193,18 +189,21 @@ class BlueAI:
             return max(entries, key=lambda e: e.confidence + self.rng.uniform(-0.25, 0.25))
         return self.rng.choice(entries)
 
+    _FLOOR = {"easy": 0.55, "medium": 0.7, "hard": 0.85}
+
     def next_action(self, campaign: Campaign) -> tuple[str, str | int | None] | None:
         if campaign.blue_moves_left <= 0 or campaign.finished:
             return None
         contain = self._contain(campaign)
         if contain:
             return contain
-        open_entries = [e for e in campaign.seen_logs() if not e.investigated]
-        if open_entries:
-            return "investigate", self._pick(open_entries).id
-        if self.checked_after < len(campaign.results) or campaign.blue_moves_today == 0:
-            self.checked_after = len(campaign.results)
+        if campaign.unseen_logs():
             return "logs", None
+        # a good analyst spends time only on alerts that look real, not on every false alarm
+        floor = self._FLOOR[self.knowledge]
+        suspicious = [e for e in campaign.seen_logs() if not e.investigated and e.confidence >= floor]
+        if suspicious:
+            return "investigate", self._pick(suspicious).id
         if self.knowledge != "hard":
             valuable = sorted(
                 (s for s in campaign.company.servers if s.id not in self.hunted),

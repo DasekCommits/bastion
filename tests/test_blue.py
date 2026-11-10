@@ -47,7 +47,7 @@ def active(company, catalog, defenses, arsenal, *rolls):
 
 
 def test_detection_only_writes_a_log_nobody_is_kicked(company, catalog):
-    campaign = active(company, catalog, ["siem"], ["phishing"], 0.0, 0.0)
+    campaign = active(company, catalog, ["email-filter"], ["phishing"], 0.0, 0.0)
     result = campaign.move("phishing", "emily")
     assert result.succeeded and result.detected
     assert not campaign.caught and "emily" in campaign.foothold.employees
@@ -55,7 +55,7 @@ def test_detection_only_writes_a_log_nobody_is_kicked(company, catalog):
 
 
 def test_blue_must_look_at_the_logs_before_investigating(company, catalog):
-    campaign = active(company, catalog, ["siem"], ["phishing"], 0.0, 0.0)
+    campaign = active(company, catalog, ["email-filter"], ["phishing"], 0.0, 0.0)
     campaign.move("phishing", "emily")
     real = next(entry for entry in campaign.logs if entry.real)
     with pytest.raises(PlanError):
@@ -100,8 +100,9 @@ def test_isolating_a_server_cuts_off_access_through_accounts(company, catalog):
 
 
 def test_password_reset_keeps_access_gained_another_way(company, catalog):
-    campaign = active(company, catalog, [], ["phishing", "exfiltration"], 0.0, 0.99, 0.0, 0.99)
+    campaign = active(company, catalog, [], ["phishing", "exfiltration"], 0.0, 0.0)
     campaign.move("phishing", "emily")
+    campaign.day = 2  # the attacker settles in; stealing is possible the next day
     campaign.move("exfiltration", "web-01")
     assert "db-01" in campaign.foothold.servers
     campaign.blue("reset", "emily")
@@ -180,8 +181,9 @@ def test_stealing_the_sealed_file_counts_toward_realism(catalog):
     vault = next(a.location for a in bank.data if a.id == SEALED_ID)
     bank.red_budget = 500
     campaign = Campaign(bank, catalog, [], ["phishing", "exfiltration"], rng=random.Random(1), active_blue=True)
-    campaign.rng = Rolls(0.0, 0.99, 0.0, 0.99)
+    campaign.rng = Rolls(0.0, 0.0)
     campaign.move("phishing", "sofia")
+    campaign.day = 2  # settle in before stealing
     result = campaign.move("exfiltration", vault)
     assert "not on any inventory" in result.note
     profile = Profile(secrets={"sealed": 9})

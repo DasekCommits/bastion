@@ -109,11 +109,26 @@
   }
 
   // choose which connections the network map draws
-  app.addEventListener("change", (e) => {
-    const sel = e.target.closest(".map-focus");
-    if (!sel || !S.map) return;
-    S.map.focus = sel.value;
+  function redrawMaps() {
     app.querySelectorAll(".map-panel").forEach((el) => { el.innerHTML = mapInner(); });
+  }
+  function setFocus(value) {
+    if (!S.map || !S.start) return;
+    const v = value.trim().toLowerCase();
+    if (v === "none" || v === "all" || v === "") S.map.focus = v || "none";
+    else {
+      const c = S.start.company;
+      const node = c.people.find((p) => p.name.toLowerCase() === v) || c.servers.find((s) => s.name.toLowerCase() === v || s.id.toLowerCase() === v);
+      S.map.focus = node ? node.id : S.map.focus;
+    }
+    redrawMaps();
+  }
+  app.addEventListener("change", (e) => {
+    if (e.target.closest(".map-focus")) setFocus(e.target.value);
+  });
+  app.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-focus]");
+    if (chip) setFocus(chip.dataset.focus);
   });
 
   // live filter: an <input class="row-filter" data-rows=".selector"> hides rows whose data-search misses the query
@@ -421,12 +436,13 @@
     const c = S.start.company;
     const f = S.map.focus;
     const opt = (v, label) => `<option value="${esc(v)}" ${f === v ? "selected" : ""}>${esc(label)}</option>`;
+    const current = f === "none" || f === "all" ? f
+      : (c.people.find((p) => p.id === f)?.name || c.servers.find((s) => s.id === f)?.name || "");
     const control = c.people.length > 14
-      ? `<div class="filterbar"><label>Connections: <select class="map-focus">
-          ${opt("none", "none")}${opt("all", "all (busy)")}
-          <optgroup label="machines">${c.servers.map((s) => opt(s.id, s.name)).join("")}</optgroup>
-          <optgroup label="people">${c.people.map((p) => opt(p.id, p.name)).join("")}</optgroup>
-        </select></label></div>`
+      ? `<div class="filterbar"><label>Connections for: <input class="map-focus" list="focus-list" value="${esc(current)}" placeholder="type a name or machine…" autocomplete="off"></label>
+          <button class="chip ${f === "none" ? "on" : ""}" data-focus="none">none</button>
+          <button class="chip ${f === "all" ? "on" : ""}" data-focus="all">all</button>
+          <datalist id="focus-list">${c.servers.map((s) => `<option value="${esc(s.name)}">`).join("")}${c.people.map((p) => `<option value="${esc(p.name)}">`).join("")}</datalist></div>`
       : "";
     return `${control}${mapSvg()}
       <div class="legend"><span><i></i>untouched</span><span><i class="owned"></i>attacker inside</span><span><i class="admin"></i>attacker is admin</span><span><i class="scan"></i>scanned</span></div>`;
@@ -788,7 +804,7 @@
         <form class="act" data-kind="block"><label>Block an address at the firewall</label><div class="row"><input id="block-ip" placeholder="203.0.113.7" autocomplete="off"><button class="btn">Block</button></div></form>
         <form class="act" data-kind="disable"><label>Disable an account</label><div class="row"><select id="disable-user">${st.accounts.map((a) => `<option value="${esc(a.username)}">${esc(a.username)} (${esc(a.name)})</option>`).join("")}</select><button class="btn">Disable</button></div></form>
         <form class="act" data-kind="isolate"><label>Isolate a machine</label><div class="row"><select id="isolate-host">${hosts.map((h) => `<option value="${esc(h.hostname)}">${esc(h.hostname)} (${esc(h.name)})</option>`).join("")}</select><button class="btn">Isolate</button></div></form>
-        <div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="wait">${st.phase === "day_end" ? "End the day" : "Let time pass"}</button></div></div>`;
+        <div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="wait">${st.phase === "day_end" ? "End the day" : "Let time pass"}</button><button class="btn ghost" id="giveup">End it now</button></div></div>`;
     show(`<section class="step siem">
       <div class="panel">
         <form id="search" class="searchbar"><input id="query" value="${esc(S.siem.query)}" spellcheck="false" autocomplete="off" aria-label="Search"><button class="btn">Search</button></form>
@@ -818,6 +834,7 @@
       siemAct(kind, value);
     }));
     document.getElementById("wait")?.addEventListener("click", () => { siemTake(api("realism_wait")); renderSiem(); });
+    document.getElementById("giveup")?.addEventListener("click", () => renderFinal(api("give_up")));
     document.getElementById("result")?.addEventListener("click", () => renderFinal(api("finish")));
   }
 

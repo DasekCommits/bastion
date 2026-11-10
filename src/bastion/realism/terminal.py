@@ -25,9 +25,10 @@ VERBS = {
 
 HELP = [
     "Commands use a verb and a target: a hostname, an address or a username.",
-    "  targets                 list machines and people",
+    "  targets [search]        list machines and people; add a word to filter (e.g. targets admin)",
     "  status                  what you control right now",
     "  sleep                   end the day",
+    "  giveup                  stop and see the result",
     "Moves (only the ones in your arsenal work):",
 ]
 

@@ -201,14 +201,29 @@ class Session:
         if verb == "help":
             return json.dumps(self._terminal_reply(help_lines(c.arsenal, self.catalog)))
         if verb == "targets":
-            lines = ["Machines:"]
-            for h in world.hosts.values():
-                where = f"public {h.public_ip}" if h.public_ip else "internal"
-                lines.append(f"  {h.hostname:<14} {h.ip:<13} {where:<22} {h.name}")
-            lines.append("People:")
-            for e in self.company.employees:
-                lines.append(f"  {world.accounts[e.id].username:<14} {e.role}")
+            query = " ".join(args).lower()
+            machines = [h for h in world.hosts.values()
+                        if not query or query in f"{h.hostname} {h.ip} {h.name}".lower()]
+            people = [e for e in self.company.employees
+                      if not query or query in f"{world.accounts[e.id].username} {e.role} {e.department}".lower()]
+            lines = []
+            if machines:
+                lines.append("Machines:")
+                for h in machines:
+                    where = f"public {h.public_ip}" if h.public_ip else "internal"
+                    lines.append(f"  {h.hostname:<14} {h.ip:<13} {where:<22} {h.name}")
+            if not query and len(people) > 20:
+                lines.append(f"People: {len(people)}. Too many to list. Type  targets <name or role>  to search, e.g. targets admin")
+            elif people:
+                lines.append("People:" if query else f"People ({len(people)}):")
+                for e in people:
+                    lines.append(f"  {world.accounts[e.id].username:<16} {e.role}")
+            if not machines and not people:
+                lines.append(f"Nothing matches '{query}'.")
             return json.dumps(self._terminal_reply(lines))
+        if verb in ("giveup", "quit", "exit"):
+            self.gave_up = True
+            return json.dumps(self._terminal_reply(["You walk away. The operation is over. Type nothing more; see the result."]))
         if verb == "status":
             f = c.foothold
             names = [world.hosts[s].hostname for s in sorted(f.servers)]

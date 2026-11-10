@@ -424,6 +424,7 @@ class Campaign:
         self.kicked_out = False
         self.egg_shown = False
         self.attacker_blocked = False
+        self.reached_on: dict[str, int] = {}
         self.egg_day: int | None = None
         self.egg_planned_day = 0
         if active_blue and company.tier == "large" and soc.EGG_RNG.random() < soc.EGG_CHANCE:
@@ -495,6 +496,10 @@ class Campaign:
             return Preview(False, "The Blue Team has isolated this machine. Nobody can reach it for now.", 0.0, 0.0, self.heat)
         if self.attacker_blocked and attack.tactic in OUTSIDE_TACTICS and self.foothold.is_empty():
             return Preview(False, "Your address is blocked at their firewall. Nothing from it gets through.", 0.0, 0.0, self.heat)
+        if self.active_blue and attack.tactic in ("exfiltration", "impact"):
+            reached = self.reached_on.get(target_id)
+            if reached is not None and reached >= self.day:
+                return Preview(False, "You only reached this machine today. Taking the data needs you to settle in first. Try tomorrow.", 0.0, 0.0, self.heat)
         possible, note = _is_possible(attack, target_id, self.company, self.foothold)
         if not possible:
             return Preview(False, note, 0.0, 0.0, self.heat)
@@ -543,7 +548,11 @@ class Campaign:
         self.heat = preview.heat_after
         self.used[attack.id] = self.used.get(attack.id, 0) + 1
         succeeded = self.rng.random() < preview.success_chance
-        detected = self.rng.random() < preview.detect_chance
+        if self.active_blue:
+            # a detection tool you own reliably records the attack; the challenge is finding it in the noise
+            detected = any(d.detects.get(attack.id, 0) > 0 for d in self.defenses)
+        else:
+            detected = self.rng.random() < preview.detect_chance
         note = preview.note
         points = 0
         was_inside = not self.foothold.is_empty()
@@ -566,6 +575,8 @@ class Campaign:
             if attack.tactic == "impact" and attack.target == "server" and points:
                 self.encrypted.append(target_id)
 
+        if succeeded:
+            self._stamp_reach()
         if self.active_blue:
             if detected:
                 self._log_real(attack, target_id, succeeded, not was_inside)
@@ -593,6 +604,14 @@ class Campaign:
         self.results.append(result)
         self.caught = result.kicked
         return result
+
+    def _stamp_reach(self) -> None:
+        reachable = set(self.foothold.servers)
+        for employee in self.company.employees:
+            if employee.id in self.foothold.employees:
+                reachable.update(employee.access)
+        for server_id in reachable:
+            self.reached_on.setdefault(server_id, self.day)
 
     def end_day(self) -> NightResult | None:
         if self.finished:

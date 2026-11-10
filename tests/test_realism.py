@@ -15,6 +15,12 @@ class Rolls:
     def random(self):
         return self.values.pop(0) if self.values else 0.99
 
+    def uniform(self, a, b):
+        return (a + b) / 2
+
+    def choice(self, items):
+        return items[0]
+
 
 @pytest.fixture
 def game():

@@ -7,10 +7,18 @@ from bastion.company import list_scenarios, roll_mistakes
 from bastion.engine import Campaign
 
 TARGETS = {
-    "small": {"easy": 0.8, "medium": 0.7, "hard": 0.5, "realism": 0.5},
-    "medium": {"easy": 0.7, "medium": 0.5, "hard": 0.3, "realism": 0.3},
-    "large": {"easy": 0.6, "medium": 0.3, "hard": 0.1, "realism": 0.1},
-    "huge": {"easy": 0.5, "medium": 0.25, "hard": 0.1, "realism": 0.08},
+    "red": {
+        "small": {"easy": 0.8, "medium": 0.7, "hard": 0.5},
+        "medium": {"easy": 0.7, "medium": 0.5, "hard": 0.3},
+        "large": {"easy": 0.6, "medium": 0.3, "hard": 0.1},
+        "huge": {"easy": 0.5, "medium": 0.25, "hard": 0.1},
+    },
+    "blue": {
+        "small": {"easy": 0.65, "medium": 0.5, "hard": 0.35},
+        "medium": {"easy": 0.6, "medium": 0.45, "hard": 0.3},
+        "large": {"easy": 0.5, "medium": 0.3, "hard": 0.2},
+        "huge": {"easy": 0.45, "medium": 0.28, "hard": 0.15},
+    },
 }
 LEVELS = ("easy", "medium", "hard")
 SIDES = ("red", "blue")
@@ -43,7 +51,7 @@ def tune(games: int = 200, steps: int = 9) -> dict:
         for side in SIDES:
             table[side][company.tier] = {}
             for level in LEVELS:
-                goal = TARGETS[company.tier][level]
+                goal = TARGETS[side][company.tier][level]
                 low, high = 0.02, 80.0
                 for _ in range(steps):
                     mid = (low * high) ** 0.5
@@ -77,7 +85,7 @@ def check(games: int = 200, tolerance: float = 0.08) -> list[tuple[str, str, str
     for company in list_scenarios():
         for side in SIDES:
             for level in LEVELS:
-                goal = TARGETS[company.tier][level]
+                goal = TARGETS[side][company.tier][level]
                 edge = load_edge(company.tier, level, side)
                 rate = win_rate(company, catalog, level, side, edge, games)
                 rows.append((company.id, side, level, goal, rate, abs(rate - goal) <= tolerance))
