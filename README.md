@@ -138,6 +138,14 @@ python -m bastion balance --all        # read the game log and list choices that
 
 Every finished game is written to `~/.bastion/games.jsonl`. CI runs the tests and the balance check on every push.
 
+### WAF rule sandbox
+
+```bash
+python -m bastion waf
+```
+
+Write your own Web Application Firewall rules in `~/.bastion/waf-rules.json` (regular expressions plus normalization steps such as URL decoding). The sandbox fires 40 real SQL injection, XSS and path traversal payloads at them, including the tricks attackers use to slip past filters, plus 25 innocent customer requests. You see what got through, which innocent customers you blocked, and a score. Rules that hang on crafted input (ReDoS) are stopped after five seconds.
+
 ## Safety
 
 Bastion never attacks real systems. The network is simulated, and payloads only run against an isolated rule engine, never against a live server.
@@ -163,7 +171,7 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 - [x] Full scoring system (Blue and Red points, stealth and speed bonuses)
 - [x] Play one side against the computer, random side for double points
 - [x] Tier unlocks
-- [ ] WAF rule sandbox (real payloads vs. real rules)
+- [x] WAF rule sandbox (real payloads vs. your own rules)
 - [ ] Web API and playable browser UI
 - [ ] Accounts, public leaderboard and ELO ranking
 - [x] CI with tests and an automatic balance check
@@ -172,7 +180,7 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 
 ## Status
 
-Playable from the command line: three companies, three difficulties, Blue, Red or random against the computer, 22 attacks and 25 defenses. Next up is the WAF rule sandbox.
+Playable from the command line: three companies, three difficulties, Blue, Red or random against the computer, 22 attacks and 25 defenses. Next up is putting it online.
 
 ## License
 

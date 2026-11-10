@@ -57,6 +57,10 @@ def main(argv: list[str] | None = None) -> int:
         return balance(argv[1:])
     if argv and argv[0] == "check-balance":
         return check_balance(argv[1:])
+    if argv and argv[0] == "waf":
+        from bastion.waf_cli import main as waf
+
+        return waf(argv[1:])
 
     parser = argparse.ArgumentParser(prog="bastion", description="Build a defense. Switch sides. Break it.")
     parser.add_argument("--scenario", default="olive-byte")

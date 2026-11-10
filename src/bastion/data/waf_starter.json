@@ -1,0 +1,14 @@
+{
+  "normalize": ["url-decode", "lowercase"],
+  "rules": [
+    {"id": "sql-always-true", "pattern": "'\\s*or\\s+.+=", "note": "a quote, then OR, then a comparison: ' OR 1=1"},
+    {"id": "sql-union", "pattern": "union\\s+(all\\s+)?select", "note": "UNION SELECT reads another table"},
+    {"id": "sql-comment-end", "pattern": "('|\")\\s*(--|#)", "note": "a quote followed by a comment cuts off the rest of the query"},
+    {"id": "sql-stacked", "pattern": ";\\s*(drop|delete|insert|update|waitfor)\\b", "note": "a second, dangerous query after a semicolon"},
+    {"id": "sql-sleep", "pattern": "\\b(sleep|benchmark)\\s*\\(", "note": "time-based blind injection"},
+    {"id": "xss-script", "pattern": "<script", "note": "a script tag"},
+    {"id": "xss-event", "pattern": "\\bon\\w+\\s*=", "note": "an event handler such as onerror= or onload="},
+    {"id": "xss-js-url", "pattern": "javascript:", "note": "a javascript: link"},
+    {"id": "traversal", "pattern": "\\.\\./", "note": "climbing up folders with ../"}
+  ]
+}
