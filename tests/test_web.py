@@ -102,3 +102,28 @@ def test_realism_blue_searches_real_logs_and_acts():
     final = json.loads(session.finish())
     assert final["score"]["side"] == "blue"
     assert "small/realism" in json.loads(final["profile_json"])["wins"] or not final["score"]["won"]
+
+
+def test_realism_red_terminal_drives_the_game():
+    session = Session(json.dumps({"points": 0, "games": 0, "wins": {}, "secrets": {"sealed": 10}}))
+    session.start("olive-byte", "realism", "red", seed=3)
+    assert json.loads(session.set_arsenal(json.dumps(["port-scan", "phishing", "exfiltration"])))["ok"]
+    intro = json.loads(session.begin())
+    assert "help" in " ".join(intro["lines"])
+    helped = json.loads(session.terminal("help"))
+    assert any(line.strip().startswith("phish") for line in helped["lines"])
+    assert any("guess" in line for line in helped["lines"]) is False
+    targets = json.loads(session.terminal("targets"))
+    assert any("OLI-WEB01" in line for line in targets["lines"])
+    assert "not in the arsenal" in json.loads(session.terminal("guess maria"))["lines"][0]
+    assert "not a valid target" in json.loads(session.terminal("phish nobody"))["lines"][0]
+    moved = json.loads(session.terminal("recon OLI-WEB01"))
+    assert moved["lines"][0].startswith("[T1595]") and moved["moves_left"] == 2
+    assert json.loads(session.terminal("status"))["lines"][0].startswith("Day 1")
+    reply = json.loads(session.terminal("sleep"))
+    guard = 0
+    while not reply["finished"] and guard < 30:
+        reply = json.loads(session.terminal("sleep"))
+        guard += 1
+    assert reply["finished"]
+    assert json.loads(session.finish())["score"]["side"] == "red"

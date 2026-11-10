@@ -163,12 +163,12 @@
     const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
     if (S.settings.level && S.settings.level !== "realism" && menu.levels[S.settings.level]) S.settings.level = null;
     if (S.settings.level === "realism" && !menu.realism) S.settings.level = null;
-    if (S.settings.level === "realism" && S.settings.side && S.settings.side !== "blue") S.settings.side = null;
+    if (S.settings.level === "realism" && S.settings.side === "practice") S.settings.side = null;
     const level = S.settings.level || "easy";
     const card = (group, item, extra = "", cls = "") => {
       const lockedLevel = group === "level" && menu.levels[item.id];
-      if (group === "side" && S.settings.level === "realism" && item.id !== "blue") {
-        return `<button class="choice" disabled><strong>${esc(item.name)}</strong><small>Realism is Blue only for now. The Red terminal opens soon.</small></button>`;
+      if (group === "side" && S.settings.level === "realism" && item.id === "practice") {
+        return `<button class="choice" disabled><strong>${esc(item.name)}</strong><small>Realism has no practice mode.</small></button>`;
       }
       if (lockedLevel) {
         return `<button class="choice" disabled><strong>${esc(item.name)}</strong><small>Locked: ${esc(lockedLevel)}</small></button>`;
@@ -336,6 +336,7 @@
       onDone: (ids) => {
         const res = api("set_arsenal", JSON.stringify(ids));
         if (!res.ok) { document.getElementById("warn").textContent = res.error; return; }
+        if (S.settings.level === "realism") return startTerminal(api("begin"));
         S.turn = api("begin");
         renderPlay();
       },
@@ -782,6 +783,55 @@
     siemFeed(`<div class="entry"><span class="stamp blue">${names[kind]}</span><span class="what">${esc(value)}</span><br><span class="detail">${esc(res.text)}</span></div>`);
     siemTake(res.state);
     if (S.siem.result) runSearch(); else renderSiem();
+  }
+
+  function startTerminal(reply) {
+    S.term = { lines: [], history: [], pointer: 0, state: reply };
+    termPush(reply.lines);
+    renderTerminal();
+  }
+
+  function termPush(lines, prompt) {
+    if (prompt) S.term.lines.push({ kind: "cmd", text: prompt });
+    for (const line of lines) S.term.lines.push({ kind: line.startsWith("! ") ? "alert" : "out", text: line });
+    S.term.lines = S.term.lines.slice(-400);
+  }
+
+  function renderTerminal() {
+    const st = S.term.state;
+    const pips = (on, total, cls = "") => `<span class="pips ${cls}">${Array.from({ length: total }, (_, i) => `<i class="${i < on ? "on" : ""}"></i>`).join("")}</span>`;
+    gauges.innerHTML = `<span class="gauge">Day <b>${st.day}/${st.max_days}</b> ${pips(st.day, st.max_days)}</span><span class="gauge">Moves ${pips(st.moves_left, st.moves_per_day, "moves")}</span>`;
+    gauges.hidden = false;
+    show(`<section class="step">
+      <div class="panel terminal" id="term">
+        <div class="screen" id="screen">${S.term.lines.map((l) => `<div class="${l.kind}">${l.kind === "cmd" ? '<span class="prompt">red@bastion:~$</span> ' : ""}${esc(l.text)}</div>`).join("")}</div>
+        ${st.finished ? "" : `<form id="cmd" class="cmdline"><span class="prompt">red@bastion:~$</span><input id="cmd-input" autocomplete="off" spellcheck="false" aria-label="Command"></form>`}
+      </div>
+      ${st.finished ? '<div class="btn-row"><button class="btn" id="result">See the result</button></div>' : '<p class="muted" style="margin:0;font-size:13px">Every move leaves traces in their logs. A computer analyst is reading them.</p>'}
+    </section>`);
+    const screen = document.getElementById("screen");
+    screen.scrollTop = screen.scrollHeight;
+    const input = document.getElementById("cmd-input");
+    if (input) {
+      input.focus();
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowUp" && S.term.history.length) { S.term.pointer = Math.max(0, S.term.pointer - 1); input.value = S.term.history[S.term.pointer]; e.preventDefault(); }
+        if (e.key === "ArrowDown" && S.term.history.length) { S.term.pointer = Math.min(S.term.history.length, S.term.pointer + 1); input.value = S.term.history[S.term.pointer] || ""; e.preventDefault(); }
+      });
+      document.getElementById("cmd").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const command = input.value.trim();
+        if (!command) return;
+        S.term.history.push(command);
+        S.term.pointer = S.term.history.length;
+        if (command === "clear") { S.term.lines = []; return renderTerminal(); }
+        const reply = api("terminal", command);
+        S.term.state = reply;
+        termPush(reply.lines, command);
+        renderTerminal();
+      });
+    }
+    document.getElementById("result")?.addEventListener("click", () => renderFinal(api("finish")));
   }
 
   function renderFinal(final) {

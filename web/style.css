@@ -367,6 +367,13 @@ button.ip { border: none; background: none; padding: 0; color: var(--blue); text
 .act .row { display: flex; gap: 6px; }
 .act input, .act select { flex: 1; min-width: 0; font: 13px var(--mono); padding: 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); }
 
+.terminal { background: #10151d; border-color: #10151d; color: #d7dee8; padding: 0; overflow: hidden; }
+.terminal .screen { font: 13px/1.6 var(--mono); padding: 16px 18px; height: 460px; overflow-y: auto; white-space: pre-wrap; }
+.terminal .alert { color: #ff8a7a; }
+.terminal .prompt { color: #7fb0ff; }
+.cmdline { display: flex; gap: 8px; align-items: center; border-top: 1px solid #263040; padding: 10px 18px; font: 13px var(--mono); }
+.cmdline input { flex: 1; background: transparent; border: none; color: #d7dee8; font: inherit; outline: none; }
+
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }
   .tips { grid-template-columns: 1fr; }

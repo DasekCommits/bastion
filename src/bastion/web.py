@@ -8,6 +8,7 @@ from bastion.company import list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, PlanError
 from bastion.realism.game import RealismGame
 from bastion.realism.spl import QueryError
+from bastion.realism.terminal import VERBS, help_lines, resolve
 from bastion.profile import Profile
 from bastion.report import format_report, percent
 
@@ -174,7 +175,80 @@ class Session:
             self.phase = "start"
             self._advance()
             return self.realism_state() if self.realism else self.blue_state()
+        if self.realism:
+            intro = ["Connected. You are outside the network.", "Type help to see what you can do."]
+            return json.dumps(self._terminal_reply(intro))
         return self.turn()
+
+    def _terminal_reply(self, lines: list[str]) -> dict:
+        c = self.campaign
+        return {"lines": lines, "finished": c.finished or self.gave_up, "day": c.day,
+                "max_days": self.company.max_days, "moves_left": c.moves_left_today,
+                "moves_per_day": self.company.moves_per_day}
+
+    def terminal(self, line: str) -> str:
+        c, world = self.campaign, self.real.world
+        parts = line.strip().split()
+        if not parts:
+            return json.dumps(self._terminal_reply([]))
+        if c.finished:
+            return json.dumps(self._terminal_reply(["The operation is over."]))
+        verb, args = parts[0].lower(), parts[1:]
+        if verb == "help":
+            return json.dumps(self._terminal_reply(help_lines(c.arsenal, self.catalog)))
+        if verb == "targets":
+            lines = ["Machines:"]
+            for h in world.hosts.values():
+                where = f"public {h.public_ip}" if h.public_ip else "internal"
+                lines.append(f"  {h.hostname:<14} {h.ip:<13} {where:<22} {h.name}")
+            lines.append("People:")
+            for e in self.company.employees:
+                lines.append(f"  {world.accounts[e.id].username:<14} {e.role}")
+            return json.dumps(self._terminal_reply(lines))
+        if verb == "status":
+            f = c.foothold
+            names = [world.hosts[s].hostname for s in sorted(f.servers)]
+            admin = [world.hosts[s].hostname for s in sorted(f.admin_on)]
+            users = [world.accounts[e].username for e in sorted(f.employees)]
+            lines = [f"Day {c.day}/{self.company.max_days}, moves left today: {c.moves_left_today}",
+                     f"Accounts: {', '.join(users) or 'none'}", f"On machines: {', '.join(names) or 'none'}",
+                     f"Admin on: {', '.join(admin) or 'none'}"]
+            return json.dumps(self._terminal_reply(lines))
+        if verb == "sleep":
+            notices = self._blue_reacts(until_done=True)
+            lines = [f"! {n}" for n in notices]
+            if not c.finished:
+                night = self.real.end_day()
+                lines.append(f"Night {night.day} passes." if night else "That was the last day.")
+            if c.kicked_out:
+                lines.append("! The Blue Team closed every way you had in.")
+            return json.dumps(self._terminal_reply(lines))
+        attack_id = VERBS.get(verb)
+        if attack_id is None:
+            return json.dumps(self._terminal_reply([f"Unknown command '{verb}'. Type help."]))
+        if attack_id not in c.arsenal:
+            return json.dumps(self._terminal_reply([f"'{verb}' is not in the arsenal you bought."]))
+        if not args:
+            return json.dumps(self._terminal_reply([f"{verb} needs a target. Type targets to see them."]))
+        target = resolve(world, self.company, args[0])
+        if target is None or target not in c.targets_for(attack_id):
+            return json.dumps(self._terminal_reply([f"'{args[0]}' is not a valid target for {verb}."]))
+        if c.moves_left_today <= 0:
+            return json.dumps(self._terminal_reply(["You are out of moves today. Type sleep."]))
+        attack = self.catalog.attacks[attack_id]
+        result = self.real.red_move(attack_id, target)
+        label = world.hosts[target].hostname if target in world.hosts else world.accounts[target].username
+        lines = [f"[{attack.mitre_id}] {attack.name} -> {label}"]
+        if not result.possible:
+            lines.append(f"Not possible: {result.note}")
+        else:
+            lines.append("Done." if result.succeeded else "It did not work.")
+            if result.succeeded and result.note:
+                lines.append(result.note)
+        lines += [f"! {n}" for n in self._blue_reacts(until_done=False)]
+        if c.kicked_out:
+            lines.append("! The Blue Team closed every way you had in.")
+        return json.dumps(self._terminal_reply(lines))
 
     def _red(self, attack_id: str, target_id: str):
         if self.real:
