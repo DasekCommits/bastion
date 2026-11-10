@@ -334,6 +334,18 @@ def blue_night(night: NightResult, easy: bool) -> Text:
     return text
 
 
+def wins_text(profile) -> str:
+    from bastion.profile import TIER_NAMES
+
+    if not profile.wins:
+        return "none yet"
+    parts = []
+    for name, count in profile.wins.items():
+        tier, level = name.split("/")
+        parts.append(f"{TIER_NAMES[tier]} {level.capitalize()} {count}")
+    return ", ".join(parts)
+
+
 def score_panel(score, profile, unlocked: list[str]) -> Panel:
     color = BLUE if score.side == "blue" else RED
     verdict = Text("YOU WIN" if score.won else "YOU LOSE", style=f"bold {GREEN if score.won else RED}")
@@ -348,14 +360,12 @@ def score_panel(score, profile, unlocked: list[str]) -> Panel:
     lines.append("\n\nPoints this game  ", style=MUTED)
     lines.append(str(score.total), style=f"bold {AMBER}")
     lines.append(f"\nTotal points  {profile.points}   Games  {profile.games}   ", style=MUTED)
-    lines.append("Wins  " + ", ".join(f"{tier} {count}" for tier, count in profile.wins.items()) if profile.wins else "Wins  none yet", style=MUTED)
-    for tier in unlocked:
-        lines.append(f"\n\nUNLOCKED  the {tier} company is now open!", style=f"bold {GREEN}")
-    for tier in ("medium", "large"):
-        reason = profile.lock_reason(tier)
-        if reason and tier not in unlocked:
-            lines.append(f"\nLocked: {tier}, {reason}", style=FAINT)
-            break
+    lines.append("Wins  " + wins_text(profile), style=MUTED)
+    for name in unlocked:
+        lines.append(f"\n\nUNLOCKED  {name} is now open!", style=f"bold {GREEN}")
+    goal = profile.next_goal()
+    if goal:
+        lines.append(f"\n{goal}", style=FAINT)
     return Panel(lines, title="[bold]SCORE[/]", title_align="left", border_style=color, padding=(1, 2))
 
 

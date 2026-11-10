@@ -442,7 +442,7 @@ class Game:
         else:
             score = scoring.red_score(campaign, self.random_side)
         profile = load_profile()
-        unlocked = profile.record(self.company.tier, score.won, score.total)
+        unlocked = profile.record(self.company.tier, self.level, score.won, score.total)
         save_profile(profile)
         self.ui.say(look.score_panel(score, profile, unlocked))
 
@@ -539,10 +539,14 @@ def main(argv: list[str] | None = None, ui=None) -> int:
 
 
 def choose_settings(ui, given=None) -> tuple[str, str, str]:
+    profile = load_profile()
+    level_lock = {level: None if profile.level_open(level) else profile.lock_reason("small", level) for level in DIFFICULTIES}
     difficulty = (given and given.difficulty) or ui.select("Difficulty", [
         Option("Easy", "easy", description="Attacks work more often. Explanations, chances and heat. At the end: advice."),
-        Option("Medium", "medium", description="A fairer fight. Explanations but no numbers. At the end: what happened."),
-        Option("Hard", "hard", description="The defenders have the edge. No help at all. At the end: only the result."),
+        Option("Medium", "medium", description="A fairer fight. Explanations but no numbers. At the end: what happened.",
+               disabled=level_lock["medium"]),
+        Option("Hard", "hard", description="The defenders have the edge. No help at all. At the end: only the result.",
+               disabled=level_lock["hard"]),
     ])
     side = (given and given.side) or ui.select("Side", [
         Option("Blue", "blue", description="Defend the company. The computer attacks."),
@@ -552,10 +556,9 @@ def choose_settings(ui, given=None) -> tuple[str, str, str]:
     ])
     company_id = given and given.scenario
     if not company_id:
-        profile = load_profile()
         company_id = ui.select("Company", [
             Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people", description=c.description,
-                   disabled=profile.lock_reason(c.tier))
+                   disabled=profile.lock_reason(c.tier, difficulty))
             for c in list_scenarios()
         ])
     return difficulty, side, company_id

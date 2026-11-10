@@ -158,20 +158,28 @@
     setGauges(null);
     const menu = api("menu");
     const p = menu.profile;
-    const wins = Object.entries(p.wins).map(([tier, n]) => `${tier} ${n}`).join(", ") || "none yet";
+    const NAMES = { small: "Olive Byte", medium: "Harbor Clinic", large: "Meridian Bank" };
+    const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
+    if (S.settings.level && menu.levels[S.settings.level]) S.settings.level = null;
+    const level = S.settings.level || "easy";
     const card = (group, item, extra = "") => {
+      const lockedLevel = group === "level" && menu.levels[item.id];
+      if (lockedLevel) {
+        return `<button class="choice" disabled><strong>${esc(item.name)}</strong><small>Locked: ${esc(lockedLevel)}</small></button>`;
+      }
       const on = S.settings[group] === item.id;
       return `<button class="choice ${item.cls || ""}" data-group="${group}" data-id="${item.id}" aria-pressed="${on}" ${extra}${on ? ' style="border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)"' : ""}>
         <strong>${esc(item.name)}</strong><small>${esc(item.text)}</small></button>`;
     };
     const companies = menu.companies.map((c) => {
+      c.locked = menu.locks[level][c.id];
       const on = S.settings.company === c.id;
       return `<button class="choice" data-group="company" data-id="${c.id}" aria-pressed="${on}" ${c.locked ? "disabled" : ""}${on ? ' style="border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)"' : ""}>
         <span class="tag">${esc(c.tier)} · ${c.people} people</span>
         <strong>${esc(c.name)}</strong>
         <small>${esc(c.locked ? `Locked: ${c.locked}` : c.description)}</small></button>`;
     }).join("");
-    if (S.settings.company && menu.companies.find((c) => c.id === S.settings.company)?.locked) S.settings.company = null;
+    if (S.settings.company && menu.locks[level][S.settings.company]) S.settings.company = null;
     const ready = S.settings.level && S.settings.side && S.settings.company;
     const notice = S.notice ? `<p class="notice" role="status">${esc(S.notice)}</p>` : "";
     S.notice = "";
@@ -180,7 +188,7 @@
       ${notice}
       <div class="step-head">
         <div><p class="eyebrow">New game</p><h1>Pick your fight.</h1>${saveNote ? `<p class="muted" style="margin:8px 0 0;font-size:14px">${esc(saveNote)}</p>` : ""}</div>
-        <p class="profile-line">${p.points} points · ${p.games} games · wins: ${esc(wins)}</p>
+        <p class="profile-line">${p.points} points · ${p.games} games · wins: ${esc(wins)}${menu.goal ? `<br>${esc(menu.goal)}` : ""}</p>
       </div>
       <div class="settings">
         <div class="setting"><h3>Difficulty</h3><div class="choices">${LEVELS.map((l) => card("level", l)).join("")}</div></div>
@@ -662,8 +670,8 @@
         <div class="score-lines" style="margin-top:14px">Base ${s.base}${bonuses ? `<br>${bonuses}` : ""}${s.multiplier !== 1 ? `<br>×${s.multiplier} multiplier` : ""}</div>
         <p style="margin:10px 0 0">Points this game <span class="score-total">${s.total}</span></p>
         <p class="profile-line">Total ${final.profile.points} points · ${final.profile.games} games</p>
-        ${final.unlocked.map((t) => `<p class="unlock">Unlocked: the ${esc(t)} company is now open.</p>`).join("")}
-        ${Object.entries(final.locks).filter(([, v]) => v).slice(0, 1).map(([t, v]) => `<p class="note">Locked: ${esc(t)}, ${esc(v)}</p>`).join("")}</div>`;
+        ${final.unlocked.map((t) => `<p class="unlock">Unlocked: ${esc(t)} is now open.</p>`).join("")}
+        ${final.locks.goal ? `<p class="note">${esc(final.locks.goal)}</p>` : ""}</div>`;
     }
     const tips = final.tips ? `<div class="panel"><h3>What you could do</h3><div class="tips">
       <div><p class="blue" style="font-weight:600;margin:0">As Blue</p><ul>${final.tips.blue.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>

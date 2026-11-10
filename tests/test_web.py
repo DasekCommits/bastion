@@ -6,7 +6,8 @@ from bastion.web import Session
 def test_red_game_through_the_web_bridge():
     session = Session()
     menu = json.loads(session.menu())
-    assert [c["id"] for c in menu["companies"] if not c["locked"]] == ["olive-byte"]
+    assert [cid for cid, reason in menu["locks"]["easy"].items() if not reason] == ["olive-byte"]
+    assert menu["levels"]["medium"] and menu["levels"]["hard"]
     start = json.loads(session.start("olive-byte", "easy", "red", seed=3))
     assert start["side"] == "red" and start["company"]["people"]
     options = json.loads(session.attack_options())
@@ -29,7 +30,7 @@ def test_red_game_through_the_web_bridge():
 def test_blue_plays_analyst_turns_and_hard_hides_hints():
     session = Session(json.dumps({"points": 5, "games": 1, "wins": {"small": 5}}))
     menu = json.loads(session.menu())
-    assert {c["id"] for c in menu["companies"] if not c["locked"]} == {"olive-byte", "harbor-clinic"}
+    assert {cid for cid, reason in menu["locks"]["easy"].items() if not reason} == {"olive-byte", "harbor-clinic"}
     start = json.loads(session.start("harbor-clinic", "hard", "blue", seed=1))
     assert all(p["admin"] in ("yes", "?") for p in start["company"]["people"])
     assert "description" not in json.loads(session.defense_options())[0]

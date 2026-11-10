@@ -43,14 +43,21 @@ class Session:
         self.events: list[dict] = []
 
     def menu(self) -> str:
+        scenarios = list_scenarios()
         companies = [
-            {
-                "id": c.id, "name": c.name, "tier": c.tier, "people": len(c.employees),
-                "description": c.description, "locked": self.profile.lock_reason(c.tier),
-            }
-            for c in list_scenarios()
+            {"id": c.id, "name": c.name, "tier": c.tier, "people": len(c.employees), "description": c.description}
+            for c in scenarios
         ]
-        return json.dumps({"companies": companies, "profile": self._profile()})
+        locks = {
+            level: {c.id: self.profile.lock_reason(c.tier, level) for c in scenarios}
+            for level in ("easy", "medium", "hard")
+        }
+        levels = {
+            level: None if self.profile.level_open(level) else self.profile.lock_reason("small", level)
+            for level in ("easy", "medium", "hard")
+        }
+        return json.dumps({"companies": companies, "locks": locks, "levels": levels, "profile": self._profile(),
+                           "goal": self.profile.next_goal()})
 
     def _profile(self) -> dict:
         return {"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins}
@@ -393,9 +400,9 @@ class Session:
         ]
         if self.side != "practice":
             s = scoring.blue_score(c, self.random_side) if self.side == "blue" else scoring.red_score(c, self.random_side)
-            unlocked = self.profile.record(self.company.tier, s.won, s.total)
+            unlocked = self.profile.record(self.company.tier, self.level, s.won, s.total)
             score = {"side": s.side, "won": s.won, "base": s.base, "bonuses": s.bonuses, "multiplier": s.multiplier, "total": s.total}
-        locks = {tier: self.profile.lock_reason(tier) for tier in ("medium", "large")}
+        locks = {"goal": self.profile.next_goal()}
         return json.dumps({
             "result": result, "post_mortem": post_mortem, "tips": tips, "score": score,
             "unlocked": unlocked, "locks": locks, "profile": self._profile(), "blue_actions": blue_actions,

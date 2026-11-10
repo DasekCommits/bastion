@@ -19,11 +19,15 @@ if (!is_int($points) || !is_int($games) || !is_array($wins) || $points < 0 || $g
     send_json(['error' => 'That progress does not look right.'], 422);
 }
 $clean = [];
-foreach ($wins as $tier => $count) {
-    if (!in_array($tier, TIERS, true) || !is_int($count) || $count < 0 || $count > $games) {
+foreach ($wins as $name => $count) {
+    $name = (string) $name;
+    if (in_array($name, TIERS, true)) {
+        $name .= '/easy';
+    }
+    if (!preg_match('/^(small|medium|large)\/(easy|medium|hard)$/', $name) || !is_int($count) || $count < 0 || $count > $games) {
         send_json(['error' => 'That progress does not look right.'], 422);
     }
-    $clean[$tier] = $count;
+    $clean[$name] = ($clean[$name] ?? 0) + $count;
 }
 if ($games < (int) $user['games']) {
     send_json(['error' => 'Progress can only go forward.'], 409);

@@ -119,7 +119,7 @@ def test_day_ends_by_itself_when_moves_run_out(company, catalog):
 
 
 def test_main_asks_difficulty_and_plays(company):
-    script = Script("play", "hard", "practice", "olive-byte", ["firewall"], ["port-scan"], GIVE_UP, "quit")
+    script = Script("play", "easy", "practice", "olive-byte", ["firewall"], ["port-scan"], GIVE_UP, "quit")
     assert main(["--seed", "1"], ui=script) == 0
     before_red = script.text.split("RED TEAM")[0]
     assert "BLUE TEAM" in before_red and "%" not in before_red
@@ -231,18 +231,36 @@ def test_random_side_doubles_points_only_on_a_win(company, catalog):
     assert _total("red", False, 40, {}, 1.0, random_side=True).total == 40
 
 
-def test_bigger_companies_unlock_after_enough_wins():
+def test_the_unlock_ladder():
     from bastion.profile import Profile
 
-    profile = Profile()
-    assert profile.is_unlocked("small") and not profile.is_unlocked("medium")
-    for _ in range(4):
-        assert profile.record("small", True, 10) == []
-    assert profile.record("small", True, 10) == ["medium"]
+    p = Profile()
+    assert p.is_unlocked("small", "easy") and not p.is_unlocked("medium", "easy")
+    assert not p.level_open("medium") and not p.level_open("hard")
+    steps = [
+        (("small", "easy"), 5, "Harbor Clinic Easy"),
+        (("medium", "easy"), 10, "Olive Byte Medium"),
+        (("small", "medium"), 5, "Harbor Clinic Medium"),
+        (("medium", "medium"), 10, "Olive Byte Hard"),
+        (("small", "hard"), 5, "Harbor Clinic Hard"),
+    ]
+    for (tier, level), count, opens in steps:
+        for _ in range(count - 1):
+            assert p.record(tier, level, True, 10) == []
+        p.record(tier, level, False, 0)
+        assert p.record(tier, level, True, 10) == [opens]
+    assert not p.is_unlocked("large", "easy")
     for _ in range(9):
-        profile.record("medium", True, 10)
-    assert not profile.is_unlocked("large")
-    assert profile.record("medium", True, 10) == ["large"]
+        p.record("medium", "hard", True, 10)
+    assert p.record("medium", "hard", True, 10) == ["Meridian Bank Easy", "Meridian Bank Medium", "Meridian Bank Hard"]
+    assert p.next_goal() is None
+
+
+def test_old_progress_counts_as_easy_wins():
+    from bastion.profile import Profile
+
+    p = Profile(points=5, games=7, wins={"small": 5})
+    assert p.wins == {"small/easy": 5} and p.is_unlocked("medium", "easy")
 
 
 def test_locked_companies_are_greyed_out_in_the_menu():

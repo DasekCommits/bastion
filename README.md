@@ -35,7 +35,20 @@ It runs in the terminal and in the browser, with the same Python engine in both.
 | Harbor Clinic, a private medical clinic | medium | 10 | 7 | 70-90 / 60-80 | 7 |
 | Meridian Savings Bank, a regional bank on Active Directory | large | 20 | 12 | 130-170 / 100-140 | 10 |
 
-Budgets are rolled every game in steps of 5. Win 5 games on the small company to unlock the medium one, and 10 on the medium company to unlock the large one.
+Budgets are rolled every game in steps of 5.
+
+**Unlocks.** You start on Olive Byte, Easy. Wins open the rest, one step at a time:
+
+| Win | To unlock |
+|---|---|
+| 5 on Olive Byte Easy | Harbor Clinic Easy |
+| 10 on Harbor Clinic Easy | Medium difficulty (Olive Byte Medium) |
+| 5 on Olive Byte Medium | Harbor Clinic Medium |
+| 10 on Harbor Clinic Medium | Hard difficulty (Olive Byte Hard) |
+| 5 on Olive Byte Hard | Harbor Clinic Hard |
+| 10 on Harbor Clinic Hard | Meridian Savings Bank, every difficulty |
+
+Practice games do not count.
 
 - **Small** (9 attacks, 12 defenses): port scan, phishing, password brute force and credential stuffing, a web exploit, privilege escalation, Remote Desktop, data theft and ransomware.
 - **Medium** adds a VPN gateway exploit, Office macros, infected USB sticks, bribed insiders and data wiping, answered by macro blocking, USB device control and data loss prevention.
