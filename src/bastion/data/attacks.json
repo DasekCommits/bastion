@@ -151,6 +151,7 @@
     "noise": 0.1,
     "cost": 30,
     "description": "Pay an employee to hand over their login. Quiet and hard to spot, but expensive and not everyone says yes.",
+    "trait": "loyalty",
     "tier": "medium"
   },
   {

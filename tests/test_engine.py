@@ -114,11 +114,44 @@ def test_least_privilege_takes_admin_away_from_the_intern(company, catalog):
     assert report.encrypted == []
 
 
-def test_detection_ends_the_attack(company, catalog):
-    plan = [Step("phishing", "emily"), Step("exfiltration", "web-01")]
-    report = run_attack(company, catalog, ["email-filter"], plan, rng=Rolls(0.0, 0.0))
+def test_detection_inside_ends_the_attack(company, catalog):
+    plan = [Step("phishing", "emily"), Step("exfiltration", "web-01"), Step("exfiltration", "web-01")]
+    report = run_attack(company, catalog, ["siem"], plan, rng=Rolls(ALWAYS_WIN, NEVER_SEEN, ALWAYS_WIN, 0.0))
     assert report.caught
-    assert len(report.results) == 1
+    assert len(report.results) == 2
+
+
+def test_detection_outside_only_blocks_that_attempt(company, catalog):
+    campaign = Campaign(company, catalog, ["email-filter"], ["phishing"], rng=Rolls(ALWAYS_WIN, 0.0))
+    result = campaign.move("phishing", "emily")
+    assert result.detected and not result.kicked and not campaign.caught
+    assert campaign.foothold.is_empty()
+    assert not campaign.preview("phishing", "emily").possible
+    assert campaign.preview("phishing", "george").possible
+
+
+def test_night_hunt_cannot_find_someone_who_is_not_inside(company, catalog):
+    campaign = Campaign(company, catalog, ["siem", "edr"], ["port-scan"], rng=Rolls(ALWAYS_WIN, NEVER_SEEN, 0.0))
+    campaign.heat = 0.9
+    campaign.end_day()
+    assert not campaign.caught
+
+
+def test_insider_depends_on_loyalty(catalog):
+    clinic = load_scenario("harbor-clinic")
+    campaign = Campaign(clinic, catalog, [], ["insider"], seed=1)
+    assert campaign.preview("insider", "dan").success_chance > 3 * campaign.preview("insider", "helen").success_chance
+
+
+def test_at_most_one_accidental_admin(company):
+    import random
+
+    from bastion.company import roll_mistakes
+
+    rng = random.Random(4)
+    for _ in range(300):
+        rolled = roll_mistakes(company, rng)
+        assert sum(e.is_admin and not e.needs_admin for e in rolled.employees) <= 1
 
 
 def test_same_seed_same_result(company, catalog):

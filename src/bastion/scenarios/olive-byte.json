@@ -67,7 +67,7 @@
       "access": ["web-01", "mail"],
       "awareness": 0.2,
       "password_hygiene": 0.5,
-      "admin_chance": 0.15
+      "admin_chance": 0.1
     },
     {
       "id": "george",
@@ -77,7 +77,7 @@
       "access": ["mail", "office-pc"],
       "awareness": 0.3,
       "password_hygiene": 0.4,
-      "admin_chance": 0.25
+      "admin_chance": 0.15
     },
     {
       "id": "sophie",
@@ -87,7 +87,7 @@
       "access": ["web-01", "db-01"],
       "awareness": 0.3,
       "password_hygiene": 0.5,
-      "admin_chance": 0.5
+      "admin_chance": 0.3
     }
   ],
   "data": [

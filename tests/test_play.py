@@ -8,6 +8,7 @@ from rich.console import Console
 from bastion.catalog import load_catalog
 from bastion.company import load_scenario
 from bastion.engine import Campaign
+from bastion import look
 from bastion.picker import Picker
 from bastion.play import BACK, END_DAY, GIVE_UP, Game, main
 
@@ -181,3 +182,11 @@ def test_hard_shows_only_the_result(company, catalog):
     text = play_short_game("hard", company, catalog)
     assert "DEFENSE SCORE" in text
     assert "POST-MORTEM" not in text and "WHAT YOU COULD DO" not in text
+
+
+def test_medium_and_hard_hide_accidental_admins(company, catalog):
+    for level, hidden in (("easy", False), ("medium", True), ("hard", True)):
+        script = Script()
+        game = Game(company, catalog, level, script, random.Random(1))
+        game.ui.say(look.company_panel(game.company, game.explain, reveal_admins=game.easy))
+        assert ("by mistake" in script.text) == hidden

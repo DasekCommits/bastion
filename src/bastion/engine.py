@@ -1,3 +1,4 @@
+import copy
 import random
 from dataclasses import dataclass, field
 
@@ -11,6 +12,7 @@ HEAT_PER_NOISE = 0.08
 REPEAT_HEAT = 0.1
 NIGHT_HUNT = 0.4
 NIGHT_COOLDOWN = 0.7
+BURN_HEAT = 0.15
 NEEDS_FOOTHOLD = ("privilege-escalation", "lateral-movement", "exfiltration", "impact")
 
 
@@ -40,6 +42,7 @@ class StepResult:
     points: int = 0
     heat: float = 0.0
     blockers: list[str] = field(default_factory=list)
+    kicked: bool = False
 
 
 @dataclass
@@ -296,6 +299,7 @@ class Campaign:
         self.heat = 0.0
         self.used: dict[str, int] = {}
         self.known_defenses: set[str] = set()
+        self.burned: set[tuple[str, str]] = set()
         self.day = 1
         self.moves_today = 0
         self.caught = False
@@ -346,6 +350,8 @@ class Campaign:
 
     def preview(self, attack_id: str, target_id: str) -> Preview:
         attack = self.catalog.attacks[attack_id]
+        if (attack_id, target_id) in self.burned:
+            return Preview(False, "The Blue Team already blocked this exact attempt.", 0.0, 0.0, self.heat)
         possible, note = _is_possible(attack, target_id, self.company, self.foothold)
         if not possible:
             return Preview(False, note, 0.0, 0.0, self.heat)
@@ -394,6 +400,8 @@ class Campaign:
         detected = self.rng.random() < preview.detect_chance
         note = preview.note
         points = 0
+        was_inside = not self.foothold.is_empty()
+        before = copy.deepcopy(self.foothold)
 
         if succeeded and attack.tactic == "exfiltration" and target_id in self.stolen:
             note = "You already copied everything here."
@@ -410,13 +418,21 @@ class Campaign:
             if attack.tactic == "impact" and points:
                 self.encrypted.append(target_id)
 
+        if detected and not was_inside:
+            self.foothold = before
+            self.burned.add((attack_id, target_id))
+            self.heat = min(1.0, self.heat + BURN_HEAT)
+            if succeeded and attack.tactic != "reconnaissance":
+                note = "It worked for a moment, but the Blue Team noticed and cut that access."
+
         result = StepResult(
             step, attack, True, note, preview.success_chance, preview.detect_chance,
             succeeded, detected, helped, missing, points, self.heat,
             blockers=[d.id for d in self.defenses if attack.id in d.blocks],
+            kicked=detected and was_inside,
         )
         self.results.append(result)
-        self.caught = detected
+        self.caught = result.kicked
         return result
 
     def end_day(self) -> NightResult | None:
@@ -426,6 +442,8 @@ class Campaign:
             self.out_of_days = True
             return None
         night = _night(self.day, self.heat, self.defenses, self.rng)
+        if self.foothold.is_empty():
+            night.found = False
         self.nights.append(night)
         self.heat = night.heat_after
         self.caught = night.found

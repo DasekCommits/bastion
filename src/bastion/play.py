@@ -129,7 +129,7 @@ class Game:
 
     def pick_defenses(self) -> list[str]:
         self.ui.say(look.team_rule("blue", f"protect {self.company.name}"))
-        self.ui.say(look.company_panel(self.company, self.explain))
+        self.ui.say(look.company_panel(self.company, self.explain, reveal_admins=self.easy))
         return self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, "Done, switch to Red")
 
     def pick_arsenal(self) -> list[str]:

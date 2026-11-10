@@ -52,7 +52,10 @@ def format_report(report: Report, catalog: Catalog, lessons: bool = True) -> str
             if result.note:
                 lines.append(f"   {result.note}")
             if result.detected:
-                lines.append("   DETECTED  The Blue Team spotted this and kicked the attacker out.")
+                if result.kicked:
+                    lines.append("   DETECTED  The Blue Team spotted this and kicked the attacker out.")
+                else:
+                    lines.append("   SPOTTED  The Blue Team blocked this attempt. The attacker stays outside.")
         if lessons and result.possible and result.helped:
             lines.append(f"   Helped: {', '.join(result.helped)}")
         if lessons and result.possible and result.succeeded and result.missing:

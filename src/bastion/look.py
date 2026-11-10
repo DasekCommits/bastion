@@ -62,7 +62,7 @@ def team_rule(team: str, subtitle: str) -> Rule:
     return Rule(f"[bold {color}]{team.upper()} TEAM[/]  [{MUTED}]{subtitle}[/]", style=color)
 
 
-def company_panel(company: Company, easy: bool) -> Panel:
+def company_panel(company: Company, easy: bool, reveal_admins: bool = True) -> Panel:
     servers = Table(box=box.SIMPLE_HEAD, header_style=f"bold {BLUE}", pad_edge=False)
     servers.add_column("Server")
     servers.add_column("Internet")
@@ -75,17 +75,27 @@ def company_panel(company: Company, easy: bool) -> Panel:
     people.add_column("Person")
     people.add_column("Admin")
     people.add_column("Can log in to", style=MUTED)
+    loyalty = company.tier != "small"
     if easy:
         people.add_column("Spots phishing")
         people.add_column("Passwords")
+        if loyalty:
+            people.add_column("Loyalty")
     for employee in company.employees:
-        admin = Text("yes", style=AMBER) if employee.is_admin else Text("no", style=MUTED)
+        if reveal_admins or employee.needs_admin:
+            admin = Text("yes", style=AMBER) if employee.is_admin else Text("no", style=MUTED)
+        else:
+            admin = Text("?", style=MUTED)
         row = [f"{employee.name} [{MUTED}]{employee.role}[/]", admin, ", ".join(employee.access)]
         if easy:
             row += [_trait(employee.awareness), _trait(employee.password_hygiene)]
+            if loyalty:
+                row.append(_trait(employee.loyalty))
         people.add_row(*row)
 
     parts = [Text(company.description), Text(), servers, people]
+    if not reveal_admins:
+        parts.append(Text("Someone may have admin rights by mistake, or nobody. You will find out once you are in.", style=f"italic {MUTED}"))
     if easy:
         data = Table(box=box.SIMPLE_HEAD, header_style=f"bold {BLUE}", pad_edge=False)
         data.add_column("Valuable data")
@@ -189,6 +199,11 @@ def outcome_text(result: StepResult, easy: bool, explain: bool = True) -> Text:
 
 
 def detection_text(result: StepResult) -> Text:
+    if result.detected and not result.kicked:
+        return Text.assemble(
+            ("  SPOTTED ", f"bold black on {AMBER}"),
+            ("  The Blue Team blocked this attempt. You are still outside, but they are more alert.", AMBER),
+        )
     if result.detected:
         return Text.assemble(
             ("  DETECTED ", f"bold white on {RED}"),
@@ -269,6 +284,7 @@ def final_screen(report: Report, catalog: Catalog, level: str = "easy", blue: li
     body.highlight_regex(r"\bSUCCESS\b", f"bold {GREEN}")
     body.highlight_regex(r"\b(BLOCKED|SKIPPED)\b", f"bold {MUTED}")
     body.highlight_regex(r"\b(DETECTED|FOUND)\b", f"bold {RED}")
+    body.highlight_regex(r"\bSPOTTED\b", f"bold {AMBER}")
     body.highlight_regex(r"Helped:.*", BLUE)
     body.highlight_regex(r"Gap:.*", AMBER)
     body.highlight_regex(r"\[T\d{4}(\.\d{3})?[^\]]*\]", MUTED)

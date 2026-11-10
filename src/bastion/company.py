@@ -27,6 +27,7 @@ class Employee:
     awareness: float = 0.0
     password_hygiene: float = 0.0
     admin_chance: float = 0.0
+    loyalty: float = 0.5
 
 
 @dataclass
@@ -74,9 +75,14 @@ class Company:
 
 def roll_mistakes(company: Company, rng) -> Company:
     rolled = copy.deepcopy(company)
-    for employee in rolled.employees:
-        if employee.admin_chance and not employee.needs_admin:
-            employee.is_admin = rng.random() < employee.admin_chance
+    candidates = [e for e in rolled.employees if e.admin_chance and not e.needs_admin]
+    for employee in candidates:
+        employee.is_admin = False
+    rng.shuffle(candidates)
+    for employee in candidates:
+        if rng.random() < employee.admin_chance:
+            employee.is_admin = True
+            break
     return rolled
 
 
@@ -93,7 +99,7 @@ def validate(company: Company) -> None:
         raise ScenarioError("Two servers share the same id")
 
     for employee in company.employees:
-        for trait in ("awareness", "password_hygiene", "admin_chance"):
+        for trait in ("awareness", "password_hygiene", "admin_chance", "loyalty"):
             if not 0 <= getattr(employee, trait) <= 1:
                 raise ScenarioError(f"Employee '{employee.id}' needs {trait} from 0 to 1")
         for server_id in employee.access:

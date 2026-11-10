@@ -68,7 +68,8 @@
       "access": ["mail", "ehr", "files"],
       "awareness": 0.5,
       "password_hygiene": 0.3,
-      "admin_chance": 0.4
+      "admin_chance": 0.15,
+      "loyalty": 0.9
     },
     {
       "id": "nikos",
@@ -78,7 +79,8 @@
       "needs_admin": true,
       "access": ["site", "vpn", "mail", "ehr", "files", "front-desk", "imaging"],
       "awareness": 0.8,
-      "password_hygiene": 0.8
+      "password_hygiene": 0.8,
+      "loyalty": 0.85
     },
     {
       "id": "dan",
@@ -88,7 +90,8 @@
       "needs_admin": true,
       "access": ["vpn", "files", "ehr"],
       "awareness": 0.5,
-      "password_hygiene": 0.3
+      "password_hygiene": 0.3,
+      "loyalty": 0.3
     },
     {
       "id": "anna",
@@ -98,7 +101,8 @@
       "access": ["mail", "front-desk", "ehr"],
       "awareness": 0.2,
       "password_hygiene": 0.3,
-      "admin_chance": 0.1
+      "admin_chance": 0.05,
+      "loyalty": 0.5
     },
     {
       "id": "leo",
@@ -108,7 +112,8 @@
       "access": ["mail", "files", "front-desk"],
       "awareness": 0.3,
       "password_hygiene": 0.4,
-      "admin_chance": 0.2
+      "admin_chance": 0.1,
+      "loyalty": 0.35
     },
     {
       "id": "maya",
@@ -118,7 +123,8 @@
       "access": ["mail", "ehr", "imaging"],
       "awareness": 0.4,
       "password_hygiene": 0.5,
-      "admin_chance": 0.2
+      "admin_chance": 0.1,
+      "loyalty": 0.7
     },
     {
       "id": "omar",
@@ -128,7 +134,8 @@
       "access": ["mail", "imaging", "ehr"],
       "awareness": 0.4,
       "password_hygiene": 0.4,
-      "admin_chance": 0.3
+      "admin_chance": 0.1,
+      "loyalty": 0.6
     },
     {
       "id": "grace",
@@ -137,7 +144,8 @@
       "is_admin": false,
       "access": ["mail", "ehr", "front-desk"],
       "awareness": 0.3,
-      "password_hygiene": 0.4
+      "password_hygiene": 0.4,
+      "loyalty": 0.6
     },
     {
       "id": "tom",
@@ -146,7 +154,8 @@
       "is_admin": false,
       "access": ["mail", "ehr"],
       "awareness": 0.5,
-      "password_hygiene": 0.5
+      "password_hygiene": 0.5,
+      "loyalty": 0.65
     },
     {
       "id": "zoe",
@@ -156,7 +165,8 @@
       "access": ["ehr", "imaging"],
       "awareness": 0.3,
       "password_hygiene": 0.5,
-      "admin_chance": 0.5
+      "admin_chance": 0.2,
+      "loyalty": 0.4
     }
   ],
   "data": [

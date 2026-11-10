@@ -15,7 +15,7 @@ TACTICS = (
     "impact",
 )
 TARGETS = ("server", "employee")
-TRAITS = ("awareness", "password_hygiene")
+TRAITS = ("awareness", "password_hygiene", "loyalty")
 TIER_ORDER = ("small", "medium", "large")
 CATEGORIES = ("prevent", "detect", "recover")
 MITRE_ID = re.compile(r"^T\d{4}(\.\d{3})?$")
