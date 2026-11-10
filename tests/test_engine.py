@@ -91,7 +91,7 @@ def test_phishing_then_stealing_the_database(company, catalog):
     report = run_attack(company, catalog, [], plan, rng=win_every_step(2))
     assert report.stolen == ["db-01"]
     assert report.points == 26
-    assert report.defense_score == 13
+    assert report.defense_score == 26
 
 
 def test_admin_intern_can_be_used_for_ransomware(company, catalog):
@@ -273,3 +273,28 @@ def test_advice_points_at_missing_defense_and_unused_attack(company, catalog):
     assert "would have cut Phishing email" in blue
     assert "Least privilege" in blue
     assert "never used it" in red
+
+
+def test_stealing_the_shop_config_opens_the_database(company, catalog):
+    campaign = Campaign(company, catalog, [], ["phishing", "exfiltration"], rng=win_every_step(3))
+    campaign.move("phishing", "emily")
+    assert "db-01" not in campaign.foothold.servers
+    result = campaign.move("exfiltration", "web-01")
+    assert result.points == 5
+    assert "db-01" in campaign.foothold.servers
+    assert campaign.move("exfiltration", "db-01").points == 26
+
+
+def test_segmentation_makes_the_stolen_password_useless(company, catalog):
+    campaign = Campaign(company, catalog, ["segmentation"], ["phishing", "exfiltration"], rng=win_every_step(2))
+    campaign.move("phishing", "emily")
+    result = campaign.move("exfiltration", "web-01")
+    assert "segmentation" in result.note
+    assert "db-01" not in campaign.foothold.servers
+
+
+def test_stealing_twice_gives_no_extra_points(company, catalog):
+    campaign = Campaign(company, catalog, [], ["phishing", "exfiltration"], rng=win_every_step(3))
+    campaign.move("phishing", "emily")
+    campaign.move("exfiltration", "web-01")
+    assert campaign.move("exfiltration", "web-01").points == 0

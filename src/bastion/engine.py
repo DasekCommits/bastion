@@ -242,7 +242,17 @@ def _apply(attack: Attack, target_id: str, company: Company, foothold: Foothold,
     points = sum(asset.value for asset in assets)
     names = ", ".join(asset.name for asset in assets)
     if attack.tactic == "exfiltration":
-        return points, f"Stolen: {names}."
+        note = f"Stolen: {names}."
+        for asset in assets:
+            if asset.grants is None or asset.grants in foothold.servers:
+                continue
+            reached = company.server(asset.grants).name
+            if "segmentation" in defense_ids:
+                note += f" The stolen password is useless: segmentation keeps the {reached} out of reach."
+            else:
+                foothold.servers.add(asset.grants)
+                note += f" The stolen password opens the {reached}."
+        return points, note
     return points, f"Encrypted: {names}."
 
 
@@ -347,7 +357,11 @@ class Campaign:
         note = preview.note
         points = 0
 
-        if succeeded:
+        if succeeded and attack.tactic == "exfiltration" and target_id in self.stolen:
+            note = "You already copied everything here."
+        elif succeeded and attack.tactic == "impact" and target_id in self.encrypted:
+            note = "These files are already encrypted."
+        elif succeeded:
             points, outcome = _apply(attack, target_id, self.company, self.foothold, self.defense_ids)
             note = f"{note} {outcome}".strip()
             if attack.tactic == "exfiltration" and points:

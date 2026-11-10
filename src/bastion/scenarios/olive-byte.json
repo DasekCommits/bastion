@@ -89,6 +89,19 @@
   ],
   "data": [
     {
+      "id": "orders",
+      "name": "Recent customer orders",
+      "location": "web-01",
+      "value": 3
+    },
+    {
+      "id": "shop-config",
+      "name": "Shop config file with the database password",
+      "location": "web-01",
+      "value": 2,
+      "grants": "db-01"
+    },
+    {
       "id": "customers",
       "name": "Customer names, addresses and phone numbers",
       "location": "db-01",

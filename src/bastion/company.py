@@ -33,6 +33,7 @@ class DataAsset:
     name: str
     location: str
     value: int
+    grants: str | None = None
 
 
 @dataclass
@@ -94,6 +95,8 @@ def validate(company: Company) -> None:
     for asset in company.data:
         if asset.location not in server_ids:
             raise ScenarioError(f"Data '{asset.id}' is stored on unknown server '{asset.location}'")
+        if asset.grants is not None and asset.grants not in server_ids:
+            raise ScenarioError(f"Data '{asset.id}' grants access to unknown server '{asset.grants}'")
         if not 1 <= asset.value <= 10:
             raise ScenarioError(f"Data '{asset.id}' must have a value from 1 to 10")
 
