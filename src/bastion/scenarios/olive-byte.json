@@ -45,7 +45,9 @@
       "role": "Owner",
       "is_admin": true,
       "needs_admin": true,
-      "access": ["web-01", "db-01", "mail", "office-pc"]
+      "access": ["web-01", "db-01", "mail", "office-pc"],
+      "awareness": 0.6,
+      "password_hygiene": 0.3
     },
     {
       "id": "jacob",
@@ -53,28 +55,36 @@
       "role": "Developer",
       "is_admin": true,
       "needs_admin": true,
-      "access": ["web-01", "db-01"]
+      "access": ["web-01", "db-01"],
+      "awareness": 0.7,
+      "password_hygiene": 0.8
     },
     {
       "id": "emily",
       "name": "Emily",
       "role": "Customer Support",
       "is_admin": false,
-      "access": ["web-01", "mail"]
+      "access": ["web-01", "mail"],
+      "awareness": 0.2,
+      "password_hygiene": 0.5
     },
     {
       "id": "george",
       "name": "George",
       "role": "Accountant",
       "is_admin": false,
-      "access": ["mail", "office-pc"]
+      "access": ["mail", "office-pc"],
+      "awareness": 0.3,
+      "password_hygiene": 0.4
     },
     {
       "id": "sophie",
       "name": "Sophie",
       "role": "Intern",
       "is_admin": true,
-      "access": ["web-01", "db-01"]
+      "access": ["web-01", "db-01"],
+      "awareness": 0.3,
+      "password_hygiene": 0.5
     }
   ],
   "data": [
