@@ -17,13 +17,13 @@ It runs in the terminal and in the browser, with the same Python engine in both.
 1. **Pick a difficulty, a side and a company.**
 2. **Blue** picks defenses within a budget: MFA, patching, a WAF, network segmentation, EDR, a SIEM, backups and more. Each one stops or detects specific attacks.
 3. **Red** buys an arsenal once and uses it over a campaign of several days, a few moves a day: recon, initial access, credential theft, privilege escalation, lateral movement, then stealing or destroying data.
-4. **Every move makes noise.** Heat builds up, detection tools make it rise faster, and at night the Blue Team reviews the logs. Get spotted while you are inside and you are kicked out.
+4. **Blue plays turns too, like a SOC analyst.** Each time the attacker moves, the analyst gets a move: read the logs, investigate an alert, change a password, isolate a machine, hunt for a hidden attacker or block a sender. Detection tools only write logs, so a SIEM nobody reads catches nobody. False alarms are mixed in, and isolating a clean machine or resetting a clean account costs downtime.
 5. **Post-mortem and score** at the end, with advice for both sides on Easy.
 
 | Side | What you do |
 |---|---|
-| **Blue** | Pick the defenses. The computer attacks, and you only see what your tools catch. |
-| **Red** | Break in. The computer already picked defenses you cannot see. |
+| **Blue** | Pick the defenses, then work the alerts as the analyst while the computer attacks. |
+| **Red** | Break in. The computer picked defenses you cannot see and plays the analyst against you. |
 | **Random** | A coin decides Blue or Red. Double points if you win. |
 | **Practice** | Play both sides. No points and no unlocks. |
 
@@ -66,14 +66,15 @@ No single move ever has less than a 5% or more than a 95% chance to succeed or t
 - **People differ.** Each employee has their own awareness of phishing, password habits and loyalty, so the best target depends on the attack.
 - **Mistakes are random.** At most one non-IT employee may have admin rights by mistake, rolled every game. Only Easy shows who.
 - **Recon shows only the outside.** A port scan reveals defenses visible from the internet (firewall, WAF, patch level, email filtering, MFA on login pages). A SIEM or segmentation stays hidden, and EDR is only noticed once you are inside. Scanning a login page makes password attacks more effective.
-- **Getting spotted outside is not the end.** The Blue Team blocks that exact attempt and becomes more alert. Nobody can find you in the logs at night if you never got in.
+- **Alerts need people.** Every alert has a source (email filter, SIEM, EDR or plain server logs), and real attacks look just like false alarms until someone investigates. At night nobody reads the logs unless the company pays for a 24/7 SOC.
+- **Containment has a price.** Changing a password removes access gained through that account only; an attacker who got in another way stays. An isolated machine is offline until the end of the next day.
 - **Pivots.** Config files on a web server or VPN can hold passwords that open internal systems, unless the network is segmented.
 - **The attacker never learns which hidden defense stopped them.** The post-mortem tells you afterwards.
 
 ## Scoring
 
 - **Red wins** by stealing or destroying anything at all. Otherwise **Blue wins**.
-- **Blue:** the share of data that survived (0-100), plus 10 for catching the attacker, 2 per spotted attempt (up to 10) and up to 10 for unspent budget.
+- **Blue:** the share of data that survived (0-100), plus 10 for kicking the attacker out, 2 per real attack you confirmed (up to 10) and up to 10 for unspent budget, minus 3 for every needless password reset or isolation.
 - **Red:** the share of data stolen or destroyed (0-100), plus up to 10 for finishing early and 10 for owning the whole domain. Never getting caught multiplies the score by 1.5. Each piece of data counts once, even if it is stolen and then encrypted.
 - **Random side:** a win counts double.
 
