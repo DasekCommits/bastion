@@ -115,7 +115,7 @@ def test_detection_ends_the_attack(company, catalog):
 
 
 def test_same_seed_same_result(company, catalog):
-    plan = [Step("port-scan", "web-01"), Step("exploit-web", "web-01"), Step("exfiltration", "web-01")]
+    plan = [Step("port-scan", "web-01"), Step("exploit-web", "web-01"), Step("exploit-web", "web-01")]
     first = run_attack(company, catalog, ["waf"], plan, seed=42)
     second = run_attack(company, catalog, ["waf"], plan, seed=42)
     assert [r.succeeded for r in first.results] == [r.succeeded for r in second.results]
@@ -124,7 +124,7 @@ def test_same_seed_same_result(company, catalog):
 def test_defenses_raise_the_average_score(company, catalog):
     plan = [Step("phishing", "sophie"), Step("ransomware", "db-01")]
     weak = simulate(company, catalog, [], plan, runs=500, seed=1)
-    strong = simulate(company, catalog, ["least-privilege", "email-filter", "security-training", "edr"], plan, runs=500, seed=1)
+    strong = simulate(company, catalog, ["least-privilege", "email-filter", "security-training", "mfa"], plan, runs=500, seed=1)
     assert strong.average_score > weak.average_score
     assert strong.breach_rate < weak.breach_rate
 
