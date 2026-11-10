@@ -41,6 +41,8 @@ class Company:
     description: str
     budget: int
     red_budget: int
+    max_days: int
+    moves_per_day: int
     team_size: int
     servers: list[Server]
     employees: list[Employee]
@@ -94,6 +96,8 @@ def load_company(path: Path) -> Company:
         description=raw["description"],
         budget=raw["budget"],
         red_budget=raw["red_budget"],
+        max_days=raw["max_days"],
+        moves_per_day=raw["moves_per_day"],
         team_size=raw["team_size"],
         servers=[Server(**item) for item in raw["servers"]],
         employees=[Employee(**item) for item in raw["employees"]],

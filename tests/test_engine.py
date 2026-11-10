@@ -146,7 +146,53 @@ def test_watchers_make_heat_rise_faster(catalog):
 
 
 def test_spamming_phishing_gets_you_caught(company, catalog):
-    everyone = [Step("phishing", e) for e in ("emily", "george", "jacob", "maria", "sophie")]
+    people = ("emily", "george", "jacob", "maria", "sophie")
+    everyone = [Step("phishing", person, day) for person, day in zip(people, (1, 1, 1, 2, 2))]
     spam = simulate(company, catalog, [], everyone, runs=500, seed=3)
     single = simulate(company, catalog, [], everyone[:1], runs=500, seed=3)
     assert spam.caught_rate > single.caught_rate + 0.3
+
+
+def test_too_many_moves_in_one_day(company, catalog):
+    with pytest.raises(PlanError):
+        run_attack(company, catalog, [], [Step("port-scan", "web-01")] * 4)
+
+
+def test_attack_must_fit_in_the_days(company, catalog):
+    with pytest.raises(PlanError):
+        run_attack(company, catalog, [], [Step("port-scan", "web-01", day=6)])
+
+
+def test_days_must_be_in_order(company, catalog):
+    with pytest.raises(PlanError):
+        run_attack(company, catalog, [], [Step("port-scan", "web-01", 2), Step("port-scan", "mail", 1)])
+
+
+def test_heat_cools_down_overnight(company, catalog):
+    plan = [Step("port-scan", "web-01", 1), Step("port-scan", "mail", 3)]
+    report = run_attack(company, catalog, [], plan, rng=win_every_step(2))
+    assert len(report.nights) == 2
+    assert report.nights[1].heat_after < report.nights[0].heat_before
+    assert report.days_used == 3
+
+
+def test_nobody_hunts_without_detection_tools(company, catalog):
+    plan = [Step("port-scan", "web-01", 1), Step("port-scan", "mail", 2)]
+    report = run_attack(company, catalog, [], plan, rng=win_every_step(2))
+    assert report.nights[0].hunt_chance == 0
+
+
+def test_night_hunt_can_catch_the_attacker(company, catalog):
+    plan = [Step("brute-force", "emily", 1), Step("exfiltration", "web-01", 2)]
+    report = run_attack(company, catalog, ["siem"], plan, rng=Rolls(0.0, 0.99, 0.0))
+    assert report.nights[0].found
+    assert report.caught
+    assert len(report.results) == 1
+
+
+def test_waiting_lowers_the_heat(company, catalog):
+    loud = [Step("brute-force", "emily", 1), Step("brute-force", "george", 1), Step("exfiltration", "office-pc", 1)]
+    patient = [Step("brute-force", "emily", 1), Step("brute-force", "george", 3), Step("exfiltration", "office-pc", 5)]
+    fast = run_attack(company, catalog, [], loud, rng=win_every_step(3))
+    slow = run_attack(company, catalog, [], patient, rng=win_every_step(3))
+    assert slow.results[-1].heat < fast.results[-1].heat

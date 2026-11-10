@@ -6,6 +6,16 @@ def _percent(value: float) -> str:
     return f"{value * 100:.0f}%"
 
 
+def _night_lines(night) -> list[str]:
+    lines = [f"   Night {night.day}: heat {_percent(night.heat_before)} -> {_percent(night.heat_after)}"]
+    if night.hunt_chance:
+        lines.append(f"   The Blue Team reviewed the logs ({_percent(night.hunt_chance)} chance to find you)")
+    if night.found:
+        lines.append("   FOUND  The Blue Team found the attacker in the logs and kicked them out.")
+    lines.append("")
+    return lines
+
+
 def format_report(report: Report, catalog: Catalog) -> str:
     company = report.company
     lines = [
@@ -14,10 +24,18 @@ def format_report(report: Report, catalog: Catalog) -> str:
         f"Defenses: {', '.join(report.defenses) or 'none'}",
         f"Blue budget used: {report.budget_used}/{company.budget}",
         f"Red budget used:  {report.red_budget_used}/{company.red_budget}",
+        f"Days used:        {report.days_used}/{company.max_days}",
         "",
     ]
 
+    nights = {night.day: night for night in report.nights}
+    day = 0
     for number, result in enumerate(report.results, start=1):
+        while day < result.step.day:
+            if day in nights:
+                lines.extend(_night_lines(nights[day]))
+            day += 1
+            lines.append(f"--- DAY {day} ---")
         attack = result.attack
         lines.append(
             f"{number}. {attack.name} -> {result.step.target_id}   "
@@ -40,6 +58,12 @@ def format_report(report: Report, catalog: Catalog) -> str:
         if result.possible and result.succeeded and result.missing:
             lines.append(f"   Gap: {', '.join(result.missing)} would have made this harder")
         lines.append("")
+
+    for night in report.nights:
+        if night.day >= day:
+            if night.day > day:
+                lines.append(f"--- DAY {night.day} ---")
+            lines.extend(_night_lines(night))
 
     lines.append("-" * 60)
     if report.caught:

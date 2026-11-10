@@ -46,6 +46,8 @@ Both sides are limited and both sides score points.
 - **Attack budget:** every technique has a cost. A phishing email is cheap, a zero-day exploit is expensive, so attackers have to choose as carefully as defenders.
 - **Heat:** every step makes noise, and noise adds up. Repeating the same attack raises suspicion even faster, and detection tools such as SIEM and EDR make heat rise quicker. The longer and louder you are, the more likely you get caught.
 
+**Days.** An attack is a campaign of up to 5 days with up to 3 moves per day. Spend day one on recon, lie low on day two, strike on day three. Heat cools down overnight, but if the Blue Team has detection tools, they review the logs every night and may find you. Fast and loud or slow and patient: both are valid strategies.
+
 **Ranking** uses an ELO rating, as in chess: breaking a strong fortress is worth more than breaking a weak one.
 
 Every attack is replayed 1,000 times (Monte Carlo simulation), so scores reflect the quality of a defense, not a lucky roll.
@@ -57,11 +59,11 @@ python -m venv .venv
 .venv/Scripts/activate        # on Linux or macOS: source .venv/bin/activate
 pip install -e . pytest
 
-python -m bastion --defenses "mfa,patching,email-filter" --attack "phishing:sophie,exfiltration:db-01,ransomware:db-01"
+python -m bastion --defenses "mfa,patching,email-filter" --attack "phishing:sophie | | exfiltration:db-01,ransomware:db-01"
 pytest
 ```
 
-You get a step-by-step post-mortem of the attack and a summary of 1,000 replays.
+Commas separate moves and `|` separates days (an empty day means waiting). You get a day-by-day post-mortem of the attack and a summary of 1,000 replays.
 
 ## Safety
 

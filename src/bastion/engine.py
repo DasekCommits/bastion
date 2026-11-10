@@ -7,6 +7,8 @@ from bastion.company import Company, Employee
 BLIND_PENALTY = 0.5
 HEAT_PER_NOISE = 0.08
 REPEAT_HEAT = 0.1
+NIGHT_HUNT = 0.4
+NIGHT_COOLDOWN = 0.7
 NEEDS_FOOTHOLD = ("privilege-escalation", "lateral-movement", "exfiltration", "impact")
 
 
@@ -18,6 +20,7 @@ class PlanError(ValueError):
 class Step:
     attack_id: str
     target_id: str
+    day: int = 1
 
 
 @dataclass
@@ -34,6 +37,15 @@ class StepResult:
     missing: list[str]
     points: int = 0
     heat: float = 0.0
+
+
+@dataclass
+class NightResult:
+    day: int
+    heat_before: float
+    hunt_chance: float
+    found: bool
+    heat_after: float
 
 
 @dataclass
@@ -54,6 +66,8 @@ class Report:
     budget_used: int
     red_budget_used: int
     results: list[StepResult]
+    nights: list[NightResult]
+    days_used: int
     caught: bool
     points: int
     stolen: list[str]
@@ -91,6 +105,14 @@ def check_plan(company: Company, catalog: Catalog, plan: list[Step]) -> int:
         valid_targets = server_ids if attack.target == "server" else employee_ids
         if step.target_id not in valid_targets:
             raise PlanError(f"'{step.target_id}' is not a valid {attack.target} for '{attack.id}'")
+    days = [step.day for step in plan]
+    if days != sorted(days):
+        raise PlanError("Steps must be in day order")
+    if days and (days[0] < 1 or days[-1] > company.max_days):
+        raise PlanError(f"The attack must fit in {company.max_days} days")
+    for day in set(days):
+        if days.count(day) > company.moves_per_day:
+            raise PlanError(f"Day {day} has more than {company.moves_per_day} moves")
     cost = sum(catalog.attacks[step.attack_id].cost for step in plan)
     if cost > company.red_budget:
         raise PlanError(f"This attack costs {cost}, but the Red Team budget is {company.red_budget}")
@@ -114,6 +136,17 @@ def detect_chance(attack: Attack, defenses: list[Defense]) -> float:
 def heat_gain(attack: Attack, defenses: list[Defense], times_used_before: int) -> float:
     watchers = sum(1 for defense in defenses if defense.category == "detect")
     return attack.noise * HEAT_PER_NOISE * (1 + watchers) + REPEAT_HEAT * times_used_before
+
+
+def night_hunt_chance(heat: float, defenses: list[Defense]) -> float:
+    watchers = sum(1 for defense in defenses if defense.category == "detect")
+    return min(1.0, heat * NIGHT_HUNT * watchers)
+
+
+def _night(day: int, heat: float, defenses: list[Defense], rng) -> NightResult:
+    hunt = night_hunt_chance(heat, defenses)
+    found = hunt > 0 and rng.random() < hunt
+    return NightResult(day, heat, hunt, found, heat * NIGHT_COOLDOWN)
 
 
 def has_admin_rights(employee: Employee, defense_ids: list[str]) -> bool:
@@ -214,8 +247,19 @@ def run_attack(
     caught = False
     heat = 0.0
     used = {}
+    nights = []
+    day = 1
 
     for step in plan:
+        while day < step.day and not caught:
+            night = _night(day, heat, defenses, rng)
+            nights.append(night)
+            heat = night.heat_after
+            caught = night.found
+            day += 1
+        if caught:
+            break
+
         attack = catalog.attacks[step.attack_id]
         helped = [d.id for d in defenses if attack.id in d.blocks or attack.id in d.detects]
         missing = [d.id for d in catalog.defenses_against(attack.id) if d.id not in defense_ids]
@@ -261,6 +305,8 @@ def run_attack(
         budget_used=budget_used,
         red_budget_used=red_budget_used,
         results=results,
+        nights=nights,
+        days_used=day if plan else 0,
         caught=caught,
         points=sum(result.points for result in results),
         stolen=stolen,
