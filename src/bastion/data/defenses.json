@@ -1,0 +1,110 @@
+[
+  {
+    "id": "mfa",
+    "name": "Multi-factor authentication",
+    "category": "prevent",
+    "cost": 15,
+    "blocks": {"brute-force": 0.9, "phishing": 0.4, "remote-desktop": 0.5, "credential-stuffing": 0.95},
+    "detects": {},
+    "description": "A password alone is not enough to log in. Users also confirm on their phone."
+  },
+  {
+    "id": "security-training",
+    "name": "Security awareness training",
+    "category": "prevent",
+    "cost": 10,
+    "blocks": {"phishing": 0.5},
+    "detects": {"phishing": 0.2},
+    "description": "Teach employees to spot fake emails and report them."
+  },
+  {
+    "id": "email-filter",
+    "name": "Email filtering",
+    "category": "prevent",
+    "cost": 10,
+    "blocks": {"phishing": 0.6},
+    "detects": {"phishing": 0.4},
+    "description": "Scan incoming email and quarantine known malicious links and attachments."
+  },
+  {
+    "id": "patching",
+    "name": "Patch management",
+    "category": "prevent",
+    "cost": 20,
+    "blocks": {"exploit-web": 0.8, "privilege-escalation": 0.7},
+    "detects": {},
+    "description": "Keep every server and PC updated so known vulnerabilities are fixed."
+  },
+  {
+    "id": "waf",
+    "name": "Web application firewall",
+    "category": "prevent",
+    "cost": 15,
+    "blocks": {"exploit-web": 0.5},
+    "detects": {"exploit-web": 0.5},
+    "description": "Filter web traffic and block requests that look like attacks, such as SQL injection."
+  },
+  {
+    "id": "rate-limiting",
+    "name": "Login rate limiting",
+    "category": "prevent",
+    "cost": 5,
+    "blocks": {"brute-force": 0.7, "credential-stuffing": 0.3},
+    "detects": {"brute-force": 0.3},
+    "description": "Lock out anyone who fails to log in too many times in a row."
+  },
+  {
+    "id": "firewall",
+    "name": "Network firewall",
+    "category": "prevent",
+    "cost": 10,
+    "blocks": {"port-scan": 0.5, "remote-desktop": 0.4},
+    "detects": {"port-scan": 0.5},
+    "description": "Close every port that does not need to be open to the internet."
+  },
+  {
+    "id": "least-privilege",
+    "name": "Least privilege",
+    "category": "prevent",
+    "cost": 10,
+    "blocks": {"privilege-escalation": 0.4, "remote-desktop": 0.4},
+    "detects": {},
+    "description": "Give every employee only the access their job needs, and remove admin rights from everyone else."
+  },
+  {
+    "id": "segmentation",
+    "name": "Network segmentation",
+    "category": "prevent",
+    "cost": 20,
+    "blocks": {"remote-desktop": 0.7, "exfiltration": 0.3},
+    "detects": {},
+    "description": "Split the network into zones, so a hacked office PC cannot reach the database."
+  },
+  {
+    "id": "edr",
+    "name": "Endpoint detection and response",
+    "category": "detect",
+    "cost": 25,
+    "blocks": {"ransomware": 0.6, "privilege-escalation": 0.3},
+    "detects": {"privilege-escalation": 0.6, "remote-desktop": 0.5, "ransomware": 0.8},
+    "description": "Security software on every machine that watches for suspicious behaviour and can stop it."
+  },
+  {
+    "id": "siem",
+    "name": "Central logging and alerts",
+    "category": "detect",
+    "cost": 20,
+    "blocks": {},
+    "detects": {"brute-force": 0.6, "remote-desktop": 0.5, "exfiltration": 0.6, "exploit-web": 0.4},
+    "description": "Collect logs from every server in one place and raise an alert when something looks wrong."
+  },
+  {
+    "id": "backups",
+    "name": "Offline backups",
+    "category": "recover",
+    "cost": 10,
+    "blocks": {"ransomware": 0.7},
+    "detects": {},
+    "description": "Keep daily copies of the data offline, so the company can restore it instead of paying a ransom."
+  }
+]

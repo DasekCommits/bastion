@@ -1,0 +1,92 @@
+[
+  {
+    "id": "port-scan",
+    "name": "Port scan",
+    "mitre_id": "T1595",
+    "tactic": "reconnaissance",
+    "target": "server",
+    "base_success": 0.95,
+    "noise": 0.6,
+    "description": "Scan the company's public servers to find open ports and the software versions behind them."
+  },
+  {
+    "id": "phishing",
+    "name": "Phishing email",
+    "mitre_id": "T1566",
+    "tactic": "initial-access",
+    "target": "employee",
+    "base_success": 0.6,
+    "noise": 0.3,
+    "description": "Send a fake email that tricks an employee into opening a malicious attachment or typing their password on a fake login page."
+  },
+  {
+    "id": "exploit-web",
+    "name": "Exploit the web shop",
+    "mitre_id": "T1190",
+    "tactic": "initial-access",
+    "target": "server",
+    "base_success": 0.7,
+    "noise": 0.4,
+    "description": "Use a known vulnerability in outdated software on an internet-facing server, such as an old CMS or PHP version."
+  },
+  {
+    "id": "brute-force",
+    "name": "Password brute force",
+    "mitre_id": "T1110.001",
+    "tactic": "credential-access",
+    "target": "employee",
+    "base_success": 0.4,
+    "noise": 0.8,
+    "description": "Try thousands of common passwords against a login page until one works."
+  },
+  {
+    "id": "privilege-escalation",
+    "name": "Privilege escalation",
+    "mitre_id": "T1068",
+    "tactic": "privilege-escalation",
+    "target": "server",
+    "base_success": 0.6,
+    "noise": 0.4,
+    "description": "Exploit a bug in the operating system or a service to turn a normal account into an administrator."
+  },
+  {
+    "id": "remote-desktop",
+    "name": "Move through Remote Desktop",
+    "mitre_id": "T1021.001",
+    "tactic": "lateral-movement",
+    "target": "server",
+    "base_success": 0.6,
+    "noise": 0.5,
+    "description": "Use stolen credentials to log in to other machines on the network through Remote Desktop."
+  },
+  {
+    "id": "exfiltration",
+    "name": "Steal the data",
+    "mitre_id": "T1041",
+    "tactic": "exfiltration",
+    "target": "server",
+    "base_success": 0.8,
+    "noise": 0.5,
+    "description": "Copy valuable data out of the company over the attacker's own connection."
+  },
+  {
+    "id": "ransomware",
+    "name": "Ransomware",
+    "mitre_id": "T1486",
+    "tactic": "impact",
+    "target": "server",
+    "base_success": 0.8,
+    "noise": 0.9,
+    "description": "Encrypt the company's files and demand money to unlock them."
+  },
+  {
+    "id": "credential-stuffing",
+    "name": "Credential Stuffing",
+    "mitre_id": "T1110.004",
+    "tactic": "credential-access",
+    "target": "employee",
+    "base_success": 0.3,
+    "noise": 0.3,
+    "description": "Try usernames and passwords leaked from other websites, hoping an employee reused the same password at work."
+  }
+]
