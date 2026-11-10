@@ -154,6 +154,11 @@ def foothold_panel(campaign: Campaign) -> Text:
     return text
 
 
+def intel_line(campaign: Campaign) -> Text:
+    names = sorted(campaign.catalog.defenses[d].name for d in campaign.known_defenses)
+    return Text.assemble(("  Intel: ", MUTED), (", ".join(names), BLUE))
+
+
 def move_header(result: StepResult, target_name: str) -> Text:
     return Text.assemble(("  ", ""), (result.attack.name, "bold"), (" → ", MUTED), (target_name, ""))
 
@@ -175,8 +180,11 @@ def outcome_text(result: StepResult, easy: bool, explain: bool = True) -> Text:
         text.append(f"  chance was {percent(result.success_chance)}", style=MUTED)
     if result.succeeded and result.note:
         text.append(f"\n  {result.note}")
-    if explain and not result.succeeded and result.helped:
-        text.append(f"\n  Stopped by: {', '.join(result.helped)}", style=BLUE)
+    if explain and not result.succeeded:
+        if result.blockers:
+            text.append(f"\n  Stopped by: {', '.join(result.blockers)}", style=BLUE)
+        else:
+            text.append("\n  Nothing blocked it. It just did not work this time.", style=MUTED)
     return text
 
 

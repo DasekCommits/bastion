@@ -6,14 +6,15 @@
     "cost": 15,
     "blocks": {"brute-force": 0.9, "phishing": 0.4, "remote-desktop": 0.5, "credential-stuffing": 0.95},
     "detects": {},
-    "description": "A password alone is not enough to log in. Users also confirm on their phone."
+    "description": "A password alone is not enough to log in. Users also confirm on their phone.",
+    "seen_outside": ["email", "vpn"]
   },
   {
     "id": "security-training",
     "name": "Security awareness training",
     "category": "prevent",
     "cost": 10,
-    "blocks": {"phishing": 0.5},
+    "blocks": {"phishing": 0.5, "macro": 0.3, "usb-drop": 0.5},
     "detects": {"phishing": 0.2},
     "description": "Teach employees to spot fake emails and report them."
   },
@@ -22,18 +23,20 @@
     "name": "Email filtering",
     "category": "prevent",
     "cost": 10,
-    "blocks": {"phishing": 0.6},
-    "detects": {"phishing": 0.4},
-    "description": "Scan incoming email and quarantine known malicious links and attachments."
+    "blocks": {"phishing": 0.6, "macro": 0.5},
+    "detects": {"phishing": 0.4, "macro": 0.3},
+    "description": "Scan incoming email and quarantine known malicious links and attachments.",
+    "seen_outside": ["email"]
   },
   {
     "id": "patching",
     "name": "Patch management",
     "category": "prevent",
     "cost": 20,
-    "blocks": {"exploit-web": 0.8, "privilege-escalation": 0.7},
+    "blocks": {"exploit-web": 0.8, "privilege-escalation": 0.7, "vpn-exploit": 0.8},
     "detects": {},
-    "description": "Keep every server and PC updated so known vulnerabilities are fixed."
+    "description": "Keep every server and PC updated so known vulnerabilities are fixed.",
+    "seen_outside": ["web", "vpn"]
   },
   {
     "id": "waf",
@@ -42,7 +45,8 @@
     "cost": 15,
     "blocks": {"exploit-web": 0.5},
     "detects": {"exploit-web": 0.5},
-    "description": "Filter web traffic and block requests that look like attacks, such as SQL injection."
+    "description": "Filter web traffic and block requests that look like attacks, such as SQL injection.",
+    "seen_outside": ["web"]
   },
   {
     "id": "rate-limiting",
@@ -51,7 +55,8 @@
     "cost": 5,
     "blocks": {"brute-force": 0.7, "credential-stuffing": 0.3},
     "detects": {"brute-force": 0.3},
-    "description": "Lock out anyone who fails to log in too many times in a row."
+    "description": "Lock out anyone who fails to log in too many times in a row.",
+    "seen_outside": ["email", "vpn"]
   },
   {
     "id": "firewall",
@@ -60,7 +65,8 @@
     "cost": 10,
     "blocks": {"port-scan": 0.5, "remote-desktop": 0.4},
     "detects": {"port-scan": 0.5},
-    "description": "Close every port that does not need to be open to the internet."
+    "description": "Close every port that does not need to be open to the internet.",
+    "seen_outside": ["web", "email", "vpn"]
   },
   {
     "id": "least-privilege",
@@ -85,9 +91,10 @@
     "name": "Endpoint detection and response",
     "category": "detect",
     "cost": 25,
-    "blocks": {"ransomware": 0.6, "privilege-escalation": 0.3},
-    "detects": {"privilege-escalation": 0.6, "remote-desktop": 0.5, "ransomware": 0.8},
-    "description": "Security software on every machine that watches for suspicious behaviour and can stop it."
+    "blocks": {"ransomware": 0.6, "privilege-escalation": 0.3, "macro": 0.3, "usb-drop": 0.3, "destruction": 0.4},
+    "detects": {"privilege-escalation": 0.6, "remote-desktop": 0.5, "ransomware": 0.8, "macro": 0.5, "usb-drop": 0.5, "destruction": 0.7},
+    "description": "Security software on every machine that watches for suspicious behaviour and can stop it.",
+    "seen_inside": true
   },
   {
     "id": "siem",
@@ -95,7 +102,7 @@
     "category": "detect",
     "cost": 20,
     "blocks": {},
-    "detects": {"brute-force": 0.6, "remote-desktop": 0.5, "exfiltration": 0.6, "exploit-web": 0.4},
+    "detects": {"brute-force": 0.6, "remote-desktop": 0.5, "exfiltration": 0.6, "exploit-web": 0.4, "vpn-exploit": 0.4, "insider": 0.3, "destruction": 0.5},
     "description": "Collect logs from every server in one place and raise an alert when something looks wrong."
   },
   {
@@ -103,8 +110,38 @@
     "name": "Offline backups",
     "category": "recover",
     "cost": 10,
-    "blocks": {"ransomware": 0.7},
+    "blocks": {"ransomware": 0.7, "destruction": 0.8},
     "detects": {},
     "description": "Keep daily copies of the data offline, so the company can restore it instead of paying a ransom."
+  },
+  {
+    "id": "macro-policy",
+    "name": "Block Office macros",
+    "category": "prevent",
+    "cost": 5,
+    "blocks": {"macro": 0.9},
+    "detects": {},
+    "description": "Office refuses to run macros in files that came from the internet.",
+    "tier": "medium"
+  },
+  {
+    "id": "usb-control",
+    "name": "USB device control",
+    "category": "prevent",
+    "cost": 10,
+    "blocks": {"usb-drop": 0.9},
+    "detects": {"usb-drop": 0.3},
+    "description": "Computers only accept USB sticks the company has approved.",
+    "tier": "medium"
+  },
+  {
+    "id": "dlp",
+    "name": "Data loss prevention",
+    "category": "detect",
+    "cost": 20,
+    "blocks": {"exfiltration": 0.4},
+    "detects": {"exfiltration": 0.5, "insider": 0.4},
+    "description": "Watches for sensitive files leaving the company, by email, upload or USB, and stops them.",
+    "tier": "medium"
   }
 ]

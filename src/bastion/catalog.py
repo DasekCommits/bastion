@@ -1,6 +1,6 @@
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -15,6 +15,8 @@ TACTICS = (
     "impact",
 )
 TARGETS = ("server", "employee")
+TRAITS = ("awareness", "password_hygiene")
+TIER_ORDER = ("small", "medium", "large")
 CATEGORIES = ("prevent", "detect", "recover")
 MITRE_ID = re.compile(r"^T\d{4}(\.\d{3})?$")
 
@@ -30,6 +32,9 @@ class Attack:
     noise: float
     cost: int
     description: str
+    trait: str | None = None
+    roles: list[str] = field(default_factory=list)
+    tier: str = "small"
 
     @property
     def mitre_url(self) -> str:
@@ -45,12 +50,23 @@ class Defense:
     blocks: dict[str, float]
     detects: dict[str, float]
     description: str
+    seen_outside: list[str] = field(default_factory=list)
+    seen_inside: bool = False
+    tier: str = "small"
 
 
 @dataclass
 class Catalog:
     attacks: dict[str, Attack]
     defenses: dict[str, Defense]
+
+    def attacks_for(self, tier: str) -> list[Attack]:
+        limit = TIER_ORDER.index(tier)
+        return [a for a in self.attacks.values() if TIER_ORDER.index(a.tier) <= limit]
+
+    def defenses_for(self, tier: str) -> list[Defense]:
+        limit = TIER_ORDER.index(tier)
+        return [d for d in self.defenses.values() if TIER_ORDER.index(d.tier) <= limit]
 
     def attacks_in_tactic(self, tactic: str) -> list[Attack]:
         return [attack for attack in self.attacks.values() if attack.tactic == tactic]
@@ -83,12 +99,18 @@ def validate(catalog: Catalog) -> None:
             raise CatalogError(f"Attack '{attack.id}' needs base_success and noise from 0 to 1")
         if attack.cost <= 0:
             raise CatalogError(f"Attack '{attack.id}' must cost more than 0")
+        if attack.trait is not None and attack.trait not in TRAITS:
+            raise CatalogError(f"Attack '{attack.id}' has an unknown trait '{attack.trait}'")
+        if attack.tier not in TIER_ORDER:
+            raise CatalogError(f"Attack '{attack.id}' has an unknown tier '{attack.tier}'")
 
     for defense in catalog.defenses.values():
         if defense.category not in CATEGORIES:
             raise CatalogError(f"Defense '{defense.id}' has an unknown category '{defense.category}'")
         if defense.cost <= 0:
             raise CatalogError(f"Defense '{defense.id}' must cost more than 0")
+        if defense.tier not in TIER_ORDER:
+            raise CatalogError(f"Defense '{defense.id}' has an unknown tier '{defense.tier}'")
         for effect in (defense.blocks, defense.detects):
             for attack_id, chance in effect.items():
                 if attack_id not in catalog.attacks:

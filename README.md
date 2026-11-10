@@ -69,13 +69,32 @@ Commas separate moves and `|` separates days (an empty day means waiting). You g
 
 ```bash
 python -m bastion play
-python -m bastion play --difficulty hard --seed 7
+python -m bastion play --scenario harbor-clinic --difficulty medium --seed 7 --fast
 ```
 
-Pick everything with the arrow keys: first your defenses as Blue, then your arsenal as Red, then one move at a time over up to five days.
+Pick a company and a difficulty, then everything happens with the arrow keys: your defenses as Blue, your arsenal as Red, then one move at a time.
 
-- **Easy:** every defense and attack is explained, and before each move you see the success chance, the chance of being spotted and how hot you will be. Moves that cannot work are greyed out with the reason.
-- **Hard:** no explanations and no numbers. Impossible moves are allowed and simply waste a turn. You only learn what happened, and the full post-mortem at the end.
+| | During the game | At the end |
+|---|---|---|
+| **Easy** | Explanations, success and detection chances, heat | Post-mortem, gaps and advice for both sides |
+| **Medium** | Explanations, no numbers | Post-mortem without advice |
+| **Hard** | Nothing | Only the result |
+
+### Companies
+
+| Company | Tier | People | Blue / Red budget | Days |
+|---|---|---|---|---|
+| Olive Byte, an online olive oil shop | small | 5 | 50 / 40 | 5 |
+| Harbor Clinic, a private medical clinic | medium | 10 | 80 / 60 | 7 |
+
+The medium tier adds a VPN gateway, macro documents, infected USB sticks, bribed insiders and data wiping, plus macro blocking, USB control and data loss prevention on the Blue side.
+
+### Realism
+
+- **People differ.** Each employee has their own awareness of phishing and password habits, so the best target depends on the attack.
+- **Mistakes are random.** Whether a non-IT employee was accidentally given admin rights is rolled every game, so you cannot memorise it.
+- **Recon shows only the outside.** A port scan reveals defenses visible from the internet (firewall, WAF, patch level, email filtering, MFA on login pages). Internal defenses such as SIEM or segmentation stay hidden, and EDR is only noticed once you are inside a machine. Scanning a login page makes password attacks more effective.
+- **Pivots.** Config files on a web server or VPN can hold passwords that open internal systems, unless the network is segmented.
 
 ## Safety
 
@@ -103,7 +122,7 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 
 ## Status
 
-Early development. The Small tier is playable from the command line, including an interactive arrow-key mode.
+Early development. The Small tier is playable from the command line, including an interactive arrow-key mode. The Medium tier is playable too.
 
 ## License
 

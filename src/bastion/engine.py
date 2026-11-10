@@ -5,6 +5,8 @@ from bastion.catalog import Attack, Catalog, Defense
 from bastion.company import Company, Employee
 
 BLIND_PENALTY = 0.5
+SCAN_BONUS = 1.5
+LOGIN_ROLES = ("email", "vpn")
 HEAT_PER_NOISE = 0.08
 REPEAT_HEAT = 0.1
 NIGHT_HUNT = 0.4
@@ -37,6 +39,7 @@ class StepResult:
     missing: list[str]
     points: int = 0
     heat: float = 0.0
+    blockers: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -143,11 +146,9 @@ def detect_chance(attack: Attack, defenses: list[Defense]) -> float:
 
 
 def person_factor(attack: Attack, employee: Employee) -> float:
-    if attack.tactic == "initial-access":
-        return 1 - employee.awareness
-    if attack.tactic == "credential-access":
-        return 1 - employee.password_hygiene
-    return 1.0
+    if attack.trait is None:
+        return 1.0
+    return 1 - getattr(employee, attack.trait)
 
 
 def heat_gain(attack: Attack, defenses: list[Defense], times_used_before: int) -> float:
@@ -186,6 +187,8 @@ def _is_possible(attack: Attack, target_id: str, company: Company, foothold: Foo
 
     if attack.target == "server":
         server = company.server(target_id)
+        if attack.roles and server.role not in attack.roles:
+            return False, f"{attack.name} does not work on a {server.role} server."
         if attack.tactic in ("reconnaissance", "initial-access") and not server.internet_facing:
             return False, f"{server.name} cannot be reached from the internet."
 
@@ -241,6 +244,8 @@ def _apply(attack: Attack, target_id: str, company: Company, foothold: Foothold,
         return 0, "There was nothing valuable on this machine."
     points = sum(asset.value for asset in assets)
     names = ", ".join(asset.name for asset in assets)
+    if attack.id == "destruction":
+        return points, f"Wiped: {names}."
     if attack.tactic == "exfiltration":
         note = f"Stolen: {names}."
         for asset in assets:
@@ -290,6 +295,7 @@ class Campaign:
         self.encrypted: list[str] = []
         self.heat = 0.0
         self.used: dict[str, int] = {}
+        self.known_defenses: set[str] = set()
         self.day = 1
         self.moves_today = 0
         self.caught = False
@@ -306,8 +312,28 @@ class Campaign:
     def targets_for(self, attack_id: str) -> list[str]:
         attack = self.catalog.attacks[attack_id]
         if attack.target == "server":
-            return [server.id for server in self.company.servers]
+            return [s.id for s in self.company.servers if not attack.roles or s.role in attack.roles]
         return [employee.id for employee in self.company.employees]
+
+    def _scanned_roles(self) -> set[str]:
+        return {self.company.server(server_id).role for server_id in self.foothold.scanned}
+
+    def _reveal_outside(self, server_id: str) -> str:
+        role = self.company.server(server_id).role
+        seen = [d for d in self.defenses if role in d.seen_outside]
+        self.known_defenses.update(d.id for d in seen)
+        if not seen:
+            return "No protection is visible from outside."
+        return "Visible from outside: " + ", ".join(d.name for d in seen) + "."
+
+    def _reveal_inside(self) -> str:
+        if self.foothold.is_empty():
+            return ""
+        seen = [d for d in self.defenses if d.seen_inside and d.id not in self.known_defenses]
+        self.known_defenses.update(d.id for d in seen)
+        if not seen:
+            return ""
+        return "Inside, you notice: " + ", ".join(d.name for d in seen) + "."
 
     def preview(self, attack_id: str, target_id: str) -> Preview:
         attack = self.catalog.attacks[attack_id]
@@ -317,7 +343,10 @@ class Campaign:
         chance = success_chance(attack, self.defenses)
         if attack.target == "employee":
             chance *= person_factor(attack, self.company.employee(target_id))
-        if attack.id == "exploit-web" and target_id not in self.foothold.scanned:
+        if attack.target == "employee" and attack.trait == "password_hygiene" and self._scanned_roles() & set(LOGIN_ROLES):
+            chance = min(0.95, chance * SCAN_BONUS)
+            note = "Your scan found the login page, so password attacks work better."
+        if attack.tactic == "initial-access" and attack.target == "server" and target_id not in self.foothold.scanned:
             chance *= BLIND_PENALTY
             note = "Attacking blind: no scan first, so the attacker does not know what to exploit."
         if attack.tactic == "privilege-escalation" and target_id in self.foothold.admin_on:
@@ -363,6 +392,9 @@ class Campaign:
             note = "These files are already encrypted."
         elif succeeded:
             points, outcome = _apply(attack, target_id, self.company, self.foothold, self.defense_ids)
+            if attack.tactic == "reconnaissance":
+                outcome = f"{outcome} {self._reveal_outside(target_id)}"
+            outcome = f"{outcome} {self._reveal_inside()}".strip()
             note = f"{note} {outcome}".strip()
             if attack.tactic == "exfiltration" and points:
                 self.stolen.append(target_id)
@@ -372,6 +404,7 @@ class Campaign:
         result = StepResult(
             step, attack, True, note, preview.success_chance, preview.detect_chance,
             succeeded, detected, helped, missing, points, self.heat,
+            blockers=[d.id for d in self.defenses if attack.id in d.blocks],
         )
         self.results.append(result)
         self.caught = detected

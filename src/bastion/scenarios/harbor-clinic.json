@@ -1,0 +1,214 @@
+{
+  "id": "harbor-clinic",
+  "name": "Harbor Clinic",
+  "tier": "medium",
+  "description": "A private medical clinic with ten staff, a patient portal and an X-ray room. Patient records are worth a lot on the black market.",
+  "budget": 80,
+  "red_budget": 60,
+  "max_days": 7,
+  "moves_per_day": 3,
+  "team_size": 2,
+  "servers": [
+    {
+      "id": "site",
+      "name": "Clinic website",
+      "role": "web",
+      "internet_facing": true,
+      "software": ["Apache 2.4", "WordPress 5.8", "PHP 7.4"]
+    },
+    {
+      "id": "vpn",
+      "name": "VPN gateway",
+      "role": "vpn",
+      "internet_facing": true,
+      "software": ["VPN appliance 6.4"]
+    },
+    {
+      "id": "mail",
+      "name": "Cloud email",
+      "role": "email",
+      "internet_facing": true,
+      "software": ["Cloud mail service"]
+    },
+    {
+      "id": "ehr",
+      "name": "Patient records system",
+      "role": "database",
+      "internet_facing": false,
+      "software": ["EHR app 3.1", "SQL Server 2016"]
+    },
+    {
+      "id": "files",
+      "name": "File server",
+      "role": "file",
+      "internet_facing": false,
+      "software": ["Windows Server 2012"]
+    },
+    {
+      "id": "front-desk",
+      "name": "Front desk PC",
+      "role": "workstation",
+      "internet_facing": false,
+      "software": ["Windows 10", "Office"]
+    },
+    {
+      "id": "imaging",
+      "name": "X-ray imaging station",
+      "role": "imaging",
+      "internet_facing": false,
+      "software": ["Windows 7", "PACS viewer"]
+    }
+  ],
+  "employees": [
+    {
+      "id": "helen",
+      "name": "Helen",
+      "role": "Clinic Director",
+      "is_admin": false,
+      "access": ["mail", "ehr", "files"],
+      "awareness": 0.5,
+      "password_hygiene": 0.3,
+      "admin_chance": 0.4
+    },
+    {
+      "id": "nikos",
+      "name": "Nikos",
+      "role": "IT Administrator",
+      "is_admin": true,
+      "needs_admin": true,
+      "access": ["site", "vpn", "mail", "ehr", "files", "front-desk", "imaging"],
+      "awareness": 0.8,
+      "password_hygiene": 0.8
+    },
+    {
+      "id": "dan",
+      "name": "Dan",
+      "role": "External IT Contractor",
+      "is_admin": true,
+      "needs_admin": true,
+      "access": ["vpn", "files", "ehr"],
+      "awareness": 0.5,
+      "password_hygiene": 0.3
+    },
+    {
+      "id": "anna",
+      "name": "Anna",
+      "role": "Receptionist",
+      "is_admin": false,
+      "access": ["mail", "front-desk", "ehr"],
+      "awareness": 0.2,
+      "password_hygiene": 0.3,
+      "admin_chance": 0.1
+    },
+    {
+      "id": "leo",
+      "name": "Leo",
+      "role": "Billing Clerk",
+      "is_admin": false,
+      "access": ["mail", "files", "front-desk"],
+      "awareness": 0.3,
+      "password_hygiene": 0.4,
+      "admin_chance": 0.2
+    },
+    {
+      "id": "maya",
+      "name": "Maya",
+      "role": "Physician",
+      "is_admin": false,
+      "access": ["mail", "ehr", "imaging"],
+      "awareness": 0.4,
+      "password_hygiene": 0.5,
+      "admin_chance": 0.2
+    },
+    {
+      "id": "omar",
+      "name": "Omar",
+      "role": "Radiologist",
+      "is_admin": false,
+      "access": ["mail", "imaging", "ehr"],
+      "awareness": 0.4,
+      "password_hygiene": 0.4,
+      "admin_chance": 0.3
+    },
+    {
+      "id": "grace",
+      "name": "Grace",
+      "role": "Nurse",
+      "is_admin": false,
+      "access": ["mail", "ehr", "front-desk"],
+      "awareness": 0.3,
+      "password_hygiene": 0.4
+    },
+    {
+      "id": "tom",
+      "name": "Tom",
+      "role": "Nurse",
+      "is_admin": false,
+      "access": ["mail", "ehr"],
+      "awareness": 0.5,
+      "password_hygiene": 0.5
+    },
+    {
+      "id": "zoe",
+      "name": "Zoe",
+      "role": "Medical Student",
+      "is_admin": false,
+      "access": ["ehr", "imaging"],
+      "awareness": 0.3,
+      "password_hygiene": 0.5,
+      "admin_chance": 0.5
+    }
+  ],
+  "data": [
+    {
+      "id": "patient-records",
+      "name": "Patient medical records",
+      "location": "ehr",
+      "value": 10
+    },
+    {
+      "id": "prescriptions",
+      "name": "Prescription history",
+      "location": "ehr",
+      "value": 6
+    },
+    {
+      "id": "insurance",
+      "name": "Insurance claims",
+      "location": "files",
+      "value": 6
+    },
+    {
+      "id": "payroll",
+      "name": "Staff payroll",
+      "location": "files",
+      "value": 5
+    },
+    {
+      "id": "xrays",
+      "name": "X-ray images",
+      "location": "imaging",
+      "value": 7
+    },
+    {
+      "id": "appointments",
+      "name": "Online appointment bookings",
+      "location": "site",
+      "value": 3
+    },
+    {
+      "id": "site-config",
+      "name": "Website config with the records database password",
+      "location": "site",
+      "value": 2,
+      "grants": "ehr"
+    },
+    {
+      "id": "vpn-users",
+      "name": "VPN user list with password hashes",
+      "location": "vpn",
+      "value": 2,
+      "grants": "files"
+    }
+  ]
+}

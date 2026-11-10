@@ -9,7 +9,7 @@ from rich.text import Text
 
 from bastion import advice, look
 from bastion.catalog import Catalog, load_catalog
-from bastion.company import Company, load_scenario
+from bastion.company import Company, list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, NightResult, StepResult
 from bastion.look import percent
 
@@ -86,17 +86,17 @@ class Game:
     def __init__(self, company: Company, catalog: Catalog, difficulty: str, ui, rng: random.Random | None = None):
         if difficulty not in DIFFICULTIES:
             raise ValueError(f"Difficulty must be one of {DIFFICULTIES}")
-        self.company = company
+        self.rng = rng or random.Random()
+        self.company = roll_mistakes(company, self.rng)
         self.catalog = catalog
         self.level = difficulty
         self.easy = difficulty == "easy"
         self.explain = difficulty in ("easy", "medium")
         self.ui = ui
-        self.rng = rng or random.Random()
 
     def defense_options(self) -> list[Option]:
         options = []
-        for defense in self.catalog.defenses.values():
+        for defense in self.catalog.defenses_for(self.company.tier):
             if not self.explain:
                 options.append(Option(defense.name, defense.id, tag=f"{defense.cost}", cost=defense.cost))
                 continue
@@ -113,7 +113,7 @@ class Game:
 
     def attack_options(self) -> list[Option]:
         options = []
-        for attack in self.catalog.attacks.values():
+        for attack in self.catalog.attacks_for(self.company.tier):
             if not self.explain:
                 options.append(Option(attack.name, attack.id, tag=f"{attack.cost}", cost=attack.cost))
                 continue
@@ -225,6 +225,8 @@ class Game:
             self.ui.say(look.status_bar(campaign, self.easy))
             if self.explain:
                 self.ui.say(look.foothold_panel(campaign))
+            if campaign.known_defenses:
+                self.ui.say(look.intel_line(campaign))
             action = self.ui.select("Your move", self.action_options(campaign))
             if action == GIVE_UP:
                 return
@@ -256,7 +258,7 @@ class Game:
 
 def main(argv: list[str] | None = None, ui=None) -> int:
     parser = argparse.ArgumentParser(prog="bastion play", description="Play Bastion with the arrow keys.")
-    parser.add_argument("--scenario", default="olive-byte")
+    parser.add_argument("--scenario", default=None)
     parser.add_argument("--difficulty", choices=DIFFICULTIES, default=None)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--fast", action="store_true", help="no suspense pauses")
@@ -270,7 +272,15 @@ def main(argv: list[str] | None = None, ui=None) -> int:
             Option("Medium", "medium", description="Explanations but no numbers. At the end: what happened, no advice."),
             Option("Hard", "hard", description="No help at all. At the end: only the result."),
         ])
-        game = Game(load_scenario(args.scenario), load_catalog(), difficulty, ui, random.Random(args.seed))
+        if args.scenario:
+            company = load_scenario(args.scenario)
+        else:
+            choice = ui.select("Company", [
+                Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people", description=c.description)
+                for c in list_scenarios()
+            ])
+            company = load_scenario(choice)
+        game = Game(company, load_catalog(), difficulty, ui, random.Random(args.seed))
         game.run()
     except KeyboardInterrupt:
         ui.say(Text("\nGame stopped.", style=look.MUTED))

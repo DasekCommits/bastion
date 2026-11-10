@@ -56,8 +56,8 @@ def catalog():
 
 def test_easy_shows_chances_and_hides_impossible_targets(company, catalog):
     game = Game(company, catalog, "easy", Script())
-    campaign = Campaign(company, catalog, [], ["exploit-web"], seed=1)
-    options = {option.value: option for option in game.target_options(campaign, "exploit-web")}
+    campaign = Campaign(company, catalog, [], ["port-scan"], seed=1)
+    options = {option.value: option for option in game.target_options(campaign, "port-scan")}
     assert "success" in options["web-01"].tag
     assert options["db-01"].disabled
 
@@ -118,7 +118,7 @@ def test_day_ends_by_itself_when_moves_run_out(company, catalog):
 
 
 def test_main_asks_difficulty_and_plays(company):
-    script = Script("hard", ["firewall"], ["port-scan"], GIVE_UP)
+    script = Script("hard", "olive-byte", ["firewall"], ["port-scan"], GIVE_UP)
     assert main(["--seed", "1"], ui=script) == 0
     before_red = script.text.split("RED TEAM")[0]
     assert "BLUE TEAM" in before_red and "%" not in before_red
@@ -171,8 +171,8 @@ def test_medium_explains_but_gives_no_advice(company, catalog):
     assert "POST-MORTEM" in text
     assert "WHAT YOU COULD DO" not in text and "Gap:" not in text and "Biggest gaps" not in text
     game = Game(company, catalog, "medium", Script())
-    campaign = Campaign(company, catalog, [], ["exploit-web"], seed=1)
-    options = {option.value: option for option in game.target_options(campaign, "exploit-web")}
+    campaign = Campaign(company, catalog, [], ["port-scan"], seed=1)
+    options = {option.value: option for option in game.target_options(campaign, "port-scan")}
     assert options["db-01"].disabled and "%" not in options["web-01"].tag
     assert all(option.description for option in game.defense_options())
 

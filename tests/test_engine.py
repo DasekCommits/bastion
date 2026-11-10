@@ -28,7 +28,9 @@ NEVER_SEEN = 0.99
 
 @pytest.fixture
 def company():
-    return load_scenario("olive-byte")
+    company = load_scenario("olive-byte")
+    company.employee("sophie").is_admin = True
+    return company
 
 
 @pytest.fixture
@@ -73,9 +75,14 @@ def test_cannot_escalate_without_a_foothold(company, catalog):
     assert not report.results[0].possible
 
 
-def test_cannot_exploit_internal_server(company, catalog):
-    report = run_attack(company, catalog, [], [Step("exploit-web", "db-01")], rng=win_every_step(1))
+def test_cannot_reach_internal_server_from_outside(company, catalog):
+    report = run_attack(company, catalog, [], [Step("port-scan", "db-01")], rng=win_every_step(1))
     assert not report.results[0].possible
+
+
+def test_web_exploit_only_targets_web_servers(company, catalog):
+    with pytest.raises(PlanError):
+        run_attack(company, catalog, [], [Step("exploit-web", "db-01")], rng=win_every_step(1))
 
 
 def test_exploiting_blind_is_harder(company, catalog):
@@ -298,3 +305,51 @@ def test_stealing_twice_gives_no_extra_points(company, catalog):
     campaign.move("phishing", "emily")
     campaign.move("exfiltration", "web-01")
     assert campaign.move("exfiltration", "web-01").points == 0
+
+
+def test_scan_reveals_only_outside_defenses(company, catalog):
+    campaign = Campaign(company, catalog, ["waf", "rate-limiting", "patching"], ["port-scan"], rng=win_every_step(1))
+    result = campaign.move("port-scan", "web-01")
+    assert "Web application firewall" in result.note or "WAF" in result.note
+    assert campaign.known_defenses == {"waf", "patching"}
+
+
+def test_scanning_the_mail_login_helps_password_attacks(company, catalog):
+    campaign = Campaign(company, catalog, [], ["port-scan", "brute-force"], rng=win_every_step(1))
+    before = campaign.preview("brute-force", "maria").success_chance
+    campaign.move("port-scan", "mail")
+    assert campaign.preview("brute-force", "maria").success_chance == pytest.approx(before * 1.5)
+
+
+def test_edr_is_noticed_once_inside(company, catalog):
+    campaign = Campaign(company, catalog, ["edr"], ["phishing"], rng=win_every_step(1))
+    result = campaign.move("phishing", "emily")
+    assert "Endpoint" in result.note or "EDR" in result.note
+    assert "edr" in campaign.known_defenses
+
+
+def test_accidental_admin_changes_between_games(company):
+    import random
+
+    from bastion.company import roll_mistakes
+
+    rolls = {roll_mistakes(company, random.Random(seed)).employee("sophie").is_admin for seed in range(30)}
+    assert rolls == {True, False}
+    assert all(roll_mistakes(company, random.Random(s)).employee("maria").is_admin for s in range(10))
+
+
+def test_clinic_loads_with_medium_attacks(catalog):
+    clinic = load_scenario("harbor-clinic")
+    assert clinic.tier == "medium"
+    medium = {attack.id for attack in catalog.attacks_for("medium")}
+    small = {attack.id for attack in catalog.attacks_for("small")}
+    assert {"vpn-exploit", "macro", "usb-drop", "insider", "destruction"} <= medium - small
+
+
+def test_vpn_users_open_the_file_server(catalog):
+    clinic = load_scenario("harbor-clinic")
+    campaign = Campaign(clinic, catalog, [], ["port-scan", "vpn-exploit", "exfiltration"], rng=win_every_step(3))
+    campaign.move("port-scan", "vpn")
+    campaign.move("vpn-exploit", "vpn")
+    result = campaign.move("exfiltration", "vpn")
+    assert "files" in campaign.foothold.servers and result.points == 2

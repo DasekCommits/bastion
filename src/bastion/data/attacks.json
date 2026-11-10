@@ -19,7 +19,8 @@
     "base_success": 0.6,
     "noise": 0.3,
     "cost": 10,
-    "description": "Send a fake email that tricks an employee into opening a malicious attachment or typing their password on a fake login page."
+    "description": "Send a fake email that tricks an employee into opening a malicious attachment or typing their password on a fake login page.",
+    "trait": "awareness"
   },
   {
     "id": "exploit-web",
@@ -30,7 +31,8 @@
     "base_success": 0.7,
     "noise": 0.4,
     "cost": 25,
-    "description": "Use a known vulnerability in outdated software on an internet-facing server, such as an old CMS or PHP version."
+    "description": "Use a known vulnerability in outdated software on an internet-facing server, such as an old CMS or PHP version.",
+    "roles": ["web"]
   },
   {
     "id": "brute-force",
@@ -41,7 +43,8 @@
     "base_success": 0.4,
     "noise": 0.8,
     "cost": 5,
-    "description": "Try thousands of common passwords against a login page until one works."
+    "description": "Try thousands of common passwords against a login page until one works.",
+    "trait": "password_hygiene"
   },
   {
     "id": "privilege-escalation",
@@ -96,6 +99,70 @@
     "base_success": 0.3,
     "noise": 0.3,
     "cost": 10,
-    "description": "Try usernames and passwords leaked from other websites, hoping an employee reused the same password at work."
+    "description": "Try usernames and passwords leaked from other websites, hoping an employee reused the same password at work.",
+    "trait": "password_hygiene"
+  },
+  {
+    "id": "vpn-exploit",
+    "name": "Exploit the VPN gateway",
+    "mitre_id": "T1133",
+    "tactic": "initial-access",
+    "target": "server",
+    "base_success": 0.6,
+    "noise": 0.3,
+    "cost": 20,
+    "description": "Use a known flaw in an unpatched VPN appliance to get onto the company network without any password.",
+    "roles": ["vpn"],
+    "tier": "medium"
+  },
+  {
+    "id": "macro",
+    "name": "Malicious Office macro",
+    "mitre_id": "T1204.002",
+    "tactic": "initial-access",
+    "target": "employee",
+    "base_success": 0.5,
+    "noise": 0.3,
+    "cost": 15,
+    "description": "Email a Word or Excel file that runs hidden code when the employee clicks 'Enable content'.",
+    "trait": "awareness",
+    "tier": "medium"
+  },
+  {
+    "id": "usb-drop",
+    "name": "Infected USB stick",
+    "mitre_id": "T1091",
+    "tactic": "initial-access",
+    "target": "employee",
+    "base_success": 0.35,
+    "noise": 0.2,
+    "cost": 10,
+    "description": "Leave a USB stick labelled 'Salaries 2026' near the office and wait for someone to plug it in.",
+    "trait": "awareness",
+    "tier": "medium"
+  },
+  {
+    "id": "insider",
+    "name": "Bribe an insider",
+    "mitre_id": "T1078",
+    "tactic": "initial-access",
+    "target": "employee",
+    "base_success": 0.3,
+    "noise": 0.1,
+    "cost": 30,
+    "description": "Pay an employee to hand over their login. Quiet and hard to spot, but expensive and not everyone says yes.",
+    "tier": "medium"
+  },
+  {
+    "id": "destruction",
+    "name": "Wipe the data",
+    "mitre_id": "T1485",
+    "tactic": "impact",
+    "target": "server",
+    "base_success": 0.85,
+    "noise": 0.9,
+    "cost": 25,
+    "description": "Delete everything on a machine so the company cannot work. No ransom, just damage.",
+    "tier": "medium"
   }
 ]

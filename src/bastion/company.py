@@ -1,3 +1,4 @@
+import copy
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,6 +26,7 @@ class Employee:
     needs_admin: bool = False
     awareness: float = 0.0
     password_hygiene: float = 0.0
+    admin_chance: float = 0.0
 
 
 @dataclass
@@ -70,6 +72,14 @@ class Company:
         return [employee for employee in self.employees if employee.is_admin]
 
 
+def roll_mistakes(company: Company, rng) -> Company:
+    rolled = copy.deepcopy(company)
+    for employee in rolled.employees:
+        if employee.admin_chance and not employee.needs_admin:
+            employee.is_admin = rng.random() < employee.admin_chance
+    return rolled
+
+
 class ScenarioError(ValueError):
     pass
 
@@ -83,7 +93,7 @@ def validate(company: Company) -> None:
         raise ScenarioError("Two servers share the same id")
 
     for employee in company.employees:
-        for trait in ("awareness", "password_hygiene"):
+        for trait in ("awareness", "password_hygiene", "admin_chance"):
             if not 0 <= getattr(employee, trait) <= 1:
                 raise ScenarioError(f"Employee '{employee.id}' needs {trait} from 0 to 1")
         for server_id in employee.access:
@@ -119,6 +129,11 @@ def load_company(path: Path) -> Company:
     )
     validate(company)
     return company
+
+
+def list_scenarios() -> list[Company]:
+    companies = [load_company(path) for path in SCENARIOS_DIR.glob("*.json")]
+    return sorted(companies, key=lambda company: TIERS.index(company.tier))
 
 
 def load_scenario(scenario_id: str) -> Company:
