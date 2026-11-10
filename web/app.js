@@ -101,10 +101,11 @@
     if (result === "cancelled") S.notice = "Sign-in was cancelled. You can still play, progress stays in this browser.";
   }
 
-  function show(html) {
+  function show(html, keepScroll) {
+    const y = window.scrollY;
     app.innerHTML = html;
     app.focus({ preventScroll: true });
-    window.scrollTo({ top: 0 });
+    window.scrollTo({ top: keepScroll ? y : 0 });
   }
 
   async function boot() {
@@ -155,7 +156,7 @@
     gauges.hidden = false;
   }
 
-  function renderMenu() {
+  function renderMenu(keepScroll) {
     setGauges(null);
     const menu = api("menu");
     const p = menu.profile;
@@ -210,11 +211,11 @@
       <div class="panel quests"><h3>Classified quests</h3><table class="sheet"><tr><th>Quest</th><th>What to do</th><th class="num">Progress</th><th>Reward</th></tr>
         ${menu.quests.map((q) => `<tr class="${q.known ? (q.done ? "done" : "known") : "hidden"}"><td>${esc(q.title)}</td><td>${esc(q.text)}</td><td class="num">${esc(q.progress)}</td><td>${esc(q.reward)}</td></tr>`).join("")}
       </table></div>
-    </section>`);
+    </section>`, keepScroll);
     app.querySelectorAll(".choice[data-group]").forEach((el) => el.addEventListener("click", () => {
       S.settings[el.dataset.group] = el.dataset.id;
       store.set(SETTINGS_KEY, S.settings);
-      renderMenu();
+      renderMenu(true);
     }));
     document.getElementById("go").addEventListener("click", startGame);
   }
