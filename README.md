@@ -30,6 +30,38 @@ Larger companies are harder because of more than their size. A bigger attack sur
 
 Every company is defined in a data file, so new scenarios can be added without touching the engine.
 
+## Scoring
+
+Both sides are limited and both sides score points.
+
+**Blue Team**
+- **Defense score (0-100):** how much of the company's data survived, averaged over every attack other players throw at your fortress
+- **Detection bonus:** catching the attacker counts, not only stopping them
+- **Efficiency bonus:** the same protection for less budget ranks higher
+
+**Red Team**
+- **Damage:** the value of the data you stole or encrypted
+- **Stealth bonus:** x1.5 if you were never detected
+- **Speed bonus:** fewer steps, more points
+- **Attack budget:** every technique has a cost. A phishing email is cheap, a zero-day exploit is expensive, so attackers have to choose as carefully as defenders.
+
+**Ranking** uses an ELO rating, as in chess: breaking a strong fortress is worth more than breaking a weak one.
+
+Every attack is replayed 1,000 times (Monte Carlo simulation), so scores reflect the quality of a defense, not a lucky roll.
+
+## Try it
+
+```bash
+python -m venv .venv
+.venv/Scripts/activate        # on Linux or macOS: source .venv/bin/activate
+pip install -e . pytest
+
+python -m bastion --defenses "mfa,patching,email-filter" --attack "phishing:sophie,exfiltration:db-01,ransomware:db-01"
+pytest
+```
+
+You get a step-by-step post-mortem of the attack and a summary of 1,000 replays.
+
 ## Safety
 
 Bastion never attacks real systems. The network is simulated, and payloads only run against an isolated rule engine, never against a live server.
@@ -47,15 +79,16 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 - [x] Company model (assets, employees, network) and the Small tier
 - [x] Defense and attack catalog with MITRE ATT&CK mapping
 - [x] Simulation engine and post-mortem report
+- [ ] Red Team budget and the full scoring system
 - [ ] Medium and Large tiers, tier unlocks
 - [ ] WAF rule sandbox (real payloads vs. real rules)
 - [ ] Web API and playable browser UI
-- [ ] Accounts and public leaderboard
+- [ ] Accounts, public leaderboard and ELO ranking
 - [ ] Live deployment and CI
 
 ## Status
 
-Early development.
+Early development. The Small tier is playable from the command line.
 
 ## License
 
