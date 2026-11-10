@@ -28,6 +28,7 @@ class Employee:
     password_hygiene: float = 0.0
     admin_chance: float = 0.0
     loyalty: float = 0.5
+    department: str = ""
 
 
 @dataclass
@@ -37,6 +38,7 @@ class DataAsset:
     location: str
     value: int
     grants: str | None = None
+    fraud: bool = False
 
 
 @dataclass

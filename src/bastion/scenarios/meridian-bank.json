@@ -1,0 +1,422 @@
+{
+  "id": "meridian-bank",
+  "name": "Meridian Savings Bank",
+  "tier": "large",
+  "description": "A regional bank with twenty staff in the office, online banking, a payment system and an outside IT vendor. Everything runs on Active Directory.",
+  "budget": 150,
+  "red_budget": 120,
+  "budget_range": [130, 170],
+  "red_budget_range": [100, 140],
+  "max_days": 10,
+  "moves_per_day": 3,
+  "team_size": 4,
+  "servers": [
+    {
+      "id": "online-banking",
+      "name": "Online banking",
+      "role": "web",
+      "internet_facing": true,
+      "software": ["nginx 1.24", "BankWeb 9.2", "Java 17"]
+    },
+    {
+      "id": "vpn",
+      "name": "VPN gateway",
+      "role": "vpn",
+      "internet_facing": true,
+      "software": ["VPN appliance 7.0"]
+    },
+    {
+      "id": "mail",
+      "name": "Email",
+      "role": "email",
+      "internet_facing": true,
+      "software": ["Mail gateway"]
+    },
+    {
+      "id": "cloud",
+      "name": "Cloud office suite",
+      "role": "cloud",
+      "internet_facing": true,
+      "software": ["Cloud documents and chat"]
+    },
+    {
+      "id": "vendor",
+      "name": "IT vendor remote support",
+      "role": "vendor",
+      "internet_facing": true,
+      "software": ["Remote support tool 12.1"]
+    },
+    {
+      "id": "dc",
+      "name": "Domain controller",
+      "role": "domain-controller",
+      "internet_facing": false,
+      "software": ["Windows Server 2019", "Active Directory"]
+    },
+    {
+      "id": "core",
+      "name": "Core banking database",
+      "role": "database",
+      "internet_facing": false,
+      "software": ["Oracle 19c", "Core banking 5.4"]
+    },
+    {
+      "id": "payments",
+      "name": "Payment system",
+      "role": "payments",
+      "internet_facing": false,
+      "software": ["Payment hub 3.2"]
+    },
+    {
+      "id": "files",
+      "name": "File server",
+      "role": "file",
+      "internet_facing": false,
+      "software": ["Windows Server 2016"]
+    },
+    {
+      "id": "hr",
+      "name": "HR system",
+      "role": "database",
+      "internet_facing": false,
+      "software": ["HR suite 8", "SQL Server 2019"]
+    },
+    {
+      "id": "dev",
+      "name": "Developer server",
+      "role": "dev",
+      "internet_facing": false,
+      "software": ["Ubuntu 22.04", "Git", "Jenkins 2.4"]
+    },
+    {
+      "id": "branch",
+      "name": "Branch teller PCs",
+      "role": "workstation",
+      "internet_facing": false,
+      "software": ["Windows 10", "Teller app 4.1"]
+    }
+  ],
+  "employees": [
+    {
+      "id": "victoria",
+      "name": "Victoria",
+      "role": "Chief Executive",
+      "department": "executive",
+      "is_admin": false,
+      "access": ["mail", "cloud", "files"],
+      "awareness": 0.5,
+      "password_hygiene": 0.4,
+      "loyalty": 0.95,
+      "admin_chance": 0.1
+    },
+    {
+      "id": "marcus",
+      "name": "Marcus",
+      "role": "Chief Financial Officer",
+      "department": "finance",
+      "is_admin": false,
+      "access": ["mail", "cloud", "files", "payments"],
+      "awareness": 0.6,
+      "password_hygiene": 0.5,
+      "loyalty": 0.9
+    },
+    {
+      "id": "irene",
+      "name": "Irene",
+      "role": "Treasury Officer",
+      "department": "finance",
+      "is_admin": false,
+      "access": ["mail", "cloud", "payments"],
+      "awareness": 0.4,
+      "password_hygiene": 0.5,
+      "loyalty": 0.7,
+      "admin_chance": 0.05
+    },
+    {
+      "id": "paul",
+      "name": "Paul",
+      "role": "Accounts Payable Clerk",
+      "department": "finance",
+      "is_admin": false,
+      "access": ["mail", "cloud", "payments", "files"],
+      "awareness": 0.3,
+      "password_hygiene": 0.4,
+      "loyalty": 0.5,
+      "admin_chance": 0.1
+    },
+    {
+      "id": "sofia",
+      "name": "Sofia",
+      "role": "Head of IT",
+      "department": "it",
+      "is_admin": true,
+      "needs_admin": true,
+      "access": ["online-banking", "vpn", "mail", "cloud", "vendor", "dc", "core", "payments", "files", "hr", "dev", "branch"],
+      "awareness": 0.8,
+      "password_hygiene": 0.8,
+      "loyalty": 0.85
+    },
+    {
+      "id": "kostas",
+      "name": "Kostas",
+      "role": "Domain Administrator",
+      "department": "it",
+      "is_admin": true,
+      "needs_admin": true,
+      "access": ["dc", "files", "hr", "core", "branch", "dev", "vpn", "mail", "cloud"],
+      "awareness": 0.7,
+      "password_hygiene": 0.6,
+      "loyalty": 0.8
+    },
+    {
+      "id": "eleni",
+      "name": "Eleni",
+      "role": "Helpdesk Technician",
+      "department": "it",
+      "is_admin": true,
+      "needs_admin": true,
+      "access": ["branch", "files", "mail", "cloud", "vpn"],
+      "awareness": 0.5,
+      "password_hygiene": 0.4,
+      "loyalty": 0.5
+    },
+    {
+      "id": "ryan",
+      "name": "Ryan",
+      "role": "Security Analyst",
+      "department": "security",
+      "is_admin": false,
+      "access": ["mail", "cloud", "files"],
+      "awareness": 0.9,
+      "password_hygiene": 0.9,
+      "loyalty": 0.85
+    },
+    {
+      "id": "nadia",
+      "name": "Nadia",
+      "role": "HR Manager",
+      "department": "hr",
+      "is_admin": false,
+      "access": ["mail", "cloud", "hr", "files"],
+      "awareness": 0.4,
+      "password_hygiene": 0.5,
+      "loyalty": 0.8,
+      "admin_chance": 0.1
+    },
+    {
+      "id": "chris",
+      "name": "Chris",
+      "role": "HR Assistant",
+      "department": "hr",
+      "is_admin": false,
+      "access": ["mail", "cloud", "hr"],
+      "awareness": 0.3,
+      "password_hygiene": 0.4,
+      "loyalty": 0.5
+    },
+    {
+      "id": "daniel",
+      "name": "Daniel",
+      "role": "Lead Developer",
+      "department": "dev",
+      "is_admin": false,
+      "access": ["dev", "cloud", "mail", "vpn"],
+      "awareness": 0.7,
+      "password_hygiene": 0.6,
+      "loyalty": 0.6,
+      "admin_chance": 0.2
+    },
+    {
+      "id": "mia",
+      "name": "Mia",
+      "role": "Junior Developer",
+      "department": "dev",
+      "is_admin": false,
+      "access": ["dev", "cloud", "mail"],
+      "awareness": 0.4,
+      "password_hygiene": 0.5,
+      "loyalty": 0.5,
+      "admin_chance": 0.25
+    },
+    {
+      "id": "alex",
+      "name": "Alex",
+      "role": "Branch Manager",
+      "department": "retail",
+      "is_admin": false,
+      "access": ["branch", "mail", "cloud", "core"],
+      "awareness": 0.5,
+      "password_hygiene": 0.4,
+      "loyalty": 0.8
+    },
+    {
+      "id": "lina",
+      "name": "Lina",
+      "role": "Teller",
+      "department": "retail",
+      "is_admin": false,
+      "access": ["branch", "core"],
+      "awareness": 0.3,
+      "password_hygiene": 0.3,
+      "loyalty": 0.5
+    },
+    {
+      "id": "nick",
+      "name": "Nick",
+      "role": "Teller",
+      "department": "retail",
+      "is_admin": false,
+      "access": ["branch", "core"],
+      "awareness": 0.2,
+      "password_hygiene": 0.3,
+      "loyalty": 0.4
+    },
+    {
+      "id": "olga",
+      "name": "Olga",
+      "role": "Customer Support Agent",
+      "department": "support",
+      "is_admin": false,
+      "access": ["mail", "cloud", "online-banking", "core"],
+      "awareness": 0.3,
+      "password_hygiene": 0.4,
+      "loyalty": 0.5,
+      "admin_chance": 0.05
+    },
+    {
+      "id": "sam",
+      "name": "Sam",
+      "role": "Customer Support Agent",
+      "department": "support",
+      "is_admin": false,
+      "access": ["mail", "cloud", "online-banking"],
+      "awareness": 0.4,
+      "password_hygiene": 0.4,
+      "loyalty": 0.45
+    },
+    {
+      "id": "helena",
+      "name": "Helena",
+      "role": "Legal Counsel",
+      "department": "legal",
+      "is_admin": false,
+      "access": ["mail", "cloud", "files"],
+      "awareness": 0.6,
+      "password_hygiene": 0.5,
+      "loyalty": 0.85
+    },
+    {
+      "id": "tasos",
+      "name": "Tasos",
+      "role": "Vendor Engineer",
+      "department": "vendor",
+      "is_admin": true,
+      "needs_admin": true,
+      "access": ["vendor", "vpn", "branch", "files"],
+      "awareness": 0.4,
+      "password_hygiene": 0.3,
+      "loyalty": 0.3
+    },
+    {
+      "id": "jenny",
+      "name": "Jenny",
+      "role": "Marketing Coordinator",
+      "department": "marketing",
+      "is_admin": false,
+      "access": ["mail", "cloud", "online-banking"],
+      "awareness": 0.2,
+      "password_hygiene": 0.3,
+      "loyalty": 0.5,
+      "admin_chance": 0.1
+    }
+  ],
+  "data": [
+    {
+      "id": "accounts",
+      "name": "Customer accounts and balances",
+      "location": "core",
+      "value": 10
+    },
+    {
+      "id": "cards",
+      "name": "Customer card numbers",
+      "location": "core",
+      "value": 10
+    },
+    {
+      "id": "wire",
+      "name": "Money from a fake wire transfer",
+      "location": "payments",
+      "value": 8,
+      "fraud": true
+    },
+    {
+      "id": "payment-logs",
+      "name": "Payment records",
+      "location": "payments",
+      "value": 5
+    },
+    {
+      "id": "staff",
+      "name": "Employee records and salaries",
+      "location": "hr",
+      "value": 5
+    },
+    {
+      "id": "loans",
+      "name": "Loan applications with ID copies",
+      "location": "files",
+      "value": 7
+    },
+    {
+      "id": "board",
+      "name": "Board meeting notes",
+      "location": "files",
+      "value": 4
+    },
+    {
+      "id": "source",
+      "name": "Source code of the banking app",
+      "location": "dev",
+      "value": 6
+    },
+    {
+      "id": "dev-config",
+      "name": "Build config with the core database password",
+      "location": "dev",
+      "value": 2,
+      "grants": "core"
+    },
+    {
+      "id": "sessions",
+      "name": "Customer login sessions",
+      "location": "online-banking",
+      "value": 3
+    },
+    {
+      "id": "shared-docs",
+      "name": "Shared documents and chats",
+      "location": "cloud",
+      "value": 4
+    },
+    {
+      "id": "hashes",
+      "name": "Password hashes of every account",
+      "location": "dc",
+      "value": 6
+    },
+    {
+      "id": "vendor-keys",
+      "name": "Vendor remote access keys",
+      "location": "vendor",
+      "value": 2,
+      "grants": "branch"
+    },
+    {
+      "id": "teller",
+      "name": "Teller cash reports",
+      "location": "branch",
+      "value": 3
+    }
+  ]
+}

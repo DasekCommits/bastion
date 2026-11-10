@@ -7,12 +7,15 @@ from bastion.company import Company, Employee
 
 BLIND_PENALTY = 0.5
 SCAN_BONUS = 1.5
-LOGIN_ROLES = ("email", "vpn")
+LOGIN_ROLES = ("email", "vpn", "cloud")
+DATA_ROLES = ("database",)
 HEAT_PER_NOISE = 0.08
 REPEAT_HEAT = 0.1
 NIGHT_HUNT = 0.4
 NIGHT_COOLDOWN = 0.7
 BURN_HEAT = 0.15
+FLOOR = 0.05
+CEILING = 0.95
 NEEDS_FOOTHOLD = ("privilege-escalation", "lateral-movement", "exfiltration", "impact")
 
 
@@ -60,6 +63,7 @@ class Foothold:
     servers: set[str] = field(default_factory=set)
     admin_on: set[str] = field(default_factory=set)
     employees: set[str] = field(default_factory=set)
+    fraud_done: bool = False
 
     def is_empty(self) -> bool:
         return not self.servers and not self.employees
@@ -134,6 +138,10 @@ def check_arsenal(company: Company, catalog: Catalog, attack_ids: list[str]) -> 
     return cost
 
 
+def clamp(chance: float) -> float:
+    return min(CEILING, max(FLOOR, chance))
+
+
 def success_chance(attack: Attack, defenses: list[Defense]) -> float:
     chance = attack.base_success
     for defense in defenses:
@@ -159,13 +167,14 @@ def heat_gain(attack: Attack, defenses: list[Defense], times_used_before: int) -
     return attack.noise * HEAT_PER_NOISE * (1 + watchers) + REPEAT_HEAT * times_used_before
 
 
-def night_hunt_chance(heat: float, defenses: list[Defense]) -> float:
+def night_hunt_chance(heat: float, defenses: list[Defense], edge: float = 1.0) -> float:
     watchers = sum(1 for defense in defenses if defense.category == "detect")
-    return min(1.0, heat * NIGHT_HUNT * watchers)
+    return min(1.0, heat * NIGHT_HUNT * watchers / edge)
 
 
-def _night(day: int, heat: float, defenses: list[Defense], rng) -> NightResult:
-    hunt = night_hunt_chance(heat, defenses)
+def _night(day: int, heat: float, defenses: list[Defense], rng, edge: float = 1.0) -> NightResult:
+    raw = night_hunt_chance(heat, defenses, edge)
+    hunt = clamp(raw) if raw > 0 else 0.0
     found = hunt > 0 and rng.random() < hunt
     return NightResult(day, heat, hunt, found, heat * NIGHT_COOLDOWN)
 
@@ -185,6 +194,36 @@ def _employees_with_access(company: Company, foothold: Foothold, server_id: str)
 
 
 def _is_possible(attack: Attack, target_id: str, company: Company, foothold: Foothold) -> tuple[bool, str]:
+    if attack.target == "employee" and attack.roles:
+        employee = company.employee(target_id)
+        if employee.department not in attack.roles:
+            return False, f"{attack.name} only works on the {', '.join(attack.roles)} team."
+
+    if attack.id == "bec":
+        if foothold.fraud_done:
+            return False, "The bank already sent you money once. A second request would be checked."
+        return True, ""
+
+    if attack.id in ("kerberoasting", "dcsync", "pass-the-hash") and foothold.is_empty():
+        return False, "This needs a logged-in account inside the network first."
+
+    if attack.id == "kerberoasting":
+        return True, ""
+
+    if attack.id == "dcsync":
+        if target_id not in foothold.admin_on:
+            return False, "DCSync needs administrator rights on the domain controller."
+        return True, ""
+
+    if attack.id == "pass-the-hash":
+        if not foothold.admin_on:
+            return False, "You need admin rights somewhere first, to dump password hashes from memory."
+        if target_id in foothold.admin_on:
+            return False, "You are already an administrator on this machine."
+        if company.server(target_id).internet_facing:
+            return False, "Pass-the-Hash works inside the network, not on internet-facing servers."
+        return True, ""
+
     if attack.tactic in NEEDS_FOOTHOLD and foothold.is_empty():
         return False, "The attacker has no way into the company yet."
 
@@ -219,6 +258,32 @@ def _apply(attack: Attack, target_id: str, company: Company, foothold: Foothold,
         foothold.scanned.add(target_id)
         return 0, "The attacker now knows which software versions are running."
 
+    if attack.id == "bec":
+        money = [asset for asset in company.data if asset.fraud]
+        foothold.fraud_done = True
+        if not money:
+            return 0, "Nobody here can move money."
+        return sum(asset.value for asset in money), f"Finance paid the fake invoice: {', '.join(a.name for a in money)}."
+
+    if attack.id == "kerberoasting":
+        services = [server for server in company.servers if server.role in DATA_ROLES]
+        for server in services:
+            foothold.servers.add(server.id)
+            foothold.admin_on.add(server.id)
+        names = ", ".join(server.name for server in services)
+        return 0, f"You cracked a service account password offline. It is admin on: {names}."
+
+    if attack.id == "pass-the-hash":
+        foothold.servers.add(target_id)
+        foothold.admin_on.add(target_id)
+        return 0, "You reused a stolen password hash and logged in as an administrator."
+
+    if attack.id == "dcsync":
+        for server in company.servers:
+            foothold.servers.add(server.id)
+            foothold.admin_on.add(server.id)
+        return 0, "You copied every password in the company. You now own the whole domain."
+
     if attack.target == "employee":
         employee = next(employee for employee in company.employees if employee.id == target_id)
         foothold.employees.add(employee.id)
@@ -242,7 +307,7 @@ def _apply(attack: Attack, target_id: str, company: Company, foothold: Foothold,
             foothold.admin_on.add(target_id)
         return 0, "The attacker moved to a new machine."
 
-    assets = [asset for asset in company.data if asset.location == target_id]
+    assets = [asset for asset in company.data if asset.location == target_id and not asset.fraud]
     if not assets:
         return 0, "There was nothing valuable on this machine."
     points = sum(asset.value for asset in assets)
@@ -282,7 +347,9 @@ class Campaign:
         arsenal: list[str],
         seed: int | None = None,
         rng: random.Random | None = None,
+        edge: float = 1.0,
     ):
+        self.edge = edge
         self.company = company
         self.catalog = catalog
         self.defense_ids = list(defense_ids)
@@ -367,8 +434,11 @@ class Campaign:
         if attack.tactic == "privilege-escalation" and target_id in self.foothold.admin_on:
             chance = 1.0
             note = "Already an administrator here, nothing to escalate."
+        if chance < 1.0:
+            chance = clamp(chance * self.edge)
         heat = min(1.0, self.heat + heat_gain(attack, self.defenses, self.used.get(attack.id, 0)))
         spotted = 1 - (1 - detect_chance(attack, self.defenses)) * (1 - heat)
+        spotted = clamp(spotted / self.edge)
         return Preview(True, note, chance, spotted, heat)
 
     def move(self, attack_id: str, target_id: str) -> StepResult:
@@ -415,7 +485,7 @@ class Campaign:
             note = f"{note} {outcome}".strip()
             if attack.tactic == "exfiltration" and points:
                 self.stolen.append(target_id)
-            if attack.tactic == "impact" and points:
+            if attack.tactic == "impact" and attack.target == "server" and points:
                 self.encrypted.append(target_id)
 
         if detected and not was_inside:
@@ -441,7 +511,7 @@ class Campaign:
         if self.day >= self.company.max_days:
             self.out_of_days = True
             return None
-        night = _night(self.day, self.heat, self.defenses, self.rng)
+        night = _night(self.day, self.heat, self.defenses, self.rng, self.edge)
         if self.foothold.is_empty():
             night.found = False
         self.nights.append(night)

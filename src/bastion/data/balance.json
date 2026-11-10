@@ -1,0 +1,5 @@
+{
+  "small": {"easy": 4.2, "medium": 2.3, "hard": 1.95},
+  "medium": {"easy": 3.1, "medium": 1.76, "hard": 1.49},
+  "large": {"easy": 2.8, "medium": 1.52, "hard": 1.15}
+}

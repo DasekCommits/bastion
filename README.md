@@ -80,12 +80,25 @@ Pick a company and a difficulty, then everything happens with the arrow keys: yo
 | **Medium** | Explanations, no numbers | Post-mortem without advice |
 | **Hard** | Nothing | Only the result |
 
+Difficulty also changes the odds. Each company and difficulty has an attacker edge in `data/balance.json`, tuned with thousands of simulated games so the attacker gets away with something about this often:
+
+| | Small | Medium | Large |
+|---|---|---|---|
+| Easy | 80% | 70% | 60% |
+| Medium | 70% | 50% | 30% |
+| Hard | 50% | 30% | 10% |
+
+No single move ever has less than a 5% or more than a 95% chance to succeed or to be spotted, so even a perfect setup on either side can still lose.
+
 ### Companies
 
 | Company | Tier | People | Blue / Red budget (rolled each game, steps of 5) | Days |
 |---|---|---|---|---|
 | Olive Byte, an online olive oil shop | small | 5 | 40-60 / 40-60 | 5 |
 | Harbor Clinic, a private medical clinic | medium | 10 | 70-90 / 60-80 | 7 |
+| Meridian Savings Bank, a regional bank on Active Directory | large | 20 | 130-170 / 100-140 | 10 |
+
+The large tier adds Active Directory attacks (Kerberoasting, Pass-the-Hash, DCSync), password spraying, MFA fatigue, cloud account takeover, a breached IT vendor and business email compromise, answered by phishing-resistant MFA, LAPS, a tiered admin model, honeytokens, conditional access, vendor access control, payment call-back checks and a 24/7 SOC.
 
 The medium tier adds a VPN gateway, macro documents, infected USB sticks, bribed insiders and data wiping, plus macro blocking, USB control and data loss prevention on the Blue side.
 
@@ -124,7 +137,7 @@ Bastion never attacks real systems. The network is simulated, and payloads only 
 
 ## Status
 
-Early development. The Small tier is playable from the command line, including an interactive arrow-key mode. The Medium tier is playable too.
+Early development. The Small tier is playable from the command line, including an interactive arrow-key mode. The Medium and Large tiers are playable too.
 
 ## License
 

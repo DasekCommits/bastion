@@ -129,6 +129,11 @@ def _load_unique(path: Path, cls):
     return items
 
 
+def load_edge(tier: str, difficulty: str, data_dir: Path = DATA_DIR) -> float:
+    table = json.loads((Path(data_dir) / "balance.json").read_text(encoding="utf-8"))
+    return table[tier][difficulty]
+
+
 def load_catalog(data_dir: Path = DATA_DIR) -> Catalog:
     catalog = Catalog(
         attacks=_load_unique(Path(data_dir) / "attacks.json", Attack),

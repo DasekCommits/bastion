@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.text import Text
 
 from bastion import advice, look
-from bastion.catalog import Catalog, load_catalog
+from bastion.catalog import Catalog, load_catalog, load_edge
 from bastion.company import Company, list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, NightResult, StepResult
 from bastion.look import percent
@@ -250,7 +250,8 @@ class Game:
     def run(self) -> Campaign:
         defenses = self.pick_defenses()
         arsenal = self.pick_arsenal()
-        campaign = Campaign(self.company, self.catalog, defenses, arsenal, rng=self.rng)
+        edge = load_edge(self.company.tier, self.level)
+        campaign = Campaign(self.company, self.catalog, defenses, arsenal, rng=self.rng, edge=edge)
         self.ui.say()
         self.play_turns(campaign)
         self.ui.say()
@@ -272,9 +273,9 @@ def main(argv: list[str] | None = None, ui=None) -> int:
     try:
         ui.say(look.title_screen(args.difficulty))
         difficulty = args.difficulty or ui.select("Difficulty", [
-            Option("Easy", "easy", description="Explanations, chances and heat. At the end: what you could have done better."),
-            Option("Medium", "medium", description="Explanations but no numbers. At the end: what happened, no advice."),
-            Option("Hard", "hard", description="No help at all. At the end: only the result."),
+            Option("Easy", "easy", description="Attacks work more often. Explanations, chances and heat. At the end: advice."),
+            Option("Medium", "medium", description="A fairer fight. Explanations but no numbers. At the end: what happened."),
+            Option("Hard", "hard", description="The defenders have the edge. No help at all. At the end: only the result."),
         ])
         if args.scenario:
             company = load_scenario(args.scenario)

@@ -300,7 +300,7 @@ def test_careful_people_are_harder_to_phish(company, catalog):
     assert campaign.preview("phishing", "maria").success_chance == pytest.approx(
         campaign.preview("phishing", "emily").success_chance / 2
     )
-    assert campaign.preview("brute-force", "maria").success_chance == 0
+    assert campaign.preview("brute-force", "maria").success_chance == pytest.approx(0.05)
 
 
 def test_advice_points_at_missing_defense_and_unused_attack(company, catalog):
@@ -386,3 +386,63 @@ def test_vpn_users_open_the_file_server(catalog):
     campaign.move("vpn-exploit", "vpn")
     result = campaign.move("exfiltration", "vpn")
     assert "files" in campaign.foothold.servers and result.points == 2
+
+
+@pytest.fixture
+def bank():
+    return load_scenario("meridian-bank")
+
+
+def test_kerberoasting_needs_a_foothold_and_opens_the_databases(bank, catalog):
+    campaign = Campaign(bank, catalog, [], ["phishing", "kerberoasting"], rng=win_every_step(2))
+    assert not campaign.preview("kerberoasting", "dc").possible
+    campaign.move("phishing", "jenny")
+    campaign.move("kerberoasting", "dc")
+    assert {"core", "hr"} <= campaign.foothold.admin_on
+
+
+def test_domain_takeover_path(bank, catalog):
+    arsenal = ["phishing", "kerberoasting", "pass-the-hash", "dcsync"]
+    campaign = Campaign(bank, catalog, [], arsenal, rng=win_every_step(4))
+    campaign.move("phishing", "jenny")
+    assert not campaign.preview("pass-the-hash", "dc").possible
+    campaign.move("kerberoasting", "dc")
+    campaign.move("pass-the-hash", "dc")
+    assert campaign.preview("dcsync", "dc").possible
+    campaign.end_day()
+    campaign.move("dcsync", "dc")
+    assert campaign.foothold.admin_on == {server.id for server in bank.servers}
+
+
+def test_bec_only_hits_finance_and_pays_once(bank, catalog):
+    campaign = Campaign(bank, catalog, [], ["bec"], rng=win_every_step(2))
+    assert not campaign.preview("bec", "jenny").possible
+    result = campaign.move("bec", "paul")
+    assert result.points == 8
+    assert campaign.encrypted == []
+    assert not campaign.preview("bec", "irene").possible
+
+
+def test_stealing_from_payments_does_not_include_the_fraud_money(bank, catalog):
+    campaign = Campaign(bank, catalog, [], ["phishing", "exfiltration"], rng=win_every_step(2))
+    campaign.move("phishing", "paul")
+    assert campaign.move("exfiltration", "payments").points == 5
+
+
+def test_edge_makes_attacks_easier(company, catalog):
+    normal = Campaign(company, catalog, [], ["phishing"], seed=1)
+    easier = Campaign(company, catalog, [], ["phishing"], seed=1, edge=1.5)
+    assert easier.preview("phishing", "emily").success_chance > normal.preview("phishing", "emily").success_chance
+
+
+def test_no_chance_goes_below_five_or_above_ninety_five_percent(company, catalog):
+    every_defense = list(catalog.defenses)
+    company.budget = 10_000
+    walled = Campaign(company, catalog, every_defense, ["phishing"], seed=1)
+    preview = walled.preview("phishing", "emily")
+    assert preview.success_chance == pytest.approx(0.05)
+    assert preview.detect_chance <= 0.95
+    open_door = Campaign(company, catalog, [], ["phishing"], seed=1, edge=50)
+    preview = open_door.preview("phishing", "emily")
+    assert preview.success_chance == pytest.approx(0.95)
+    assert preview.detect_chance == pytest.approx(0.05)
