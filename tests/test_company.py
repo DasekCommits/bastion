@@ -32,3 +32,9 @@ def test_data_value_must_be_in_range(company):
     company.data[0].value = 42
     with pytest.raises(ScenarioError):
         validate(company)
+
+
+def test_awareness_must_be_in_range(company):
+    company.employees[0].awareness = 1.5
+    with pytest.raises(ScenarioError):
+        validate(company)

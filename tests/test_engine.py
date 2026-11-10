@@ -249,3 +249,15 @@ def test_waiting_lowers_the_heat(company, catalog):
     fast = run_attack(company, catalog, [], loud, rng=win_every_step(3))
     slow = run_attack(company, catalog, [], patient, rng=win_every_step(3))
     assert slow.results[-1].heat < fast.results[-1].heat
+
+
+def test_careful_people_are_harder_to_phish(company, catalog):
+    campaign = Campaign(company, catalog, [], ["phishing", "brute-force"], seed=1)
+    maria = company.employee("maria")
+    maria.awareness, maria.password_hygiene = 0.5, 1.0
+    careless = company.employee("emily")
+    careless.awareness = 0.0
+    assert campaign.preview("phishing", "maria").success_chance == pytest.approx(
+        campaign.preview("phishing", "emily").success_chance / 2
+    )
+    assert campaign.preview("brute-force", "maria").success_chance == 0

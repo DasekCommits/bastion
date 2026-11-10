@@ -75,9 +75,15 @@ def company_panel(company: Company, easy: bool) -> Panel:
     people.add_column("Person")
     people.add_column("Admin")
     people.add_column("Can log in to", style=MUTED)
+    if easy:
+        people.add_column("Spots phishing")
+        people.add_column("Passwords")
     for employee in company.employees:
         admin = Text("yes", style=AMBER) if employee.is_admin else Text("no", style=MUTED)
-        people.add_row(f"{employee.name} [{MUTED}]{employee.role}[/]", admin, ", ".join(employee.access))
+        row = [f"{employee.name} [{MUTED}]{employee.role}[/]", admin, ", ".join(employee.access)]
+        if easy:
+            row += [_trait(employee.awareness), _trait(employee.password_hygiene)]
+        people.add_row(*row)
 
     parts = [Text(company.description), Text(), servers, people]
     if easy:
@@ -95,6 +101,14 @@ def company_panel(company: Company, easy: bool) -> Panel:
         border_style=BLUE,
         padding=(1, 2),
     )
+
+
+def _trait(value: float) -> Text:
+    if value >= 0.6:
+        return Text("good", style=GREEN)
+    if value >= 0.3:
+        return Text("okay", style=AMBER)
+    return Text("poor", style=RED)
 
 
 def _dots(filled: int, total: int, color: str) -> Text:

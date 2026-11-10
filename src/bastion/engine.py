@@ -142,6 +142,14 @@ def detect_chance(attack: Attack, defenses: list[Defense]) -> float:
     return attack.noise * (1 - missed)
 
 
+def person_factor(attack: Attack, employee: Employee) -> float:
+    if attack.tactic == "initial-access":
+        return 1 - employee.awareness
+    if attack.tactic == "credential-access":
+        return 1 - employee.password_hygiene
+    return 1.0
+
+
 def heat_gain(attack: Attack, defenses: list[Defense], times_used_before: int) -> float:
     watchers = sum(1 for defense in defenses if defense.category == "detect")
     return attack.noise * HEAT_PER_NOISE * (1 + watchers) + REPEAT_HEAT * times_used_before
@@ -297,6 +305,8 @@ class Campaign:
         if not possible:
             return Preview(False, note, 0.0, 0.0, self.heat)
         chance = success_chance(attack, self.defenses)
+        if attack.target == "employee":
+            chance *= person_factor(attack, self.company.employee(target_id))
         if attack.id == "exploit-web" and target_id not in self.foothold.scanned:
             chance *= BLIND_PENALTY
             note = "Attacking blind: no scan first, so the attacker does not know what to exploit."

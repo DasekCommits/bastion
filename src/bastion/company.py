@@ -23,6 +23,8 @@ class Employee:
     is_admin: bool
     access: list[str]
     needs_admin: bool = False
+    awareness: float = 0.0
+    password_hygiene: float = 0.0
 
 
 @dataclass
@@ -54,6 +56,12 @@ class Company:
                 return server
         raise KeyError(f"No server with id '{server_id}'")
 
+    def employee(self, employee_id: str) -> Employee:
+        for employee in self.employees:
+            if employee.id == employee_id:
+                return employee
+        raise KeyError(f"No employee with id '{employee_id}'")
+
     def internet_facing_servers(self) -> list[Server]:
         return [server for server in self.servers if server.internet_facing]
 
@@ -74,6 +82,9 @@ def validate(company: Company) -> None:
         raise ScenarioError("Two servers share the same id")
 
     for employee in company.employees:
+        for trait in ("awareness", "password_hygiene"):
+            if not 0 <= getattr(employee, trait) <= 1:
+                raise ScenarioError(f"Employee '{employee.id}' needs {trait} from 0 to 1")
         for server_id in employee.access:
             if server_id not in server_ids:
                 raise ScenarioError(
