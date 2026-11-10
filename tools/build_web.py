@@ -33,6 +33,7 @@ def main() -> None:
     version = digest.hexdigest()[:10]
     (OUT / "app.js").write_text((WEB / "app.js").read_text(encoding="utf-8").replace("__VERSION__", version), encoding="utf-8")
     shutil.copy(WEB / "style.css", OUT / "style.css")
+    shutil.copytree(WEB / "api", OUT / "api")
     html = (WEB / "index.html").read_text(encoding="utf-8")
     html = html.replace('href="style.css"', f'href="style.css?v={version}"').replace('src="app.js"', f'src="app.js?v={version}"')
     (OUT / "index.html").write_text(html, encoding="utf-8")

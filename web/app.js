@@ -8,6 +8,8 @@
 
   const app = document.getElementById("app");
   const gauges = document.getElementById("gauges");
+  const accountBox = document.getElementById("account");
+  const GITHUB_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>';
 
   const S = {
     session: null,
@@ -17,6 +19,9 @@
     attack: null,
     busy: false,
     map: null,
+    user: null,
+    accounts: false,
+    notice: "",
   };
 
   const LEVELS = [
@@ -44,6 +49,57 @@
     return typeof out === "string" ? JSON.parse(out) : out;
   }
 
+  async function fetchMe() {
+    try {
+      const response = await fetch("api/me.php", { credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
+  async function saveProgress(profile) {
+    if (!S.user) return;
+    try {
+      await fetch("api/progress.php", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-Bastion": "1" },
+        body: JSON.stringify(profile),
+      });
+    } catch {}
+  }
+
+  function renderAccount() {
+    if (!S.accounts) { accountBox.innerHTML = ""; return; }
+    if (S.user) {
+      accountBox.innerHTML = `${S.user.avatar ? `<img src="${esc(S.user.avatar)}" alt="">` : ""}<span class="who">${esc(S.user.login)}</span><button class="linkish" id="signout">Sign out</button>`;
+      document.getElementById("signout").addEventListener("click", signOut);
+    } else {
+      accountBox.innerHTML = `<a class="signin" href="api/login.php">${GITHUB_ICON}Sign in with GitHub</a>`;
+    }
+  }
+
+  async function signOut() {
+    try {
+      await fetch("api/logout.php", { method: "POST", credentials: "same-origin", headers: { "X-Bastion": "1" } });
+    } catch {}
+    S.user = null;
+    S.notice = "Signed out. Your progress stays saved in your account.";
+    renderAccount();
+    if (!S.start || app.querySelector("#go")) renderMenu();
+  }
+
+  function readSigninResult() {
+    const params = new URLSearchParams(location.search);
+    const result = params.get("signin");
+    if (!result) return;
+    history.replaceState(null, "", location.pathname);
+    if (result === "failed") S.notice = "Signing in with GitHub did not work. Try again in a minute.";
+    if (result === "cancelled") S.notice = "Sign-in was cancelled. You can still play, progress stays in this browser.";
+  }
+
   function show(html) {
     app.innerHTML = html;
     app.focus({ preventScroll: true });
@@ -63,8 +119,23 @@
       pyodide.unpackArchive(await response.arrayBuffer(), "zip", { extractDir: "/home/pyodide/game" });
       pyodide.runPython("import sys; sys.path.insert(0, '/home/pyodide/game')");
       const web = pyodide.pyimport("bastion.web");
-      const saved = store.get(PROFILE_KEY, null);
-      S.session = web.Session(saved ? JSON.stringify(saved) : "");
+      readSigninResult();
+      const me = await fetchMe();
+      S.accounts = me !== null && !me.error;
+      let profile = store.get(PROFILE_KEY, null);
+      if (me && me.signed_in) {
+        S.user = me.user;
+        const server = me.profile;
+        if (server.games === 0 && profile && profile.games > 0) {
+          await saveProgress(profile);
+          S.notice = `Signed in as ${me.user.login}. The progress from this browser is now saved to your account.`;
+        } else {
+          profile = server;
+          store.set(PROFILE_KEY, profile);
+        }
+      }
+      renderAccount();
+      S.session = web.Session(profile ? JSON.stringify(profile) : "");
       progress("Ready.", "100%");
       S.settings = Object.assign(S.settings, store.get(SETTINGS_KEY, {}));
       renderMenu();
@@ -102,9 +173,13 @@
     }).join("");
     if (S.settings.company && menu.companies.find((c) => c.id === S.settings.company)?.locked) S.settings.company = null;
     const ready = S.settings.level && S.settings.side && S.settings.company;
+    const notice = S.notice ? `<p class="notice" role="status">${esc(S.notice)}</p>` : "";
+    S.notice = "";
+    const saveNote = S.user ? "Progress is saved to your GitHub account." : S.accounts ? "Progress is saved in this browser. Sign in with GitHub to keep it on every device." : "";
     show(`<section class="step">
+      ${notice}
       <div class="step-head">
-        <div><p class="eyebrow">New game</p><h1>Pick your fight.</h1></div>
+        <div><p class="eyebrow">New game</p><h1>Pick your fight.</h1>${saveNote ? `<p class="muted" style="margin:8px 0 0;font-size:14px">${esc(saveNote)}</p>` : ""}</div>
         <p class="profile-line">${p.points} points · ${p.games} games · wins: ${esc(wins)}</p>
       </div>
       <div class="settings">
@@ -460,7 +535,9 @@
 
   function renderFinal(final) {
     setGauges(null);
-    store.set(PROFILE_KEY, JSON.parse(final.profile_json));
+    const profile = JSON.parse(final.profile_json);
+    store.set(PROFILE_KEY, profile);
+    saveProgress(profile);
     const r = final.result;
     const color = r.defense_score >= 70 ? "var(--green)" : r.defense_score >= 40 ? "var(--amber)" : "var(--red)";
     let scoreHtml = "";

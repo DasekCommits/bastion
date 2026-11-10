@@ -91,6 +91,27 @@ main:focus-visible { outline: none; }
 .heat { width: 90px; height: 8px; background: var(--paper-2); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
 .heat span { display: block; height: 100%; background: var(--amber); transition: width 0.4s ease; }
 
+.topbar-right { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; justify-content: flex-end; }
+
+.account { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.account img { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); }
+.account .who { font-weight: 600; }
+.signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+}
+.signin:hover { background: var(--ink); color: var(--paper); }
+.signin svg { width: 16px; height: 16px; fill: currentColor; }
+.linkish { background: none; border: none; padding: 0; color: var(--ink-soft); text-decoration: underline; font-size: 13px; }
+.notice { border: 1px solid var(--line); border-left: 4px solid var(--amber); background: var(--card); padding: 10px 14px; border-radius: var(--radius); font-size: 14px; }
+
 main {
   flex: 1;
   width: 100%;
