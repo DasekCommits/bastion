@@ -40,7 +40,7 @@ def tune(games: int = 200, steps: int = 9) -> dict:
             table[side][company.tier] = {}
             for level in LEVELS:
                 goal = TARGETS[company.tier][level]
-                low, high = 0.05, 10.0
+                low, high = 0.02, 80.0
                 for _ in range(steps):
                     mid = (low * high) ** 0.5
                     rate = win_rate(company, catalog, level, side, mid, games, offset=10_000)

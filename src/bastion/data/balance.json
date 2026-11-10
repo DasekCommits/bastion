@@ -1,12 +1,12 @@
 {
   "red": {
-    "small": {"easy": 6.02, "medium": 2.8, "hard": 2.01},
-    "medium": {"easy": 3.37, "medium": 2.05, "hard": 1.47},
-    "large": {"easy": 3.04, "medium": 1.54, "hard": 1.22}
+    "small": {"easy": 12.19, "medium": 6.51, "hard": 3.74},
+    "medium": {"easy": 6.46, "medium": 4.65, "hard": 4.02},
+    "large": {"easy": 6.75, "medium": 3.26, "hard": 1.85}
   },
   "blue": {
-    "small": {"easy": 1.13, "medium": 1.17, "hard": 1.89},
-    "medium": {"easy": 1.47, "medium": 2.05, "hard": 3.44},
-    "large": {"easy": 2.37, "medium": 5.0, "hard": 9.9}
+    "small": {"easy": 1.22, "medium": 1.35, "hard": 2.72},
+    "medium": {"easy": 4.02, "medium": 4.67, "hard": 6.51},
+    "large": {"easy": 9.76, "medium": 21.5, "hard": 32.1}
   }
 }

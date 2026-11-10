@@ -138,6 +138,13 @@ def check_arsenal(company: Company, catalog: Catalog, attack_ids: list[str]) -> 
     return cost
 
 
+def with_edge(chance: float, edge: float) -> float:
+    if chance <= 0 or chance >= 1:
+        return chance
+    odds = chance / (1 - chance) * edge
+    return odds / (1 + odds)
+
+
 def clamp(chance: float) -> float:
     return min(CEILING, max(FLOOR, chance))
 
@@ -169,7 +176,7 @@ def heat_gain(attack: Attack, defenses: list[Defense], times_used_before: int) -
 
 def night_hunt_chance(heat: float, defenses: list[Defense], edge: float = 1.0) -> float:
     watchers = sum(1 for defense in defenses if defense.category == "detect")
-    return min(1.0, heat * NIGHT_HUNT * watchers / edge)
+    return with_edge(min(1.0, heat * NIGHT_HUNT * watchers), 1 / edge)
 
 
 def _night(day: int, heat: float, defenses: list[Defense], rng, edge: float = 1.0) -> NightResult:
@@ -435,10 +442,10 @@ class Campaign:
             chance = 1.0
             note = "Already an administrator here, nothing to escalate."
         if chance < 1.0:
-            chance = clamp(chance * self.edge)
+            chance = clamp(with_edge(chance, self.edge))
         heat = min(1.0, self.heat + heat_gain(attack, self.defenses, self.used.get(attack.id, 0)))
         spotted = 1 - (1 - detect_chance(attack, self.defenses)) * (1 - heat)
-        spotted = clamp(spotted / self.edge)
+        spotted = clamp(with_edge(spotted, 1 / self.edge))
         return Preview(True, note, chance, spotted, heat)
 
     def move(self, attack_id: str, target_id: str) -> StepResult:

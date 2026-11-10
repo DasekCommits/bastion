@@ -446,3 +446,10 @@ def test_no_chance_goes_below_five_or_above_ninety_five_percent(company, catalog
     preview = open_door.preview("phishing", "emily")
     assert preview.success_chance == pytest.approx(0.95)
     assert preview.detect_chance == pytest.approx(0.05)
+
+
+def test_a_big_edge_keeps_careful_people_harder_to_phish(company, catalog):
+    campaign = Campaign(company, catalog, [], ["phishing"], seed=1, edge=6)
+    maria = campaign.preview("phishing", "maria").success_chance
+    emily = campaign.preview("phishing", "emily").success_chance
+    assert maria < emily < 0.95
