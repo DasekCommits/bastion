@@ -315,6 +315,15 @@ class Campaign:
             return [s.id for s in self.company.servers if not attack.roles or s.role in attack.roles]
         return [employee.id for employee in self.company.employees]
 
+    def scan_helps(self) -> bool:
+        for attack_id in self.arsenal:
+            attack = self.catalog.attacks[attack_id]
+            if attack.tactic == "initial-access" and attack.target == "server":
+                return True
+            if attack.trait == "password_hygiene":
+                return True
+        return False
+
     def _scanned_roles(self) -> set[str]:
         return {self.company.server(server_id).role for server_id in self.foothold.scanned}
 

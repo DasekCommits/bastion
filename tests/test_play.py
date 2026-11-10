@@ -143,7 +143,7 @@ def test_back_returns_to_the_move_menu_without_using_a_move(company, catalog):
 def test_scan_warns_when_exploit_was_not_bought(company, catalog):
     game = Game(company, catalog, "easy", Script())
     campaign = Campaign(company, catalog, [], ["port-scan"], seed=1)
-    assert "did not buy" in game.move_hint(campaign, "port-scan")
+    assert "intel is all you get" in game.move_hint(campaign, "port-scan")
 
 
 def test_suspense_comes_before_the_outcome(company, catalog):

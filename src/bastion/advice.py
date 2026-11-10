@@ -104,8 +104,8 @@ def red_tips(campaign: Campaign) -> list[str]:
         if not admin_employees and not campaign.foothold.admin_on and "ransomware" in campaign.arsenal:
             tips.append("Ransomware needs admin rights. Phish an admin, or bring Privilege escalation.")
 
-    if "port-scan" in campaign.arsenal and "exploit-web" not in campaign.arsenal:
-        tips.append("Port scan only helps Exploit the web shop. Without it, that budget was wasted.")
+    if "port-scan" in campaign.arsenal and not campaign.scan_helps():
+        tips.append("Port scan only helps server exploits and password attacks. You had neither, so its main use was intel.")
 
     tried = {result.attack.id for result in campaign.results}
     unused = [catalog.attacks[a] for a in campaign.arsenal if a not in tried]

@@ -165,8 +165,10 @@ class Game:
     def move_hint(self, campaign: Campaign, attack_id: str) -> str:
         attack = self.catalog.attacks[attack_id]
         hint = attack.description
-        if attack.tactic == "reconnaissance" and "exploit-web" not in campaign.arsenal:
-            hint += " Warning: a scan only helps Exploit the web shop, which you did not buy."
+        if attack.tactic == "reconnaissance":
+            hint += " It also shows which defenses are visible from outside."
+            if not campaign.scan_helps():
+                hint += " You have no server exploit or password attack, so intel is all you get."
         return hint
 
     def target_options(self, campaign: Campaign, attack_id: str) -> list[Option]:
