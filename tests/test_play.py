@@ -8,6 +8,7 @@ from rich.console import Console
 from bastion.catalog import load_catalog
 from bastion.company import load_scenario
 from bastion.engine import Campaign
+from bastion.picker import Picker
 from bastion.play import BACK, END_DAY, GIVE_UP, Game, main
 
 
@@ -23,10 +24,11 @@ class Script:
         assert answer in [option.value for option in options if not option.disabled]
         return answer
 
-    def checkbox(self, message, options, validate):
+    def pick(self, message, options, budget, need_one, done_label):
         self.seen.append((message, options))
         answer = self.answers.pop(0)
-        assert validate(answer) is True
+        assert sum(option.cost for option in options if option.value in answer) <= budget
+        assert answer or not need_one
         return answer
 
     def say(self, content=""):
@@ -65,11 +67,29 @@ def test_hard_shows_no_numbers_and_allows_every_target(company, catalog):
     assert all(option.description is None for option in game.defense_options())
 
 
-def test_budget_check_rejects_too_expensive_picks(company, catalog):
-    game = Game(company, catalog, "easy", Script())
-    check = game._budget_check("defense", company.budget)
-    assert check(["mfa", "waf"]) is True
-    assert "budget is 100" in check([defense_id for defense_id in catalog.defenses])
+def test_picker_shows_live_total_and_refuses_overspending(catalog):
+    game = Game(load_scenario("olive-byte"), catalog, "easy", Script())
+    picker = Picker("Pick", game.defense_options(), 30)
+    picker.press_enter()
+    assert picker.spent == catalog.defenses["mfa"].cost
+    assert "Spent 15/30" in "".join(text for _, text in picker.tokens())
+    picker.move(3)
+    picker.press_enter()
+    assert picker.spent == 15 and "Not enough budget" in picker.warning
+    picker.move(-3)
+    picker.press_enter()
+    assert picker.spent == 0
+
+
+def test_picker_only_finishes_on_done(catalog):
+    game = Game(load_scenario("olive-byte"), catalog, "easy", Script())
+    picker = Picker("Buy", game.attack_options(), 100, need_one=True)
+    picker.move(-1)
+    assert picker.on_done and not picker.press_enter()
+    picker.move(1)
+    assert not picker.press_enter()
+    picker.move(-1)
+    assert picker.press_enter() and picker.chosen == ["port-scan"]
 
 
 def test_full_easy_game_ends_with_post_mortem(company, catalog):

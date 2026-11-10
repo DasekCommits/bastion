@@ -25,10 +25,8 @@ LOGO = """\
 ██████╔╝██║  ██║███████║   ██║   ██║╚██████╔╝██║ ╚████║
 ╚═════╝ ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝"""
 
-
 def percent(value: float) -> str:
     return f"{value * 100:.0f}%"
-
 
 def questionary_style():
     from questionary import Style
@@ -45,7 +43,6 @@ def questionary_style():
         ("separator", f"fg:{FAINT}"),
     ])
 
-
 def title_screen(difficulty: str | None = None) -> Panel:
     parts = [
         Text(LOGO, style=f"bold {AMBER}"),
@@ -56,11 +53,9 @@ def title_screen(difficulty: str | None = None) -> Panel:
         parts.append(Text(f"\n{difficulty.upper()} MODE", style=MUTED))
     return Panel(Group(*parts), box=box.HEAVY, border_style=FAINT, padding=(1, 3), expand=False)
 
-
 def team_rule(team: str, subtitle: str) -> Rule:
     color = BLUE if team == "blue" else RED
     return Rule(f"[bold {color}]{team.upper()} TEAM[/]  [{MUTED}]{subtitle}[/]", style=color)
-
 
 def company_panel(company: Company, easy: bool) -> Panel:
     servers = Table(box=box.SIMPLE_HEAD, header_style=f"bold {BLUE}", pad_edge=False)
@@ -96,20 +91,13 @@ def company_panel(company: Company, easy: bool) -> Panel:
         padding=(1, 2),
     )
 
-
-def budget_line(label: str, budget: int, color: str) -> Text:
-    return Text.assemble((f"{label} budget ", MUTED), (str(budget), f"bold {color}"))
-
-
 def _dots(filled: int, total: int, color: str) -> Text:
     return Text.assemble(("●" * filled, color), ("○" * (total - filled), FAINT))
-
 
 def heat_bar(heat: float, width: int = 12) -> Text:
     filled = round(heat * width)
     color = GREEN if heat < 0.34 else AMBER if heat < 0.67 else RED
     return Text.assemble(("█" * filled, color), ("░" * (width - filled), FAINT), (f" {percent(heat)}", color))
-
 
 def status_bar(campaign: Campaign, easy: bool) -> Rule:
     company = campaign.company
@@ -123,7 +111,6 @@ def status_bar(campaign: Campaign, easy: bool) -> Rule:
         line.append("   HEAT ", style=MUTED)
         line.append_text(heat_bar(campaign.heat))
     return Rule(line, style=FAINT)
-
 
 def foothold_panel(campaign: Campaign) -> Text:
     foothold = campaign.foothold
@@ -142,7 +129,6 @@ def foothold_panel(campaign: Campaign) -> Text:
     if not text.plain:
         text.append("  No foothold yet. Find a way in first.\n", style=MUTED)
     return text
-
 
 def result_text(result: StepResult, target_name: str, easy: bool) -> Text:
     text = Text.assemble(("  ", ""), (result.attack.name, "bold"), (" → ", MUTED), (target_name, ""), "\n")
@@ -166,7 +152,6 @@ def result_text(result: StepResult, target_name: str, easy: bool) -> Text:
         text.append("  The Blue Team spotted you and kicked you out.\n", style=RED)
     return text
 
-
 def night_panel(night: NightResult, easy: bool) -> Panel:
     lines = Text()
     if easy:
@@ -182,10 +167,8 @@ def night_panel(night: NightResult, easy: bool) -> Panel:
         lines.append("The night passes quietly.", style=MUTED)
     return Panel(lines, title=f"[{MUTED}]☾ Night {night.day}[/]", title_align="left", border_style=FAINT, padding=(0, 2))
 
-
 def _score_color(score: int) -> str:
     return GREEN if score >= 70 else AMBER if score >= 40 else RED
-
 
 def final_screen(report: Report, catalog: Catalog) -> Group:
     score = report.defense_score

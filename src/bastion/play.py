@@ -24,6 +24,7 @@ class Option:
     title: str
     value: str
     tag: str = ""
+    cost: int = 0
     description: str | None = None
     disabled: str | None = None
 
@@ -46,18 +47,17 @@ class Terminal:
             instruction="(arrows to move, enter to pick)",
         ).unsafe_ask()
 
-    def checkbox(self, message: str, options: list[Option], validate) -> list[str]:
-        import questionary
+    def pick(self, message: str, options: list[Option], budget: int, need_one: bool, done_label: str) -> list[str]:
+        from bastion.picker import Picker
 
-        return questionary.checkbox(
-            message,
-            choices=[_to_choice(option) for option in options],
-            validate=validate,
-            style=look.questionary_style(),
-            pointer="›",
-            qmark="◆",
-            instruction="(space to pick, a for all, enter to confirm)",
-        ).unsafe_ask()
+        chosen = Picker(message, options, budget, need_one, done_label).run()
+        names = [option.title for option in options if option.value in chosen]
+        spent = sum(option.cost for option in options if option.value in chosen)
+        self.console.print(
+            f"[bold {look.AMBER}]◆[/] [bold]{message}[/] [{look.MUTED}]({spent}/{budget})[/] "
+            f"{', '.join(names) or 'nothing'}"
+        )
+        return chosen
 
     def say(self, content="") -> None:
         self.console.print(content)
@@ -86,7 +86,7 @@ class Game:
         options = []
         for defense in self.catalog.defenses.values():
             if not self.easy:
-                options.append(Option(defense.name, defense.id, tag=f"{defense.cost}"))
+                options.append(Option(defense.name, defense.id, tag=f"{defense.cost}", cost=defense.cost))
                 continue
             countered = sorted(set(defense.blocks) | set(defense.detects))
             names = ", ".join(self.catalog.attacks[attack_id].name for attack_id in countered)
@@ -94,6 +94,7 @@ class Game:
                 defense.name,
                 defense.id,
                 tag=f"{defense.cost:>3}  {defense.category}",
+                cost=defense.cost,
                 description=f"{defense.description} Counters: {names or 'nothing directly'}.",
             ))
         return options
@@ -102,43 +103,27 @@ class Game:
         options = []
         for attack in self.catalog.attacks.values():
             if not self.easy:
-                options.append(Option(attack.name, attack.id, tag=f"{attack.cost}"))
+                options.append(Option(attack.name, attack.id, tag=f"{attack.cost}", cost=attack.cost))
                 continue
             options.append(Option(
                 attack.name,
                 attack.id,
                 tag=f"{attack.cost:>3}  {attack.mitre_id} {attack.tactic}",
+                cost=attack.cost,
                 description=f"{attack.description} Targets: {attack.target}s. Noise: {percent(attack.noise)}.",
             ))
         return options
 
-    def _budget_check(self, kind: str, budget: int):
-        prices = self.catalog.defenses if kind == "defense" else self.catalog.attacks
-
-        def validate(selected: list) -> bool | str:
-            total = sum(prices[item if isinstance(item, str) else item.value].cost for item in selected)
-            if total > budget:
-                return f"That costs {total}, but the budget is {budget}."
-            return True
-
-        return validate
-
     def pick_defenses(self) -> list[str]:
         self.ui.say(look.team_rule("blue", f"protect {self.company.name}"))
         self.ui.say(look.company_panel(self.company, self.easy))
-        self.ui.say(look.budget_line("Blue", self.company.budget, look.BLUE))
-        return self.ui.checkbox("Pick your defenses", self.defense_options(), self._budget_check("defense", self.company.budget))
+        return self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, "Done, switch to Red")
 
     def pick_arsenal(self) -> list[str]:
         self.ui.say()
         self.ui.say(look.team_rule("red", "switch sides and break in"))
         self.ui.say(Text("You buy each attack once and can reuse it on any day.", style=look.MUTED))
-        self.ui.say(look.budget_line("Red", self.company.red_budget, look.RED))
-        while True:
-            arsenal = self.ui.checkbox("Buy your arsenal", self.attack_options(), self._budget_check("attack", self.company.red_budget))
-            if arsenal:
-                return arsenal
-            self.ui.say(Text("You need at least one attack.", style=look.AMBER))
+        return self.ui.pick("Buy your arsenal", self.attack_options(), self.company.red_budget, True, "Done, start the attack")
 
     def action_options(self, campaign: Campaign) -> list[Option]:
         options = []
