@@ -158,13 +158,16 @@ def move_header(result: StepResult, target_name: str) -> Text:
     return Text.assemble(("  ", ""), (result.attack.name, "bold"), (" → ", MUTED), (target_name, ""))
 
 
-def outcome_text(result: StepResult, easy: bool) -> Text:
+def outcome_text(result: StepResult, easy: bool, explain: bool = True) -> Text:
     text = Text()
     if not result.possible:
         text.append("  WASTED ", style=f"bold black on {AMBER}")
         text.append(f" {result.note}", style=AMBER)
         return text
-    if result.succeeded:
+    empty = result.succeeded and result.attack.tactic in ("exfiltration", "impact") and not result.points
+    if empty:
+        text.append("  NOTHING HERE ", style=f"bold black on {AMBER}")
+    elif result.succeeded:
         text.append("  SUCCESS ", style=f"bold black on {GREEN}")
     else:
         text.append("  FAILED ", style=f"bold white on {FAINT}")
@@ -172,7 +175,7 @@ def outcome_text(result: StepResult, easy: bool) -> Text:
         text.append(f"  chance was {percent(result.success_chance)}", style=MUTED)
     if result.succeeded and result.note:
         text.append(f"\n  {result.note}")
-    if easy and not result.succeeded and result.helped:
+    if explain and not result.succeeded and result.helped:
         text.append(f"\n  Stopped by: {', '.join(result.helped)}", style=BLUE)
     return text
 
@@ -232,7 +235,7 @@ def _score_color(score: int) -> str:
     return GREEN if score >= 70 else AMBER if score >= 40 else RED
 
 
-def final_screen(report: Report, catalog: Catalog) -> Group:
+def final_screen(report: Report, catalog: Catalog, level: str = "easy", blue: list[str] = (), red: list[str] = ()) -> Group:
     score = report.defense_score
     board = Table.grid(expand=True, padding=(0, 4))
     board.add_column(justify="center")
@@ -249,7 +252,11 @@ def final_screen(report: Report, catalog: Catalog) -> Group:
         Text("caught" if report.caught else "got away", style=f"bold {BLUE if report.caught else RED}"),
     )
 
-    body = Text(format_report(report, catalog))
+    result = Panel(board, title="[bold]RESULT[/]", border_style=_score_color(score), padding=(1, 2))
+    if level == "hard":
+        return Group(result)
+
+    body = Text(format_report(report, catalog, lessons=level == "easy"))
     body.highlight_regex(r"--- DAY \d+ ---", f"bold {AMBER}")
     body.highlight_regex(r"\bSUCCESS\b", f"bold {GREEN}")
     body.highlight_regex(r"\b(BLOCKED|SKIPPED)\b", f"bold {MUTED}")
@@ -258,7 +265,18 @@ def final_screen(report: Report, catalog: Catalog) -> Group:
     body.highlight_regex(r"Gap:.*", AMBER)
     body.highlight_regex(r"\[T\d{4}(\.\d{3})?[^\]]*\]", MUTED)
 
-    return Group(
-        Panel(board, title="[bold]RESULT[/]", border_style=_score_color(score), padding=(1, 2)),
-        Panel(body, title="[bold]POST-MORTEM[/]", title_align="left", border_style=FAINT, padding=(1, 2)),
-    )
+    parts = [result, Panel(body, title="[bold]POST-MORTEM[/]", title_align="left", border_style=FAINT, padding=(1, 2))]
+    if level == "easy":
+        parts.append(tips_panel(blue, red))
+    return Group(*parts)
+
+
+def tips_panel(blue: list[str], red: list[str]) -> Panel:
+    grid = Table.grid(expand=True, padding=(0, 3))
+    grid.add_column(ratio=1)
+    grid.add_column(ratio=1)
+    grid.add_row(Text("AS BLUE", style=f"bold {BLUE}"), Text("AS RED", style=f"bold {RED}"))
+    blue_text = Text("\n".join(f"• {tip}" for tip in blue))
+    red_text = Text("\n".join(f"• {tip}" for tip in red))
+    grid.add_row(blue_text, red_text)
+    return Panel(grid, title="[bold]WHAT YOU COULD DO[/]", title_align="left", border_style=AMBER, padding=(1, 2))

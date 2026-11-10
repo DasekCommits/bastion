@@ -152,3 +152,32 @@ def test_suspense_comes_before_the_outcome(company, catalog):
     text = script.text
     assert text.index("Waiting for Sophie to click") < text.index("SUCCESS" if "SUCCESS" in text else "FAILED")
     assert "Is the Blue Team watching?" in text
+
+
+def play_short_game(level, company, catalog):
+    script = Script(["mfa"], ["phishing", "exfiltration"], "phishing", "emily", GIVE_UP)
+    Game(company, catalog, level, script, random.Random(5)).run()
+    return script.text
+
+
+def test_easy_ends_with_advice_for_both_sides(company, catalog):
+    text = play_short_game("easy", company, catalog)
+    assert "WHAT YOU COULD DO" in text and "AS BLUE" in text and "AS RED" in text
+    assert "POST-MORTEM" in text
+
+
+def test_medium_explains_but_gives_no_advice(company, catalog):
+    text = play_short_game("medium", company, catalog)
+    assert "POST-MORTEM" in text
+    assert "WHAT YOU COULD DO" not in text and "Gap:" not in text and "Biggest gaps" not in text
+    game = Game(company, catalog, "medium", Script())
+    campaign = Campaign(company, catalog, [], ["exploit-web"], seed=1)
+    options = {option.value: option for option in game.target_options(campaign, "exploit-web")}
+    assert options["db-01"].disabled and "%" not in options["web-01"].tag
+    assert all(option.description for option in game.defense_options())
+
+
+def test_hard_shows_only_the_result(company, catalog):
+    text = play_short_game("hard", company, catalog)
+    assert "DEFENSE SCORE" in text
+    assert "POST-MORTEM" not in text and "WHAT YOU COULD DO" not in text

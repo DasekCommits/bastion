@@ -261,3 +261,15 @@ def test_careful_people_are_harder_to_phish(company, catalog):
         campaign.preview("phishing", "emily").success_chance / 2
     )
     assert campaign.preview("brute-force", "maria").success_chance == 0
+
+
+def test_advice_points_at_missing_defense_and_unused_attack(company, catalog):
+    from bastion.advice import blue_tips, red_tips
+
+    campaign = Campaign(company, catalog, [], ["phishing", "ransomware"], rng=Rolls(ALWAYS_WIN, NEVER_SEEN))
+    campaign.move("phishing", "sophie")
+    blue = " ".join(blue_tips(campaign))
+    red = " ".join(red_tips(campaign))
+    assert "would have cut Phishing email" in blue
+    assert "Least privilege" in blue
+    assert "never used it" in red

@@ -16,7 +16,7 @@ def _night_lines(night) -> list[str]:
     return lines
 
 
-def format_report(report: Report, catalog: Catalog) -> str:
+def format_report(report: Report, catalog: Catalog, lessons: bool = True) -> str:
     company = report.company
     lines = [
         f"BASTION POST-MORTEM: {company.name} ({company.tier})",
@@ -53,9 +53,9 @@ def format_report(report: Report, catalog: Catalog) -> str:
                 lines.append(f"   {result.note}")
             if result.detected:
                 lines.append("   DETECTED  The Blue Team spotted this and kicked the attacker out.")
-        if result.possible and result.helped:
+        if lessons and result.possible and result.helped:
             lines.append(f"   Helped: {', '.join(result.helped)}")
-        if result.possible and result.succeeded and result.missing:
+        if lessons and result.possible and result.succeeded and result.missing:
             lines.append(f"   Gap: {', '.join(result.missing)} would have made this harder")
         lines.append("")
 
@@ -78,7 +78,7 @@ def format_report(report: Report, catalog: Catalog) -> str:
         if result.possible and result.succeeded:
             for defense_id in result.missing:
                 gaps.setdefault(defense_id, []).append(result.attack.mitre_id)
-    if gaps:
+    if lessons and gaps:
         lines.append("")
         lines.append("Biggest gaps:")
         ranked = sorted(gaps.items(), key=lambda item: len(item[1]), reverse=True)

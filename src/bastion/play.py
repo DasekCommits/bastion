@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from rich.console import Console
 from rich.text import Text
 
-from bastion import look
+from bastion import advice, look
 from bastion.catalog import Catalog, load_catalog
 from bastion.company import Company, load_scenario
 from bastion.engine import Campaign, NightResult, StepResult
@@ -16,7 +16,7 @@ from bastion.look import percent
 END_DAY = "end-day"
 GIVE_UP = "give-up"
 BACK = "back"
-DIFFICULTIES = ("easy", "hard")
+DIFFICULTIES = ("easy", "medium", "hard")
 TITLE_WIDTH = 30
 
 
@@ -88,14 +88,16 @@ class Game:
             raise ValueError(f"Difficulty must be one of {DIFFICULTIES}")
         self.company = company
         self.catalog = catalog
+        self.level = difficulty
         self.easy = difficulty == "easy"
+        self.explain = difficulty in ("easy", "medium")
         self.ui = ui
         self.rng = rng or random.Random()
 
     def defense_options(self) -> list[Option]:
         options = []
         for defense in self.catalog.defenses.values():
-            if not self.easy:
+            if not self.explain:
                 options.append(Option(defense.name, defense.id, tag=f"{defense.cost}", cost=defense.cost))
                 continue
             countered = sorted(set(defense.blocks) | set(defense.detects))
@@ -112,7 +114,7 @@ class Game:
     def attack_options(self) -> list[Option]:
         options = []
         for attack in self.catalog.attacks.values():
-            if not self.easy:
+            if not self.explain:
                 options.append(Option(attack.name, attack.id, tag=f"{attack.cost}", cost=attack.cost))
                 continue
             options.append(Option(
@@ -120,13 +122,14 @@ class Game:
                 attack.id,
                 tag=f"{attack.cost:>3}  {attack.mitre_id} {attack.tactic}",
                 cost=attack.cost,
-                description=f"{attack.description} Targets: {attack.target}s. Noise: {percent(attack.noise)}.",
+                description=f"{attack.description} Targets: {attack.target}s."
+                + (f" Noise: {percent(attack.noise)}." if self.easy else ""),
             ))
         return options
 
     def pick_defenses(self) -> list[str]:
         self.ui.say(look.team_rule("blue", f"protect {self.company.name}"))
-        self.ui.say(look.company_panel(self.company, self.easy))
+        self.ui.say(look.company_panel(self.company, self.explain))
         return self.ui.pick("Pick your defenses", self.defense_options(), self.company.budget, False, "Done, switch to Red")
 
     def pick_arsenal(self) -> list[str]:
@@ -140,10 +143,10 @@ class Game:
         for attack_id in campaign.arsenal:
             attack = self.catalog.attacks[attack_id]
             used = campaign.used.get(attack_id, 0)
-            if not self.easy:
+            if not self.explain:
                 options.append(Option(attack.name, attack_id))
                 continue
-            tag = f"used {used}x, more heat" if used else ""
+            tag = f"used {used}x, more heat" if used and self.easy else ""
             blocked = self.why_impossible(campaign, attack_id)
             options.append(Option(attack.name, attack_id, tag=tag, description=self.move_hint(campaign, attack_id), disabled=blocked))
         options.append(Option("End the day", END_DAY))
@@ -170,12 +173,15 @@ class Game:
         options = []
         for target_id in campaign.targets_for(attack_id):
             label = self.target_name(target_id)
-            if not self.easy:
+            if not self.explain:
                 options.append(Option(label, target_id))
                 continue
             preview = campaign.preview(attack_id, target_id)
             if not preview.possible:
                 options.append(Option(label, target_id, disabled=preview.note))
+                continue
+            if not self.easy:
+                options.append(Option(label, target_id, description=preview.note or None))
                 continue
             options.append(Option(
                 label,
@@ -200,7 +206,7 @@ class Game:
         self.ui.say(look.move_header(result, target))
         if result.possible:
             self.ui.suspense(look.suspense_lines(result, target))
-        self.ui.say(look.outcome_text(result, self.easy))
+        self.ui.say(look.outcome_text(result, self.easy, self.explain))
         if result.possible:
             self.ui.suspense([look.WATCHING])
             self.ui.say(look.detection_text(result))
@@ -217,7 +223,7 @@ class Game:
                 self._end_day(campaign)
                 continue
             self.ui.say(look.status_bar(campaign, self.easy))
-            if self.easy:
+            if self.explain:
                 self.ui.say(look.foothold_panel(campaign))
             action = self.ui.select("Your move", self.action_options(campaign))
             if action == GIVE_UP:
@@ -242,7 +248,9 @@ class Game:
         self.ui.say()
         self.play_turns(campaign)
         self.ui.say()
-        self.ui.say(look.final_screen(campaign.report(), self.catalog))
+        blue = advice.blue_tips(campaign) if self.easy else []
+        red = advice.red_tips(campaign) if self.easy else []
+        self.ui.say(look.final_screen(campaign.report(), self.catalog, self.level, blue, red))
         return campaign
 
 
@@ -258,8 +266,9 @@ def main(argv: list[str] | None = None, ui=None) -> int:
     try:
         ui.say(look.title_screen(args.difficulty))
         difficulty = args.difficulty or ui.select("Difficulty", [
-            Option("Easy", "easy", description="See explanations, chances and heat before every move."),
-            Option("Hard", "hard", description="No help. You only see what happened."),
+            Option("Easy", "easy", description="Explanations, chances and heat. At the end: what you could have done better."),
+            Option("Medium", "medium", description="Explanations but no numbers. At the end: what happened, no advice."),
+            Option("Hard", "hard", description="No help at all. At the end: only the result."),
         ])
         game = Game(load_scenario(args.scenario), load_catalog(), difficulty, ui, random.Random(args.seed))
         game.run()
