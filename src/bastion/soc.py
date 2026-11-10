@@ -1,11 +1,10 @@
-import base64
 import random
 from dataclasses import dataclass
 
 NOISE_PER_DAY = {"small": 2, "medium": 3, "large": 5}
 EGG_RNG = random.Random()
 EGG_CHANCE = 0.12
-EGG_MESSAGE = "CLEARANCE: win 20 games on Meridian Bank Hard. The Directorate will open its doors."
+EGG_COMMAND = "QwBMAEUAQQBSAEEATgBDAEUAOgAgAHcAaQBuACAAMgAwACAAZwBhAG0AZQBzACAAbwBuACAATQBlAHIAaQBkAGkAYQBuACAAQgBhAG4AawAgAEgAYQByAGQALgAgAFQAaABlACAARABpAHIAZQBjAHQAbwByAGEAdABlACAAdwBpAGwAbAAgAG8AcABlAG4AIABpAHQAcwAgAGQAbwBvAHIAcwAuAA=="
 BASE_HUNT = 0.45
 HUNT_TOOLS = {"edr": 0.3, "siem": 0.15, "soc": 0.2}
 
@@ -117,8 +116,7 @@ def noise_entry(entry_id: int, day: int, company, defenses: list, rng: random.Ra
 
 def egg_entry(entry_id: int, day: int, company) -> LogEntry:
     server = next((s for s in company.servers if s.role == "file"), company.servers[0])
-    encoded = base64.b64encode(EGG_MESSAGE.encode("utf-16-le")).decode()
-    text = f"PowerShell started with an encoded command on {server.name}: powershell -NoProfile -enc {encoded}"
+    text = f"PowerShell started with an encoded command on {server.name}: powershell -NoProfile -enc {EGG_COMMAND}"
     return LogEntry(entry_id, day, "Endpoint detection and response", "admin", text, server.id, False, 0.5,
                     innocent_reason="an old admin script that only prints a message. Nothing harmful ran, but the message may interest you")
 
