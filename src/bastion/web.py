@@ -3,7 +3,7 @@ import random
 
 from bastion import advice, ai, scoring
 from bastion.catalog import load_catalog, load_edge
-from bastion.clearance import plant_sealed_file, record_secrets
+from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, PlanError
 from bastion.profile import Profile
@@ -59,7 +59,7 @@ class Session:
         }
         return json.dumps({"companies": companies, "locks": locks, "levels": levels, "profile": self._profile(),
                            "goal": self.profile.next_goal(), "cleared": self.profile.cleared(),
-                           "realism": self.profile.realism_open()})
+                           "realism": self.profile.realism_open(), "quests": quests(self.profile)})
 
     def _profile(self) -> dict:
         return {"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins,

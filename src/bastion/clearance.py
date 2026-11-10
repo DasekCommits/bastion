@@ -48,3 +48,37 @@ def record_secrets(campaign, profile, level: str, side: str) -> list[str]:
         count = profile.add_secret("script", 1)
         notes.append(f"The script fell silent. ({min(count, EGG_GOAL)}/{EGG_GOAL})")
     return notes
+
+
+QUESTS = [
+    {
+        "id": "sealed",
+        "title": "Off the books",
+        "text": "Steal the sealed DIRECTORATE-7 contract from Meridian Bank on Hard. It does not show up every time.",
+        "goal": SEALED_GOAL,
+        "reward": "a classified difficulty",
+    },
+    {
+        "id": "script",
+        "title": "The script that talks",
+        "text": "On Meridian Bank Hard, isolate the machine where the encoded script ran, on the same day it appears.",
+        "goal": EGG_GOAL,
+        "reward": "a classified company",
+    },
+]
+
+
+def quests(profile) -> list[dict]:
+    listed = []
+    for quest in QUESTS:
+        count = profile.secrets.get(quest["id"], 0)
+        if count == 0:
+            listed.append({"id": quest["id"], "known": False, "title": "█" * len(quest["title"]),
+                           "text": "Classified. Something unusual has to happen first.", "progress": "?/?",
+                           "reward": "████████", "done": False})
+            continue
+        done = count >= quest["goal"]
+        listed.append({"id": quest["id"], "known": True, "title": quest["title"], "text": quest["text"],
+                       "progress": f"{min(count, quest['goal'])}/{quest['goal']}",
+                       "reward": quest["reward"] if done else "████████", "done": done})
+    return listed

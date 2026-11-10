@@ -200,6 +200,9 @@
           <small>${menu.cleared ? "Clearance granted. The doors open soon." : "Unlock conditions: unknown. Some scripts talk."}</small></button></div></div>
       </div>
       <div class="btn-row"><button class="btn" id="go" ${ready ? "" : "disabled"}>Start the game</button></div>
+      <div class="panel quests"><h3>Classified quests</h3><table class="sheet"><tr><th>Quest</th><th>What to do</th><th class="num">Progress</th><th>Reward</th></tr>
+        ${menu.quests.map((q) => `<tr class="${q.known ? (q.done ? "done" : "known") : "hidden"}"><td>${esc(q.title)}</td><td>${esc(q.text)}</td><td class="num">${esc(q.progress)}</td><td>${esc(q.reward)}</td></tr>`).join("")}
+      </table></div>
     </section>`);
     app.querySelectorAll(".choice[data-group]").forEach((el) => el.addEventListener("click", () => {
       S.settings[el.dataset.group] = el.dataset.id;

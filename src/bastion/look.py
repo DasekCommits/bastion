@@ -346,6 +346,18 @@ def wins_text(profile) -> str:
     return ", ".join(parts)
 
 
+def quests_panel(listed: list[dict]) -> Panel:
+    table = Table(box=box.SIMPLE_HEAD, header_style=f"bold {AMBER}", pad_edge=False)
+    table.add_column("Quest")
+    table.add_column("What to do", style=MUTED)
+    table.add_column("Progress", justify="right")
+    table.add_column("Reward", style=MUTED)
+    for quest in listed:
+        style = f"bold {GREEN}" if quest["done"] else "bold" if quest["known"] else FAINT
+        table.add_row(Text(quest["title"], style=style), quest["text"], quest["progress"], quest["reward"])
+    return Panel(table, title="[bold]CLASSIFIED QUESTS[/]", title_align="left", border_style=AMBER, padding=(1, 2))
+
+
 def score_panel(score, profile, unlocked: list[str]) -> Panel:
     color = BLUE if score.side == "blue" else RED
     verdict = Text("YOU WIN" if score.won else "YOU LOSE", style=f"bold {GREEN if score.won else RED}")

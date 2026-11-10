@@ -12,7 +12,7 @@ from bastion import advice, ai, look, scoring
 from bastion.catalog import Catalog, load_catalog, load_edge
 from bastion.company import Company, list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, NightResult, StepResult
-from bastion.clearance import plant_sealed_file, record_secrets
+from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.gamelog import log_game
 from bastion.profile import home, load_profile, save_profile
 from bastion.waf import evaluate, library_ruleset, load_corpus, load_library, load_rules
@@ -512,10 +512,14 @@ def main(argv: list[str] | None = None, ui=None) -> int:
                     mode = ui.select("Menu", [
                         Option("Play", "play", description="Defend or attack a company."),
                         Option("WAF Lab", "lab", description="Practice: learn how a web firewall stops hackers. Does not change your points."),
+                        Option("Quests", "quests", description="Classified quests. Most of them are hidden until you stumble on them."),
                         Option("Quit", QUIT),
                     ])
                     if mode == QUIT:
                         break
+                    if mode == "quests":
+                        ui.say(look.quests_panel(quests(load_profile())))
+                        continue
                     if mode == "lab":
                         waf_lab(ui)
                         if ui.select("What next?", [Option("Main menu", MENU), Option("Quit", QUIT)]) == QUIT:

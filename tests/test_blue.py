@@ -210,3 +210,16 @@ def test_isolating_the_talking_script_counts_toward_clearance(catalog):
     notes = record_secrets(campaign, profile, "hard", "blue")
     assert notes and "3/3" in notes[0] and profile.cleared()
     assert record_secrets(campaign, Profile(), "medium", "blue") == []
+
+
+def test_quests_stay_classified_until_the_first_success():
+    from bastion.clearance import quests
+    from bastion.profile import Profile
+
+    hidden = quests(Profile())
+    assert all(not q["known"] and "█" in q["title"] and q["progress"] == "?/?" for q in hidden)
+    found = {q["id"]: q for q in quests(Profile(secrets={"sealed": 1}))}
+    assert found["sealed"]["known"] and found["sealed"]["progress"] == "1/10" and "█" in found["sealed"]["reward"]
+    assert not found["script"]["known"]
+    done = {q["id"]: q for q in quests(Profile(secrets={"sealed": 12}))}
+    assert done["sealed"]["done"] and done["sealed"]["progress"] == "10/10" and "difficulty" in done["sealed"]["reward"]
