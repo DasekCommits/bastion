@@ -10,6 +10,7 @@ from bastion.report import format_report
 
 END_DAY = "end-day"
 GIVE_UP = "give-up"
+BACK = "back"
 DIFFICULTIES = ("easy", "hard")
 
 
@@ -148,12 +149,32 @@ class Game:
             attack = self.catalog.attacks[attack_id]
             used = campaign.used.get(attack_id, 0)
             title = attack.name
-            if self.easy and used:
+            if not self.easy:
+                options.append(Option(title, attack_id))
+                continue
+            if used:
                 title += f"  (used {used}x, more heat)"
-            options.append(Option(title, attack_id))
+            blocked = self.why_impossible(campaign, attack_id)
+            options.append(Option(title, attack_id, description=self.move_hint(campaign, attack_id), disabled=blocked))
         options.append(Option("End the day", END_DAY))
         options.append(Option("Give up", GIVE_UP))
         return options
+
+    def why_impossible(self, campaign: Campaign, attack_id: str) -> str | None:
+        notes = []
+        for target_id in campaign.targets_for(attack_id):
+            preview = campaign.preview(attack_id, target_id)
+            if preview.possible:
+                return None
+            notes.append(preview.note)
+        return notes[0] if notes else "No targets."
+
+    def move_hint(self, campaign: Campaign, attack_id: str) -> str:
+        attack = self.catalog.attacks[attack_id]
+        hint = attack.description
+        if attack.tactic == "reconnaissance" and "exploit-web" not in campaign.arsenal:
+            hint += " Warning: a scan only helps Exploit the web shop, which you did not buy."
+        return hint
 
     def target_options(self, campaign: Campaign, attack_id: str) -> list[Option]:
         options = []
@@ -172,6 +193,7 @@ class Game:
                 target_id,
                 description=preview.note or None,
             ))
+        options.append(Option("Back", BACK))
         return options
 
     def _target_name(self, target_id: str) -> str:
@@ -227,6 +249,8 @@ class Game:
                 self._end_day(campaign)
                 continue
             target = self.ui.select("Target:", self.target_options(campaign, action))
+            if target == BACK:
+                continue
             self.show_result(campaign.move(action, target))
             self.ui.say()
 

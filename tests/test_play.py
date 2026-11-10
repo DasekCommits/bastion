@@ -5,7 +5,7 @@ import pytest
 from bastion.catalog import load_catalog
 from bastion.company import load_scenario
 from bastion.engine import Campaign
-from bastion.play import END_DAY, GIVE_UP, Game, main
+from bastion.play import BACK, END_DAY, GIVE_UP, Game, main
 
 
 class Script:
@@ -92,3 +92,25 @@ def test_main_asks_difficulty_and_plays(company):
     script = Script("hard", ["firewall"], ["port-scan"], GIVE_UP)
     assert main(["--seed", "1"], ui=script) == 0
     assert "%" not in "\n".join(script.lines[: script.lines.index("RED TEAM: now switch sides and break in")])
+
+
+def test_easy_greys_out_moves_with_no_possible_target(company, catalog):
+    game = Game(company, catalog, "easy", Script())
+    campaign = Campaign(company, catalog, [], ["phishing", "privilege-escalation"], seed=1)
+    options = {option.value: option for option in game.action_options(campaign)}
+    assert options["privilege-escalation"].disabled
+    assert not options["phishing"].disabled
+
+
+def test_back_returns_to_the_move_menu_without_using_a_move(company, catalog):
+    script = Script("phishing", BACK, GIVE_UP)
+    game = Game(company, catalog, "easy", script, random.Random(0))
+    campaign = Campaign(company, catalog, [], ["phishing"], rng=random.Random(0))
+    game.play_turns(campaign)
+    assert campaign.moves_today == 0
+
+
+def test_scan_warns_when_exploit_was_not_bought(company, catalog):
+    game = Game(company, catalog, "easy", Script())
+    campaign = Campaign(company, catalog, [], ["port-scan"], seed=1)
+    assert "did not buy" in game.move_hint(campaign, "port-scan")
