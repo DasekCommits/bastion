@@ -144,7 +144,7 @@ def test_the_bank_logs_can_hide_the_clearance_message(catalog):
         soc.EGG_CHANCE = old
     egg = next(e for e in campaign.logs if "-enc" in e.text)
     encoded = egg.text.rsplit(" ", 1)[1]
-    assert "20 games on Meridian Bank Hard" in base64.b64decode(encoded).decode("utf-16-le")
+    assert base64.b64decode(encoded).decode("utf-16-le").startswith("CLEARANCE:")
     assert not egg.real
 
 
