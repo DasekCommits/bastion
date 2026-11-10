@@ -193,7 +193,9 @@
       <div class="settings">
         <div class="setting"><h3>Difficulty</h3><div class="choices">${LEVELS.map((l) => card("level", l)).join("")}</div></div>
         <div class="setting"><h3>Side</h3><div class="choices">${SIDES.map((s) => card("side", s)).join("")}</div></div>
-        <div class="setting"><h3>Company</h3><div class="choices">${companies}</div></div>
+        <div class="setting"><h3>Company</h3><div class="choices">${companies}
+          <button class="choice classified" disabled><span class="tag">classified · ??? people</span><strong>█████████ ███</strong>
+          <small>${menu.cleared ? "Clearance granted. The doors open soon." : "Unlock conditions: unknown."}</small></button></div></div>
       </div>
       <div class="btn-row"><button class="btn" id="go" ${ready ? "" : "disabled"}>Start the game</button></div>
     </section>`);

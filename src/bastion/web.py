@@ -57,7 +57,7 @@ class Session:
             for level in ("easy", "medium", "hard")
         }
         return json.dumps({"companies": companies, "locks": locks, "levels": levels, "profile": self._profile(),
-                           "goal": self.profile.next_goal()})
+                           "goal": self.profile.next_goal(), "cleared": self.profile.cleared()})
 
     def _profile(self) -> dict:
         return {"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins}

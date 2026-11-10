@@ -560,7 +560,8 @@ def choose_settings(ui, given=None) -> tuple[str, str, str]:
             Option(c.name, c.id, tag=f"{c.tier}, {len(c.employees)} people", description=c.description,
                    disabled=profile.lock_reason(c.tier, difficulty))
             for c in list_scenarios()
-        ])
+        ] + [Option("CLASSIFIED", "classified", tag="??? people",
+                    disabled="clearance granted, opening soon" if profile.cleared() else "unlock conditions unknown")])
     return difficulty, side, company_id
 
 

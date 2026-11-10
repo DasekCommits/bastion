@@ -19,6 +19,9 @@ UNLOCKS = {
 }
 
 
+CLEARANCE = (("large", "hard"), 20)
+
+
 def home() -> Path:
     return Path(os.environ.get("BASTION_HOME", Path.home() / ".bastion"))
 
@@ -59,6 +62,10 @@ class Profile:
             return None
         (need_tier, need_level), count = UNLOCKS[(tier, level)]
         return f"win {count} games on {describe(need_tier, need_level)} first ({self.wins_on(need_tier, need_level)}/{count})"
+
+    def cleared(self) -> bool:
+        (tier, level), count = CLEARANCE
+        return self.wins_on(tier, level) >= count
 
     def level_open(self, level: str) -> bool:
         return any(self.is_unlocked(tier, level) for tier in TIERS)

@@ -419,6 +419,7 @@ class Campaign:
         self.blue_moves_today = 0
         self.disruption = 0
         self.kicked_out = False
+        self.egg_shown = False
         if active_blue:
             self._add_noise()
 
@@ -627,6 +628,9 @@ class Campaign:
     def _add_noise(self) -> None:
         for _ in range(soc.NOISE_PER_DAY[self.company.tier]):
             self.logs.append(soc.noise_entry(len(self.logs) + 1, self.day, self.company, self.defenses, self.rng))
+        if self.company.tier == "large" and not self.egg_shown and soc.EGG_RNG.random() < soc.EGG_CHANCE:
+            self.egg_shown = True
+            self.logs.append(soc.egg_entry(len(self.logs) + 1, self.day, self.company))
 
     def unseen_logs(self) -> list[soc.LogEntry]:
         return [entry for entry in self.logs if not entry.seen]

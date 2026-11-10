@@ -126,3 +126,32 @@ def test_no_night_hunt_without_a_soc(company, catalog):
     campaign.heat = 1.0
     night = campaign.end_day()
     assert night.hunt_chance == 0 and not campaign.caught
+
+
+def test_the_bank_logs_can_hide_the_clearance_message(catalog):
+    import base64
+    import random
+
+    from bastion import soc
+
+    bank = load_scenario("meridian-bank")
+    soc.EGG_RNG = random.Random(0)
+    old = soc.EGG_CHANCE
+    soc.EGG_CHANCE = 1.0
+    try:
+        campaign = Campaign(bank, catalog, [], ["phishing"], rng=random.Random(1), active_blue=True)
+    finally:
+        soc.EGG_CHANCE = old
+    egg = next(e for e in campaign.logs if "-enc" in e.text)
+    encoded = egg.text.rsplit(" ", 1)[1]
+    assert "20 games on Meridian Bank Hard" in base64.b64decode(encoded).decode("utf-16-le")
+    assert not egg.real
+
+
+def test_clearance_needs_twenty_bank_hard_wins():
+    from bastion.profile import Profile
+
+    p = Profile(wins={"large/hard": 19})
+    assert not p.cleared()
+    p.record("large", "hard", True, 10)
+    assert p.cleared()
