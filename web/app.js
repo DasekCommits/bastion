@@ -555,6 +555,7 @@
           <li><strong>The WAF.</strong> A doorman in front of the site who reads every message first. Too relaxed and attacks slip past in disguise; too strict and real customers like <em>Mr O'Brien</em> are turned away. Each innocent customer you block costs ${lab.penalty} points.</li>
         </ol></details>
       <div class="waf-board panel" id="waf-board" aria-live="polite"></div>
+      <div class="waf-mini" id="waf-mini" hidden></div>
       <div class="panel"><h3>1 · Clean up first</h3><p class="muted">Attackers disguise their messages. These steps undo the disguise before any rule looks.</p>
         <div class="choices waf-grid">${lab.items.filter((i) => i.kind === "clean").map(card).join("")}</div></div>
       <div class="panel"><h3>2 · Then block</h3><p class="muted">Some of these are traps: they catch attacks but also block real customers.</p>
@@ -575,6 +576,9 @@
           <div class="waf-kinds">${Object.entries(r.kinds).map(([k, v]) => `<span>${KIND_NAMES[k]} <b>${v.caught}/${v.total}</b></span>`).join("")}</div>
         </div>
         ${r.score === 100 ? '<p class="waf-perfect">Perfect: every attack stopped and nobody innocent turned away.</p>' : ""}`;
+      document.getElementById("waf-mini").innerHTML = `<span class="waf-mini-score ${color}">${r.score}<small>/100</small></span>
+        <span>Hackers blocked <b>${r.caught}/${r.attacks}</b></span>
+        <span>Innocent blocked <b class="${r.wrongly.length ? "warn" : ""}">${r.wrongly.length}/${r.innocent}</b></span>`;
       const title = (id) => (lab.items.find((i) => i.id === id) || {}).title || id;
       const missed = r.missed.map((m) => `<li><code>${esc(m.text)}</code><span>${esc(KIND_NAMES[m.kind])} · ${esc(m.hint)}</span></li>`).join("");
       const wrong = r.wrongly.map((w) => `<li><code>${esc(w.text)}</code><span>${esc(w.why)} · blocked by “${esc(title(w.rule))}”</span></li>`).join("");
@@ -592,6 +596,11 @@
       update();
     }));
     update();
+    const board = document.getElementById("waf-board"), mini = document.getElementById("waf-mini");
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(([entry]) => { mini.hidden = entry.isIntersecting || entry.boundingClientRect.top > 0; },
+        { rootMargin: "-70px 0px 0px 0px" }).observe(board);
+    }
     wireBack(renderLearn);
   }
 
