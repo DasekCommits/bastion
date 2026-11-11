@@ -46,6 +46,7 @@
   };
 
   function api(method, ...args) {
+    if (S.rec) S.transcript.push([method, args]);
     const out = S.session[method](...args);
     return typeof out === "string" ? JSON.parse(out) : out;
   }
@@ -261,6 +262,8 @@
 
   function startGame() {
     const { company, level, side } = S.settings;
+    S.transcript = [];
+    S.rec = true;  // record every engine call so a realism score can be re-simulated offline
     S.start = api("start", company, level, side, Math.floor(Math.random() * 1e9));
     S.startedAt = Date.now();
     S.turn = null;
@@ -918,10 +921,12 @@
     saveProgress(profile);
     if (final.realism && final.realism_side && final.score && S.user) {
       const seconds = S.startedAt ? Math.round((Date.now() - S.startedAt) / 1000) : 0;
+      const transcript = S.transcript && S.transcript.length ? { moves: S.transcript } : null;
       fetch("api/score.php", { method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-Bastion": "1" },
-        body: JSON.stringify({ side: final.realism_side, points: final.score.total, seconds }) }).catch(() => {});
+        body: JSON.stringify({ side: final.realism_side, points: final.score.total, seconds, transcript }) }).catch(() => {});
     }
+    S.rec = false;
     const r = final.result;
     const color = r.defense_score >= 70 ? "var(--green)" : r.defense_score >= 40 ? "var(--amber)" : "var(--red)";
     let scoreHtml = "";

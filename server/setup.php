@@ -32,4 +32,18 @@ foreach (['secrets' => 'ALTER TABLE users ADD COLUMN secrets TEXT NULL AFTER win
     }
 }
 
+db()->exec(
+    'CREATE TABLE IF NOT EXISTS score_audit (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        user_id INT UNSIGNED NOT NULL,
+        side VARCHAR(8) NOT NULL,
+        points INT UNSIGNED NOT NULL,
+        secs INT UNSIGNED NOT NULL DEFAULT 0,
+        accepted TINYINT NOT NULL DEFAULT 0,
+        transcript MEDIUMTEXT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+);
+
 echo "Tables ready.\n";
