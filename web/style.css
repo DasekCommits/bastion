@@ -608,7 +608,7 @@ tr[hidden], .option[hidden] { display: none; }
 .launch-picks strong { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .launch.side-red .launch-side { color: #ff8a80; }
 .launch.side-blue .launch-side { color: #9db4ff; }
-.launch-go { display: flex; align-items: center; gap: 10px; padding: 0 30px; border: 0; background: var(--paper); color: var(--ink); font: 700 18px/1 inherit; font-family: inherit; cursor: pointer; transition: gap .15s, background .15s; }
+.launch-go { display: flex; align-items: center; gap: 10px; padding: 0 30px; border: 0; background: var(--paper); color: var(--ink); font-family: inherit; font-weight: 700; font-size: 18px; line-height: 1; cursor: pointer; transition: gap .15s, background .15s; }
 .launch.side-red .launch-go { background: var(--red); color: #fff; }
 .launch.side-blue .launch-go { background: var(--blue); color: #fff; }
 .launch-go:hover { gap: 16px; }
