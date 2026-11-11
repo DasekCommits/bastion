@@ -664,3 +664,16 @@ tr[hidden], .option[hidden] { display: none; }
 .map .label, .map .sub, .map .zone { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
 .map .edge.lit { stroke-opacity: .45; }
 .map g { isolation: isolate; }
+
+.pf-top { display: flex; gap: 8px; flex-wrap: wrap; }
+.pf-top .people-q { flex: 1 1 200px; width: auto; }
+.people-role { flex: 0 1 230px; min-width: 160px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer; }
+.people-role:focus { outline: none; border-color: var(--ink); }
+.pf-group { grid-template-columns: 110px 1fr; }
+.pf-chip { padding: 3px 9px; font-size: 12px; }
+.pf-chip .chip-n { display: inline-block; min-width: 2.2ch; text-align: right; font-variant-numeric: tabular-nums; }
+.pf-chip .chip-x { display: none; }
+.pf-chip.on { box-shadow: inset 0 0 0 1px var(--ink); }
+.company-file .pf-group { grid-template-columns: 1fr; gap: 6px; }
+.company-file .pf-group .pf-label { padding-top: 0; }
+.people-filters { gap: 10px; padding: 12px 14px; }

@@ -774,13 +774,8 @@
   function peopleChipsHtml(company) {
     const f = S.peopleFilter;
     const count = (g) => company.people.filter((p) => matches(p, g)).length;
-    const roles = [...new Set(company.people.map((p) => p.role))].sort();
     const servers = company.servers.map((sv) => sv.id).filter((id) => company.people.some((p) => p.access.includes(id)));
     const chip = (kind, value, label, n, on, dim) => `<button class="chip pf-chip ${on ? "on" : ""} ${dim ? "dim" : ""}" data-pf="${kind}" data-v="${esc(value)}" aria-pressed="${on}">${esc(label)} <span class="chip-n">${n}</span>${on ? '<span class="chip-x" aria-hidden="true">×</span>' : ""}</button>`;
-    const roleChips = roles.map((r) => {
-      const n = count({ ...f, role: r });
-      return chip("role", r, r, n, f.role === r, (f.role && f.role !== r) || !n);
-    }).join("");
     const serverChips = servers.map((sv) => {
       const on = f.servers.includes(sv);
       const n = count({ ...f, servers: on ? f.servers : [...f.servers, sv] });
@@ -793,12 +788,19 @@
       : company.people.length > BIG_ORG
         ? `<span>${company.people.length} people. Pick a role, servers or Admins to list them${S.watch.size ? `. Your ★ future targets are shown below` : ""}.</span>`
         : `<span>${company.people.length} people</span>`;
-    return `<div class="pf-group"><span class="pf-label">Role <small>pick one</small></span><div class="pf-chips">${roleChips}</div></div>
-      <div class="pf-group"><span class="pf-label">Can log in to <small>pick any</small></span><div class="pf-chips">${serverChips}</div></div>
+    return `<div class="pf-group"><span class="pf-label">Can log in to</span><div class="pf-chips">${serverChips}</div></div>
       <div class="pf-group"><span class="pf-label">Show</span><div class="pf-chips">
         ${chip("admin", "1", "Admins", admins, f.admin, !f.admin && !admins)}
         <button class="chip pf-chip star-chip ${f.starred ? "on" : ""}" data-pf="starred" data-v="1" aria-pressed="${f.starred}">★ Future targets <span class="chip-n">${S.watch.size}</span></button></div></div>
       <div class="pf-summary">${summary}</div>`;
+  }
+  function roleOptions(company) {
+    const f = S.peopleFilter;
+    const roles = [...new Set(company.people.map((p) => p.role))].sort();
+    return `<option value="">Any role</option>` + roles.map((r) => {
+      const n = company.people.filter((p) => matches(p, { ...f, role: r })).length;
+      return `<option value="${esc(r)}" ${f.role === r ? "selected" : ""} ${n ? "" : "disabled"}>${esc(r)} (${n})</option>`;
+    }).join("");
   }
   function applyPeopleFilter() {
     const company = S.start && S.start.company;
@@ -809,6 +811,8 @@
     });
     const box = document.getElementById("pf-chips");
     if (box) box.innerHTML = peopleChipsHtml(company);
+    const role = app.querySelector(".people-role");
+    if (role) role.innerHTML = roleOptions(company);
   }
   app.addEventListener("click", (e) => {
     const pf = e.target.closest("[data-pf]");
@@ -818,7 +822,10 @@
       else if (k === "admin" || k === "starred") f[k] = !f[k];
       else if (k === "server") f.servers = f.servers.includes(v) ? f.servers.filter((x) => x !== v) : [...f.servers, v];
       else f.role = f.role === v ? null : v;
+      const before = pf.getBoundingClientRect().top;
       applyPeopleFilter();
+      const same = app.querySelector(`[data-pf="${k}"][data-v="${CSS.escape(v)}"]`) || app.querySelector(".people-filters");
+      if (same) window.scrollBy(0, same.getBoundingClientRect().top - before);
       return;
     }
     const star = e.target.closest("[data-star]");
@@ -830,6 +837,11 @@
       applyPeopleFilter();
       if (S.map) app.querySelectorAll(".map-panel").forEach((el) => { el.innerHTML = mapInner(); });
     }
+  });
+  app.addEventListener("change", (e) => {
+    if (!e.target.classList.contains("people-role")) return;
+    S.peopleFilter.role = e.target.value || null;
+    applyPeopleFilter();
   });
   app.addEventListener("input", (e) => {
     if (!e.target.classList.contains("people-q")) return;
@@ -852,7 +864,8 @@
     let peopleSearch = "";
     if (company.people.length > 12) {
       peopleSearch = `<div class="people-filters">
-        <input class="people-q" placeholder="Search a name or role…" value="${esc(f.q)}">
+        <div class="pf-top"><input class="people-q" placeholder="Search a name…" value="${esc(f.q)}">
+          <select class="people-role" aria-label="Role">${roleOptions(company)}</select></div>
         <div id="pf-chips">${peopleChipsHtml(company)}</div>
       </div>`;
     }
@@ -878,6 +891,7 @@
     const groups = [...new Set(options.map((o) => o.group || "All"))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     let tab = groups[0];
     let drawn = false;
+    let gridMin = 0;
     const draw = () => {
       const spent = options.filter((o) => chosen.has(o.id)).reduce((sum, o) => sum + o.cost, 0);
       const picked = (g) => options.filter((o) => (g === "*" || o.group === g) && chosen.has(o.id)).length;
@@ -909,7 +923,15 @@
       </section>`, drawn);
       drawn = true;
       wireBack(backToSetup);
-      app.querySelectorAll("[data-tab]").forEach((el) => el.addEventListener("click", () => { tab = el.dataset.tab; draw(); }));
+      const grid = app.querySelector(".pick-grid");
+      if (grid) { gridMin = Math.max(gridMin, grid.offsetHeight); grid.style.minHeight = gridMin + "px"; }
+      app.querySelectorAll("[data-tab]").forEach((el) => el.addEventListener("click", () => {
+        const before = el.getBoundingClientRect().top;
+        tab = el.dataset.tab;
+        draw();
+        const after = app.querySelector(`[data-tab="${CSS.escape(tab)}"]`)?.getBoundingClientRect().top;
+        if (after !== undefined) window.scrollBy(0, after - before);
+      }));
       applyPeopleFilter();
       app.querySelectorAll(".option").forEach((el) => el.addEventListener("click", () => {
         const option = options.find((o) => o.id === el.dataset.id);
