@@ -301,14 +301,14 @@
         ${row("play", "01", "Play", "Choose a side, a target and a difficulty, then go.", "")}
         ${row("tutorial", "02", "Tutorial", "Red, Blue and WAF tracks: techniques, defenses and how to combine them.", "")}
         ${menu.realism
-          ? row("leaderboards", "03", "Leaderboard", "The best Red and Blue players, ranked.", "")
+          ? row("leaderboards", "03", "Realism", "The leaderboard: the best Red and Blue players, ranked.", "")
           : `<button class="nav-row nav-classified locked sealed" type="button" aria-disabled="true">
-             <span class="nav-text"><strong>█████████</strong><small>Classified. Opens when you find what is hidden.</small></span><span class="nav-arrow">🔒</span></button>`}
+             <span class="nav-text"><strong>Classified</strong><small>Opens when you find what is hidden.</small></span><span class="nav-arrow">🔒</span></button>`}
         ${row("achievements", "04", "Achievements", "Ten feats. Few players will see them all.", "")}
         ${anyQuest
           ? row("quests", "", "Classified", `${knownQuests.length} classified objective${knownQuests.length > 1 ? "s" : ""} in play.`, "")
           : `<button class="nav-row nav-classified locked" data-nav="quests">
-             <span class="nav-text"><strong>█████████</strong><small>Some files are not on any inventory.</small></span><span class="nav-arrow">→</span></button>`}
+             <span class="nav-text"><strong>Classified</strong><small>Some files are not on any inventory.</small></span><span class="nav-arrow">→</span></button>`}
       </nav>
       <p class="disclaimer">Bastion is a simulation for learning. The companies are fictional and no real company, network or system is ever attacked.</p>
     </section>`);
@@ -1190,7 +1190,7 @@
           <span></span><span><span class="name">${esc(a.name)}</span>
           ${a.disabled ? `<span class="why">${esc(a.disabled)}</span>` : a.hint ? `<span class="desc">${esc(a.hint)}</span>` : ""}</span>
           <span class="odds">${esc(a.tag || "")}</span></button>`).join("")}</div>
-        <div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="end-day">End the day</button><button class="btn ghost" id="give-up">Give up</button></div></div>`;
+        <div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="end-day">End the day</button><button class="btn ghost" id="give-up">Flee</button></div></div>`;
     }
     const apps = [
       { id: "moves", icon: "⚔", title: "Your move", html: side.replace('<div class="panel">', '<div>') },
@@ -1211,7 +1211,7 @@
   // In-game desktop: every tool is a window you open from the dock. Open windows tile neatly.
   function deskState(screen, defaults) {
     S.desk = S.desk || {};
-    if (!S.desk[screen]) S.desk[screen] = { open: [...defaults], max: null };
+    if (!S.desk[screen]) S.desk[screen] = { open: [...defaults], max: null, pos: {}, z: [] };
     return S.desk[screen];
   }
   function deskOpen(screen, id) {
@@ -1223,20 +1223,70 @@
     d.open = d.open.filter((id) => apps.some((a) => a.id === id));
     if (d.max && !d.open.includes(d.max)) d.max = null;
     const visible = d.max ? [d.max] : d.open;
-    const wins = visible.map((id) => {
+    const free = window.innerWidth > 900;
+    const W = Math.max(600, app.clientWidth), H = Math.max(420, window.innerHeight - 170);
+    const box = (id, i) => {
+      if (d.max) return "left:0;top:0;width:100%;height:100%;";
+      if (!d.pos[id]) {
+        const a = apps.find((x) => x.id === id);
+        const many = visible.length > 2;
+        const w = a.wide ? W : Math.floor((W - 14) / 2), h = Math.floor(many ? (H - 14) / 2 : H);
+        const col = a.wide ? 0 : i % 2, row = Math.floor(i / 2);
+        d.pos[id] = { x: col * (w + 14), y: Math.min(row * (h + 14), H - 160), w, h };
+      }
+      const p = d.pos[id];
+      return `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px;`;
+    };
+    const zOf = (id) => 10 + Math.max(0, d.z.indexOf(id));
+    const wins = visible.map((id, i) => {
       const a = apps.find((x) => x.id === id);
-      return `<div class="win ${a.wide ? "wide" : ""}" data-win="${a.id}">
+      return `<div class="win ${a.wide ? "wide" : ""}" data-win="${a.id}" style="${free ? box(id, i) + `z-index:${zOf(id)};` : ""}">
         <div class="win-bar"><span class="win-title"><span class="win-ico" aria-hidden="true">${a.icon}</span>${esc(a.title)}</span>
           <span class="win-btns"><button class="win-btn" data-win-max="${a.id}" title="${d.max ? "Restore" : "Maximise"}" aria-label="${d.max ? "Restore" : "Maximise"} ${esc(a.title)}">${d.max ? "❐" : "▢"}</button>
           <button class="win-btn" data-win-close="${a.id}" title="Close" aria-label="Close ${esc(a.title)}">×</button></span></div>
-        <div class="win-body">${a.html}</div></div>`;
+        <div class="win-body">${a.html}</div>${free && !d.max ? '<span class="win-grip" aria-hidden="true"></span>' : ""}</div>`;
     }).join("");
     const dock = apps.map((a) => `<button class="dock-app ${d.open.includes(a.id) ? "on" : ""}" data-dock="${a.id}" aria-pressed="${d.open.includes(a.id)}" title="${esc(a.title)}">
       <span class="dock-ico" aria-hidden="true">${a.icon}</span><span class="dock-name">${esc(a.title)}</span>${a.badge ? `<span class="dock-badge">${esc(a.badge)}</span>` : ""}</button>`).join("");
     return `<section class="desk" data-screen="${screen}">
-      <div class="desk-area ${visible.length === 1 ? "single" : ""}">${wins || '<p class="desk-empty">Open a tool from the bar below.</p>'}</div>
+      <div class="desk-area ${visible.length === 1 ? "single" : ""} ${free ? "free" : ""}" style="${free ? `height:${H}px;` : ""}">${wins || '<p class="desk-empty">Open a tool from the bar below.</p>'}</div>
       <nav class="dock" aria-label="Tools">${dock}</nav></section>`;
   }
+  app.addEventListener("pointerdown", (e) => {
+    const win = e.target.closest(".desk-area.free .win");
+    if (!win || e.button !== 0) return;
+    const screen = win.closest(".desk").dataset.screen, d = S.desk && S.desk[screen], id = win.dataset.win;
+    if (!d) return;
+    d.z = d.z.filter((x) => x !== id).concat(id);
+    d.z.forEach((x, i) => { const w = app.querySelector(`.win[data-win="${x}"]`); if (w) w.style.zIndex = 10 + i; });
+    if (d.max) return;
+    const grip = e.target.closest(".win-grip");
+    const bar = e.target.closest(".win-bar") && !e.target.closest(".win-btn");
+    if (!grip && !bar) return;
+    e.preventDefault();
+    const area = win.parentElement.getBoundingClientRect();
+    const start = { px: e.clientX, py: e.clientY, ...d.pos[id] };
+    win.classList.add(grip ? "resizing" : "dragging");
+    const move = (ev) => {
+      const dx = ev.clientX - start.px, dy = ev.clientY - start.py;
+      if (grip) {
+        d.pos[id].w = Math.max(280, Math.min(area.width - start.x, start.w + dx));
+        d.pos[id].h = Math.max(160, start.h + dy);
+      } else {
+        d.pos[id].x = Math.max(0, Math.min(area.width - 120, start.x + dx));
+        d.pos[id].y = Math.max(0, Math.min(area.height - 44, start.y + dy));
+      }
+      const p = d.pos[id];
+      Object.assign(win.style, { left: p.x + "px", top: p.y + "px", width: p.w + "px", height: p.h + "px" });
+    };
+    const up = () => {
+      win.classList.remove("dragging", "resizing");
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
   app.addEventListener("click", (e) => {
     const desk = e.target.closest(".desk");
     if (!desk) return;
@@ -1247,6 +1297,7 @@
       const id = dockBtn.dataset.dock;
       if (d.max) d.max = d.open.includes(id) && d.max !== id ? id : null;
       if (d.open.includes(id) && !d.max) d.open = d.open.filter((x) => x !== id); else if (!d.open.includes(id)) d.open.push(id);
+      if (d.open.includes(id)) d.z = d.z.filter((x) => x !== id).concat(id);
     } else if (close) {
       d.open = d.open.filter((x) => x !== close.dataset.winClose);
       if (d.max === close.dataset.winClose) d.max = null;
