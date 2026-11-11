@@ -184,6 +184,11 @@ h3 { font-size: 17px; letter-spacing: 0.02em; }
 .choice.classified { background: repeating-linear-gradient(-45deg, var(--card), var(--card) 10px, var(--paper-2) 10px, var(--paper-2) 20px); opacity: 0.85; }
 .choice.classified strong { letter-spacing: 0.1em; }
 .choice.red-side { border-left: 4px solid var(--red); }
+/* In the stepped Play flow a remembered choice is shown as an outline, not a heavy black fill. */
+.play-flow .choice.selected { background: var(--paper); color: inherit; border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+.play-flow .choice.selected small { color: var(--muted); }
+.play-flow .choice.selected strong::after { color: var(--red); }
+.play-prev-row { margin-top: 18px; }
 
 .settings { display: grid; gap: 26px; }
 .setting h3 { margin-bottom: 10px; }

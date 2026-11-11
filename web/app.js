@@ -136,14 +136,18 @@
     const box = e.target.closest(".row-filter");
     if (!box) return;
     const q = box.value.trim().toLowerCase();
+    const collapse = box.dataset.collapse;  // when set, an empty search lists nobody
     let shown = 0;
     app.querySelectorAll(box.dataset.rows).forEach((row) => {
-      const hit = !q || (row.dataset.search || "").includes(q);
+      const hit = q ? (row.dataset.search || "").includes(q) : !collapse;
       row.hidden = !hit;
       if (hit) shown += 1;
     });
     const count = box.parentElement.querySelector(".row-count");
-    if (count) count.textContent = q ? `${shown} shown` : "";
+    if (count) {
+      const total = app.querySelectorAll(box.dataset.rows).length;
+      count.textContent = q ? `${shown} shown` : (collapse ? `${total} people — search to list them` : "");
+    }
   });
 
   async function boot() {
@@ -227,7 +231,7 @@
         ${row("tutorial", "02", "Tutorial", "Learn the techniques and how to chain them into an attack.", `<span class="bar mini"><span style="width:${Math.round((learn.done / learn.total) * 100)}%"></span></span> ${learn.done}/${learn.total}`)}
         ${row("leaderboards", "03", "Leaderboards", "Realism high scores, Red and Blue.", "")}
         ${anyQuest
-          ? row("quests", "◆", "Classified", `${knownQuests.length} dossier${knownQuests.length > 1 ? "s" : ""} in play.`, "", "nav-classified")
+          ? row("quests", "◆", "Dossiers", `${knownQuests.length} classified objective${knownQuests.length > 1 ? "s" : ""} in play.`, '<span class="pill">classified</span>')
           : `<button class="nav-row nav-classified locked" data-nav="quests"><span class="nav-num">▓▓</span>
              <span class="nav-text"><strong>█████████</strong><small>Some files are not on any inventory.</small></span><span class="nav-arrow">→</span></button>`}
       </nav>
@@ -255,7 +259,7 @@
     document.getElementById("q-back").addEventListener("click", renderHome);
   }
 
-  function renderSetup() {
+  function renderSetup(keepScroll) {
     setGauges(null);
     const menu = api("menu");
     S.play = S.play || { step: "side" };
@@ -296,7 +300,7 @@
         const reason = l.id === "realism" ? "unlock conditions unknown" : (menu.levels[l.id] || menu.locks[l.id][sel.company]);
         if (!avail) return `<button class="choice ${l.id === "realism" ? "classified" : ""}" style="animation-delay:${i * 60}ms" disabled><strong>${l.id === "realism" ? "████████" : esc(l.name)}</strong><small>${l.id === "realism" ? "Unlock conditions: unknown." : `Locked: ${esc(reason)}`}</small></button>`;
         return `<button class="choice ${l.id === "realism" ? "classified-open" : ""} ${sel.level === l.id ? "selected" : ""}" style="animation-delay:${i * 60}ms" data-pick="level" data-id="${l.id}">
-          <strong>${esc(l.name)}${l.id === "realism" ? ' <span class="pill">unlocked</span>' : ""}</strong><small>${esc(l.text)}</small></button>`;
+          <strong>${esc(l.name)}</strong><small>${esc(l.text)}</small></button>`;
       };
       const all = [...LEVELS, REALISM];
       const target = menu.companies.find((c) => c.id === sel.company);
@@ -304,20 +308,25 @@
         <div class="choices play-reveal">${all.map(levelCard).join("")}</div>
         ${sel.level ? `<div class="btn-row start-row"><button class="btn big" id="go">Start — ${capital(sel.side)} · ${esc(target ? target.name : "")} · ${capital(sel.level)}</button></div>` : ""}`;
     }
+    const prev = { side: ["Home", null], company: ["Change side", "side"], difficulty: ["Change the map", "company"] }[step];
     show(`<section class="step play-flow">
       <div class="play-top"><button class="linkish" id="play-home">← Home</button>${crumbs}</div>
       <div class="play-step">${body}</div>
-    </section>`);
+      <div class="btn-row play-prev-row"><button class="btn ghost" id="play-prev">← ${esc(prev[0])}</button></div>
+    </section>`, keepScroll);
     app.querySelectorAll("[data-pick]").forEach((el) => el.addEventListener("click", () => {
       const group = el.dataset.pick;
       sel[group === "level" ? "level" : group] = el.dataset.id;
       store.set(SETTINGS_KEY, sel);
       if (group === "side") S.play.step = "company";
       else if (group === "company") S.play.step = "difficulty";
-      renderSetup();
+      renderSetup(group === "level");  // keep scroll when picking a difficulty (same step reveals Start)
     }));
     app.querySelectorAll("[data-step]").forEach((el) => el.addEventListener("click", () => { S.play.step = el.dataset.step; renderSetup(); }));
     document.getElementById("play-home").addEventListener("click", renderHome);
+    document.getElementById("play-prev").addEventListener("click", () => {
+      if (prev[1]) { S.play.step = prev[1]; renderSetup(); } else renderHome();
+    });
     document.getElementById("go")?.addEventListener("click", startGame);
   }
 
@@ -365,7 +374,7 @@
     drawChain(ch);
   }
 
-  function drawChain(ch, result) {
+  function drawChain(ch, result, keepScroll) {
     const picked = S.chain.order;
     const slots = Array.from({ length: ch.length }, (_, i) => {
       const aid = picked[i];
@@ -389,17 +398,17 @@
           <button class="btn ghost" id="chain-reset">Clear</button>
           <button class="btn ghost" id="chain-back">All lessons</button></div></div>
       ${pool ? `<div class="panel"><h3>Techniques — tap in order</h3><div class="choices">${pool}</div></div>` : ""}
-    </section>`);
+    </section>`, keepScroll);
     app.querySelectorAll("[data-card]").forEach((el) => el.addEventListener("click", () => {
-      S.chain.order.push(el.dataset.card); drawChain(ch);
+      S.chain.order.push(el.dataset.card); drawChain(ch, null, true);
     }));
-    document.getElementById("chain-reset").addEventListener("click", () => { S.chain.order = []; drawChain(ch); });
+    document.getElementById("chain-reset").addEventListener("click", () => { S.chain.order = []; drawChain(ch, null, true); });
     document.getElementById("chain-back").addEventListener("click", renderLearn);
     document.getElementById("chain-check")?.addEventListener("click", () => {
       const r = api("check_chain", ch.id, JSON.stringify(S.chain.order));
       const profile = JSON.parse(r.profile_json);
       store.set(PROFILE_KEY, profile); saveProgress(profile);
-      drawChain(ch, r);
+      drawChain(ch, r, true);
     });
   }
 
@@ -479,13 +488,14 @@
       <td>${s.exposed ? '<span class="word-yes">internet</span>' : '<span class="muted">inside</span>'}</td><td class="muted">${esc(s.software.join(", "))}</td></tr>`).join("");
     const hasTraits = company.people.some((p) => p.phishing);
     const hasLoyalty = company.people.some((p) => p.loyalty);
-    const people = company.people.map((p) => `<tr data-search="${esc((p.name + " " + p.role + " " + (p.department || "") + " " + p.access.join(" ")).toLowerCase())}"><td>${esc(p.name)} <span class="muted">${esc(p.role)}</span></td>
+    const collapse = company.people.length > 30;  // a big org: list nobody until you search
+    const people = company.people.map((p) => `<tr data-search="${esc((p.name + " " + p.role + " " + (p.department || "") + " " + p.access.join(" ")).toLowerCase())}"${collapse ? " hidden" : ""}><td>${esc(p.name)} <span class="muted">${esc(p.role)}</span></td>
       <td>${p.admin === "yes" ? '<span class="word-yes">yes</span>' : `<span class="muted">${esc(p.admin)}</span>`}</td>
       <td class="muted">${esc(p.access.join(", "))}</td>
       ${hasTraits ? `<td>${word(p.phishing)}</td><td>${word(p.passwords)}</td>` : ""}
       ${hasLoyalty ? `<td>${word(p.loyalty)}</td>` : ""}</tr>`).join("");
     const peopleSearch = company.people.length > 12
-      ? `<div class="filterbar"><input class="row-filter" data-rows="#people-tbl tbody tr" placeholder="Search ${company.people.length} people by name, role, team or server…"><span class="row-count muted"></span></div>`
+      ? `<div class="filterbar"><input class="row-filter" data-rows="#people-tbl tbody tr"${collapse ? ' data-collapse="1"' : ""} placeholder="${collapse ? `Search ${company.people.length} people — type a name, role (e.g. admin) or team` : `Search ${company.people.length} people by name, role, team or server…`}"><span class="row-count muted">${collapse ? `${company.people.length} people — search to list them` : ""}</span></div>`
       : "";
     const data = company.data.length ? `<div class="panel"><h3>Valuable data</h3><table class="sheet"><tr><th>What</th><th>Where</th><th class="num">Value</th></tr>
       ${company.data.map((d) => `<tr><td>${esc(d.name)}</td><td class="muted">${esc(d.where)}</td><td class="num">${d.value}</td></tr>`).join("")}</table></div>` : "";
@@ -720,14 +730,15 @@
         reachable.sort((a, b) => key(a) - key(b));
       }
       const ordered = hasOdds ? reachable.concat(targets.filter((x) => x.disabled)) : targets;
+      const bigList = targets.length > 30;  // too many to show at once — search to list them
       const controls = targets.length > 10
-        ? `<div class="filterbar"><input class="row-filter" data-rows="#target-list .option" placeholder="Search ${targets.length} targets…"><span class="row-count muted"></span>
+        ? `<div class="filterbar"><input class="row-filter" data-rows="#target-list .option"${bigList ? ' data-collapse="1"' : ""} placeholder="${bigList ? `Search ${targets.length} targets — name or role (e.g. admin)` : `Search ${targets.length} targets…`}"><span class="row-count muted">${bigList ? `${targets.length} targets — search to list them` : ""}</span>
             ${hasOdds ? `<span class="sorters">sort: <button class="chip ${S.targetSort === "success" ? "on" : ""}" data-sort="success">best chance</button><button class="chip ${S.targetSort === "spotted" ? "on" : ""}" data-sort="spotted">least spotted</button></span>` : ""}</div>`
         : "";
       side = `<div class="panel"><h3>${esc(attackName)}: pick a target</h3>${controls}<div class="options" id="target-list">
         ${ordered.map((x) => {
           const odds = x.success !== undefined ? `success ${pct(x.success)}<br>spotted ${pct(x.spotted)}<br>heat → ${pct(x.heat_after)}` : "";
-          return `<button class="option" data-target="${x.id}" data-search="${esc(x.label.toLowerCase())}" ${x.disabled ? "disabled" : ""}>
+          return `<button class="option" data-target="${x.id}" data-search="${esc(x.label.toLowerCase())}" ${bigList ? "hidden" : ""} ${x.disabled ? "disabled" : ""}>
             <span></span><span><span class="name">${esc(x.label)}</span>
             ${x.disabled ? `<span class="why">${esc(x.disabled)}</span>` : x.hint ? `<span class="desc">${esc(x.hint)}</span>` : ""}</span>
             <span class="odds">${odds}</span></button>`;
@@ -881,8 +892,12 @@
       }
       if (pending !== "investigate" && pending !== "block") options.filter((o) => !o.disabled).forEach((o) => S.map.targets.add(o.id));
       const action = BLUE_ACTIONS.find((a) => a.id === pending);
-      side = `<div class="panel"><h3>${esc(action.name)}: pick one</h3><div class="options">
-        ${options.map((o) => `<button class="option" data-blue-target="${esc(o.id)}" ${o.disabled ? "disabled" : ""}><span></span><span><span class="name">${esc(o.label)}</span><span class="desc">${esc(o.disabled || o.sub)}</span></span><span></span></button>`).join("") || '<p class="muted">Nothing to pick yet.</p>'}
+      const bigPick = options.length > 30;  // too many to show at once — search to list them
+      const pickControls = options.length > 10
+        ? `<div class="filterbar"><input class="row-filter" data-rows="#blue-pick .option"${bigPick ? ' data-collapse="1"' : ""} placeholder="${bigPick ? `Search ${options.length} — name or role (e.g. admin)` : `Search ${options.length}…`}"><span class="row-count muted">${bigPick ? `${options.length} — search to list them` : ""}</span></div>`
+        : "";
+      side = `<div class="panel"><h3>${esc(action.name)}: pick one</h3>${pickControls}<div class="options" id="blue-pick">
+        ${options.map((o) => `<button class="option" data-blue-target="${esc(o.id)}" data-search="${esc((o.label + " " + (o.sub || "")).toLowerCase())}" ${bigPick ? "hidden" : ""} ${o.disabled ? "disabled" : ""}><span></span><span><span class="name">${esc(o.label)}</span><span class="desc">${esc(o.disabled || o.sub)}</span></span><span></span></button>`).join("") || '<p class="muted">Nothing to pick yet.</p>'}
         </div><div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="back">Back</button></div></div>`;
     } else {
       const open = st.logs.filter((l) => !l.investigated).length;

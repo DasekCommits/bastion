@@ -153,7 +153,7 @@ CHAINS = [
      "steps": ["phishing", "privilege-escalation", "ransomware"]},
     {"id": "deep-domain",
      "goal": "Phish your way in, spread across the network, and empty the domain's secrets.",
-     "steps": ["phishing", "lateral-movement", "privilege-escalation", "dcsync"]},
+     "steps": ["phishing", "remote-desktop", "privilege-escalation", "dcsync"]},
 ]
 CHAINS_BY_ID = {c["id"]: c for c in CHAINS}
 
