@@ -4,18 +4,37 @@
     "name": "Multi-factor authentication",
     "category": "prevent",
     "cost": 15,
-    "blocks": {"brute-force": 0.9, "phishing": 0.4, "remote-desktop": 0.5, "credential-stuffing": 0.95, "password-spray": 0.9, "cloud-takeover": 0.7},
+    "blocks": {
+      "brute-force": 0.9,
+      "phishing": 0.4,
+      "remote-desktop": 0.5,
+      "credential-stuffing": 0.95,
+      "password-spray": 0.9,
+      "cloud-takeover": 0.7
+    },
     "detects": {},
     "description": "A password alone is not enough to log in. Users also confirm on their phone.",
-    "seen_outside": ["email", "vpn", "cloud"]
+    "seen_outside": [
+      "email",
+      "vpn",
+      "cloud"
+    ]
   },
   {
     "id": "security-training",
     "name": "Security awareness training",
     "category": "prevent",
     "cost": 10,
-    "blocks": {"phishing": 0.5, "macro": 0.3, "usb-drop": 0.5, "bec": 0.5, "mfa-fatigue": 0.4},
-    "detects": {"phishing": 0.2},
+    "blocks": {
+      "phishing": 0.5,
+      "macro": 0.3,
+      "usb-drop": 0.5,
+      "bec": 0.5,
+      "mfa-fatigue": 0.4
+    },
+    "detects": {
+      "phishing": 0.2
+    },
     "description": "Teach employees to spot fake emails and report them."
   },
   {
@@ -23,57 +42,103 @@
     "name": "Email filtering",
     "category": "prevent",
     "cost": 10,
-    "blocks": {"phishing": 0.6, "macro": 0.5, "bec": 0.3},
-    "detects": {"phishing": 0.4, "macro": 0.3},
+    "blocks": {
+      "phishing": 0.6,
+      "macro": 0.5,
+      "bec": 0.3
+    },
+    "detects": {
+      "phishing": 0.4,
+      "macro": 0.3
+    },
     "description": "Scan incoming email and quarantine known malicious links and attachments.",
-    "seen_outside": ["email"]
+    "seen_outside": [
+      "email"
+    ]
   },
   {
     "id": "patching",
     "name": "Patch management",
     "category": "prevent",
     "cost": 20,
-    "blocks": {"exploit-web": 0.8, "privilege-escalation": 0.7, "vpn-exploit": 0.8, "vendor-breach": 0.5},
+    "blocks": {
+      "exploit-web": 0.8,
+      "privilege-escalation": 0.7,
+      "vpn-exploit": 0.8,
+      "vendor-breach": 0.5
+    },
     "detects": {},
     "description": "Keep every server and PC updated so known vulnerabilities are fixed.",
-    "seen_outside": ["web", "vpn", "vendor"]
+    "seen_outside": [
+      "web",
+      "vpn",
+      "vendor"
+    ]
   },
   {
     "id": "waf",
     "name": "Web application firewall",
     "category": "prevent",
     "cost": 15,
-    "blocks": {"exploit-web": 0.5},
-    "detects": {"exploit-web": 0.5},
+    "blocks": {
+      "exploit-web": 0.5
+    },
+    "detects": {
+      "exploit-web": 0.5
+    },
     "description": "Filter web traffic and block requests that look like attacks, such as SQL injection.",
-    "seen_outside": ["web"]
+    "seen_outside": [
+      "web"
+    ]
   },
   {
     "id": "rate-limiting",
     "name": "Login rate limiting",
     "category": "prevent",
     "cost": 5,
-    "blocks": {"brute-force": 0.7, "credential-stuffing": 0.3, "password-spray": 0.5},
-    "detects": {"brute-force": 0.3},
+    "blocks": {
+      "brute-force": 0.7,
+      "credential-stuffing": 0.3,
+      "password-spray": 0.5
+    },
+    "detects": {
+      "brute-force": 0.3
+    },
     "description": "Lock out anyone who fails to log in too many times in a row.",
-    "seen_outside": ["email", "vpn"]
+    "seen_outside": [
+      "email",
+      "vpn"
+    ]
   },
   {
     "id": "firewall",
     "name": "Network firewall",
     "category": "prevent",
     "cost": 10,
-    "blocks": {"port-scan": 0.5, "remote-desktop": 0.4},
-    "detects": {"port-scan": 0.5},
+    "blocks": {
+      "port-scan": 0.5,
+      "remote-desktop": 0.4
+    },
+    "detects": {
+      "port-scan": 0.5
+    },
     "description": "Close every port that does not need to be open to the internet.",
-    "seen_outside": ["web", "email", "vpn", "vendor"]
+    "seen_outside": [
+      "web",
+      "email",
+      "vpn",
+      "vendor"
+    ]
   },
   {
     "id": "least-privilege",
     "name": "Least privilege",
     "category": "prevent",
     "cost": 10,
-    "blocks": {"privilege-escalation": 0.4, "remote-desktop": 0.4},
+    "blocks": {
+      "privilege-escalation": 0.4,
+      "remote-desktop": 0.4
+    },
     "detects": {},
     "description": "Give every employee only the access their job needs, and remove admin rights from everyone else."
   },
@@ -82,7 +147,10 @@
     "name": "Network segmentation",
     "category": "prevent",
     "cost": 20,
-    "blocks": {"remote-desktop": 0.7, "exfiltration": 0.3},
+    "blocks": {
+      "remote-desktop": 0.7,
+      "exfiltration": 0.3
+    },
     "detects": {},
     "description": "Split the network into zones, so a hacked office PC cannot reach the database."
   },
@@ -91,8 +159,26 @@
     "name": "Endpoint detection and response",
     "category": "detect",
     "cost": 25,
-    "blocks": {"ransomware": 0.6, "privilege-escalation": 0.3, "macro": 0.3, "usb-drop": 0.3, "destruction": 0.4, "pass-the-hash": 0.3},
-    "detects": {"privilege-escalation": 0.6, "remote-desktop": 0.5, "ransomware": 0.8, "macro": 0.5, "usb-drop": 0.5, "destruction": 0.7, "pass-the-hash": 0.5, "kerberoasting": 0.2},
+    "blocks": {
+      "ransomware": 0.6,
+      "privilege-escalation": 0.3,
+      "macro": 0.3,
+      "usb-drop": 0.3,
+      "destruction": 0.4,
+      "pass-the-hash": 0.3
+    },
+    "detects": {
+      "privilege-escalation": 0.6,
+      "remote-desktop": 0.5,
+      "ransomware": 0.8,
+      "macro": 0.5,
+      "usb-drop": 0.5,
+      "destruction": 0.7,
+      "pass-the-hash": 0.5,
+      "kerberoasting": 0.2,
+      "lsass-dump": 0.5,
+      "rmm-abuse": 0.3
+    },
     "description": "Security software on every machine that watches for suspicious behaviour and can stop it.",
     "seen_inside": true
   },
@@ -102,7 +188,19 @@
     "category": "detect",
     "cost": 20,
     "blocks": {},
-    "detects": {"brute-force": 0.6, "remote-desktop": 0.5, "exfiltration": 0.6, "exploit-web": 0.4, "vpn-exploit": 0.4, "insider": 0.3, "destruction": 0.5, "dcsync": 0.4, "pass-the-hash": 0.3, "password-spray": 0.5},
+    "detects": {
+      "brute-force": 0.6,
+      "remote-desktop": 0.5,
+      "exfiltration": 0.6,
+      "exploit-web": 0.4,
+      "vpn-exploit": 0.4,
+      "insider": 0.3,
+      "destruction": 0.5,
+      "dcsync": 0.4,
+      "pass-the-hash": 0.3,
+      "password-spray": 0.5,
+      "cloud-exfil": 0.3
+    },
     "description": "Collect logs from every server in one place and raise an alert when something looks wrong."
   },
   {
@@ -110,7 +208,10 @@
     "name": "Offline backups",
     "category": "recover",
     "cost": 10,
-    "blocks": {"ransomware": 0.7, "destruction": 0.8},
+    "blocks": {
+      "ransomware": 0.7,
+      "destruction": 0.8
+    },
     "detects": {},
     "description": "Keep daily copies of the data offline, so the company can restore it instead of paying a ransom."
   },
@@ -119,7 +220,9 @@
     "name": "Block Office macros",
     "category": "prevent",
     "cost": 5,
-    "blocks": {"macro": 0.9},
+    "blocks": {
+      "macro": 0.9
+    },
     "detects": {},
     "description": "Office refuses to run macros in files that came from the internet.",
     "tier": "medium"
@@ -129,8 +232,12 @@
     "name": "USB device control",
     "category": "prevent",
     "cost": 10,
-    "blocks": {"usb-drop": 0.9},
-    "detects": {"usb-drop": 0.3},
+    "blocks": {
+      "usb-drop": 0.9
+    },
+    "detects": {
+      "usb-drop": 0.3
+    },
     "description": "Computers only accept USB sticks the company has approved.",
     "tier": "medium"
   },
@@ -139,8 +246,13 @@
     "name": "Data loss prevention",
     "category": "detect",
     "cost": 20,
-    "blocks": {"exfiltration": 0.4},
-    "detects": {"exfiltration": 0.5, "insider": 0.4},
+    "blocks": {
+      "exfiltration": 0.4
+    },
+    "detects": {
+      "exfiltration": 0.5,
+      "insider": 0.4
+    },
     "description": "Watches for sensitive files leaving the company, by email, upload or USB, and stops them.",
     "tier": "medium"
   },
@@ -149,7 +261,11 @@
     "name": "Banned password list",
     "category": "prevent",
     "cost": 5,
-    "blocks": {"password-spray": 0.7, "brute-force": 0.3, "credential-stuffing": 0.2},
+    "blocks": {
+      "password-spray": 0.7,
+      "brute-force": 0.3,
+      "credential-stuffing": 0.2
+    },
     "detects": {},
     "description": "Nobody can pick passwords like 'Summer2026!' or the bank's name.",
     "tier": "large"
@@ -159,10 +275,21 @@
     "name": "Phishing-resistant MFA",
     "category": "prevent",
     "cost": 30,
-    "blocks": {"mfa-fatigue": 0.95, "phishing": 0.7, "password-spray": 0.9, "credential-stuffing": 0.95, "brute-force": 0.9, "cloud-takeover": 0.9},
+    "blocks": {
+      "mfa-fatigue": 0.95,
+      "phishing": 0.7,
+      "password-spray": 0.9,
+      "credential-stuffing": 0.95,
+      "brute-force": 0.9,
+      "cloud-takeover": 0.9
+    },
     "detects": {},
     "description": "Hardware security keys. A stolen password or a tapped approval is useless without the physical key.",
-    "seen_outside": ["email", "vpn", "cloud"],
+    "seen_outside": [
+      "email",
+      "vpn",
+      "cloud"
+    ],
     "tier": "large"
   },
   {
@@ -170,7 +297,9 @@
     "name": "Strong service account passwords",
     "category": "prevent",
     "cost": 10,
-    "blocks": {"kerberoasting": 0.85},
+    "blocks": {
+      "kerberoasting": 0.85
+    },
     "detects": {},
     "description": "Service accounts get long random passwords that cannot be cracked offline.",
     "tier": "large"
@@ -180,7 +309,9 @@
     "name": "LAPS and Credential Guard",
     "category": "prevent",
     "cost": 15,
-    "blocks": {"pass-the-hash": 0.8},
+    "blocks": {
+      "pass-the-hash": 0.8
+    },
     "detects": {},
     "description": "Every machine gets a different local admin password, and Windows hides password hashes from memory.",
     "tier": "large"
@@ -190,7 +321,11 @@
     "name": "Tiered admin model",
     "category": "prevent",
     "cost": 20,
-    "blocks": {"dcsync": 0.6, "pass-the-hash": 0.3, "privilege-escalation": 0.2},
+    "blocks": {
+      "dcsync": 0.6,
+      "pass-the-hash": 0.3,
+      "privilege-escalation": 0.2
+    },
     "detects": {},
     "description": "Domain admins only log in to domain controllers, so their passwords never sit on ordinary PCs.",
     "tier": "large"
@@ -201,7 +336,11 @@
     "category": "detect",
     "cost": 10,
     "blocks": {},
-    "detects": {"kerberoasting": 0.8, "dcsync": 0.6, "pass-the-hash": 0.3},
+    "detects": {
+      "kerberoasting": 0.8,
+      "dcsync": 0.6,
+      "pass-the-hash": 0.3
+    },
     "description": "Fake accounts and passwords that nobody should ever touch. Any use of them sets off an alarm.",
     "tier": "large"
   },
@@ -210,10 +349,16 @@
     "name": "Conditional access",
     "category": "prevent",
     "cost": 15,
-    "blocks": {"cloud-takeover": 0.7, "mfa-fatigue": 0.4, "credential-stuffing": 0.3},
+    "blocks": {
+      "cloud-takeover": 0.7,
+      "mfa-fatigue": 0.4,
+      "credential-stuffing": 0.3
+    },
     "detects": {},
     "description": "Cloud logins are only allowed from bank laptops and expected countries.",
-    "seen_outside": ["cloud"],
+    "seen_outside": [
+      "cloud"
+    ],
     "tier": "large"
   },
   {
@@ -221,7 +366,9 @@
     "name": "Vendor access control",
     "category": "prevent",
     "cost": 15,
-    "blocks": {"vendor-breach": 0.7},
+    "blocks": {
+      "vendor-breach": 0.7
+    },
     "detects": {},
     "description": "The IT vendor only gets access when the bank switches it on, and every session is recorded.",
     "tier": "large"
@@ -231,7 +378,9 @@
     "name": "Payment call-back checks",
     "category": "prevent",
     "cost": 5,
-    "blocks": {"bec": 0.9},
+    "blocks": {
+      "bec": 0.9
+    },
     "detects": {},
     "description": "Any new or changed bank account is confirmed by phone, using a number already on file.",
     "tier": "large"
@@ -242,8 +391,178 @@
     "category": "detect",
     "cost": 35,
     "blocks": {},
-    "detects": {"exfiltration": 0.4, "pass-the-hash": 0.5, "dcsync": 0.5, "ransomware": 0.4, "kerberoasting": 0.3, "destruction": 0.4, "insider": 0.3},
+    "detects": {
+      "exfiltration": 0.4,
+      "pass-the-hash": 0.5,
+      "dcsync": 0.5,
+      "ransomware": 0.4,
+      "kerberoasting": 0.3,
+      "destruction": 0.4,
+      "insider": 0.3,
+      "golden-ticket": 0.4,
+      "inhibit-recovery": 0.4
+    },
     "description": "A team watches the alerts day and night and reacts within minutes.",
     "tier": "large"
+  },
+  {
+    "id": "token-protection",
+    "name": "Token protection and short sessions",
+    "category": "prevent",
+    "cost": 15,
+    "blocks": {
+      "session-hijack": 0.7,
+      "aitm-phishing": 0.4,
+      "oauth-consent": 0.2
+    },
+    "detects": {
+      "session-hijack": 0.2
+    },
+    "description": "Sessions are tied to the device that signed in and expire quickly, so a stolen cookie is useless on another machine.",
+    "seen_outside": [
+      "email",
+      "cloud"
+    ]
+  },
+  {
+    "id": "web-gateway",
+    "name": "Secure web gateway",
+    "category": "prevent",
+    "cost": 15,
+    "blocks": {
+      "aitm-phishing": 0.5,
+      "phishing": 0.2,
+      "cloud-exfil": 0.4,
+      "session-hijack": 0.2
+    },
+    "detects": {
+      "cloud-exfil": 0.4,
+      "aitm-phishing": 0.3
+    },
+    "description": "All web traffic passes a filter that blocks new and look-alike login pages and unapproved cloud uploads."
+  },
+  {
+    "id": "helpdesk-checks",
+    "name": "Help-desk identity checks",
+    "category": "prevent",
+    "cost": 5,
+    "tier": "medium",
+    "blocks": {
+      "helpdesk-vishing": 0.85,
+      "mfa-fatigue": 0.1
+    },
+    "detects": {
+      "helpdesk-vishing": 0.3
+    },
+    "description": "Before any reset the help desk calls the person back on a known number or checks them on video."
+  },
+  {
+    "id": "app-consent",
+    "name": "App consent policy",
+    "category": "prevent",
+    "cost": 10,
+    "tier": "large",
+    "blocks": {
+      "oauth-consent": 0.85
+    },
+    "detects": {
+      "oauth-consent": 0.3
+    },
+    "description": "Employees cannot approve apps that read company mail or files; an administrator reviews every request."
+  },
+  {
+    "id": "app-allowlisting",
+    "name": "Application allowlisting",
+    "category": "prevent",
+    "cost": 25,
+    "tier": "medium",
+    "blocks": {
+      "rmm-abuse": 0.8,
+      "macro": 0.4,
+      "usb-drop": 0.4,
+      "lsass-dump": 0.3,
+      "ransomware": 0.3
+    },
+    "detects": {
+      "rmm-abuse": 0.3
+    },
+    "description": "Only approved programs can run, so unknown tools, remote support apps and most malware simply do not start."
+  },
+  {
+    "id": "credential-guard",
+    "name": "Credential Guard",
+    "category": "prevent",
+    "cost": 15,
+    "tier": "medium",
+    "blocks": {
+      "lsass-dump": 0.8,
+      "pass-the-hash": 0.4
+    },
+    "detects": {
+      "lsass-dump": 0.3
+    },
+    "description": "Windows keeps password secrets in an isolated part of memory that even an administrator cannot read."
+  },
+  {
+    "id": "krbtgt-rotation",
+    "name": "KRBTGT rotation and Kerberos monitoring",
+    "category": "detect",
+    "cost": 15,
+    "tier": "large",
+    "blocks": {
+      "golden-ticket": 0.6
+    },
+    "detects": {
+      "golden-ticket": 0.6,
+      "kerberoasting": 0.3
+    },
+    "description": "The key that signs every Kerberos ticket is changed regularly and odd tickets raise an alert, so forged ones stop working."
+  },
+  {
+    "id": "egress-filtering",
+    "name": "Egress filtering",
+    "category": "prevent",
+    "cost": 15,
+    "blocks": {
+      "cloud-exfil": 0.5,
+      "dns-tunnel": 0.4,
+      "exfiltration": 0.3
+    },
+    "detects": {
+      "cloud-exfil": 0.3,
+      "dns-tunnel": 0.2
+    },
+    "description": "Servers may only talk to the outside addresses they need. Everything else leaving the network is blocked and logged."
+  },
+  {
+    "id": "dns-filtering",
+    "name": "DNS filtering and monitoring",
+    "category": "detect",
+    "cost": 10,
+    "blocks": {
+      "dns-tunnel": 0.5,
+      "aitm-phishing": 0.2
+    },
+    "detects": {
+      "dns-tunnel": 0.6,
+      "aitm-phishing": 0.3,
+      "cloud-exfil": 0.2
+    },
+    "description": "Every DNS lookup goes through a resolver that blocks known bad domains and flags strange, data-heavy queries."
+  },
+  {
+    "id": "immutable-backups",
+    "name": "Immutable backups",
+    "category": "recover",
+    "cost": 15,
+    "blocks": {
+      "ransomware": 0.8,
+      "destruction": 0.8,
+      "inhibit-recovery": 0.9
+    },
+    "detects": {
+      "inhibit-recovery": 0.5
+    },
+    "description": "Backups that nobody can change or delete for a set time, not even an administrator, so they survive an attack on the backups."
   }
 ]

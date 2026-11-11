@@ -26,6 +26,15 @@ def stamp(day: int, minutes: float) -> str:
     return (START + timedelta(days=day - 1, minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%S")
 
 
+# newer techniques leave the same kind of traces as an older one in these logs
+ALIASES = {
+    "session-hijack": "cloud-takeover", "aitm-phishing": "phishing", "helpdesk-vishing": "cloud-takeover",
+    "oauth-consent": "cloud-takeover", "rmm-abuse": "remote-desktop", "lsass-dump": "privilege-escalation",
+    "golden-ticket": "kerberoasting", "cloud-exfil": "exfiltration", "dns-tunnel": "exfiltration",
+    "inhibit-recovery": "destruction",
+}
+
+
 class Telemetry:
     def __init__(self, world: World, company, defense_ids: list[str], rng: random.Random):
         self.world = world
@@ -119,7 +128,8 @@ class Telemetry:
             return
         day = result.step.day
         minute = self._tick(day)
-        handler = getattr(self, "_" + result.attack.id.replace("-", "_"), None)
+        attack_id = ALIASES.get(result.attack.id, result.attack.id)
+        handler = getattr(self, "_" + attack_id.replace("-", "_"), None)
         if handler:
             handler(result, day, minute, source_ip, source_host)
 

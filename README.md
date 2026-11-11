@@ -55,7 +55,7 @@ Practice games do not count.
 - **Medium** adds a VPN gateway exploit, Office macros, infected USB sticks, bribed insiders and data wiping, answered by macro blocking, USB device control and data loss prevention.
 - **Large** adds Active Directory attacks (Kerberoasting, Pass-the-Hash, DCSync), password spraying, MFA fatigue, cloud account takeover, a breached IT vendor and business email compromise, answered by phishing-resistant MFA, LAPS and Credential Guard, a tiered admin model, honeytokens, conditional access, vendor access control, payment call-back checks and a 24/7 SOC.
 
-In total: 22 attacks and 25 defenses. Every company is a JSON file, so new scenarios need no engine changes.
+In total: 32 attacks and 35 defenses, including modern ones such as stolen session cookies, adversary-in-the-middle phishing, help-desk vishing, malicious OAuth consent, LSASS dumps, Golden Tickets, DNS tunneling and deleting backups before ransomware, answered by token protection, a secure web gateway, help-desk identity checks, app consent policy, application allowlisting, Credential Guard, KRBTGT rotation, egress and DNS filtering and immutable backups. Every company is a JSON file, so new scenarios need no engine changes.
 
 ## Difficulty
 
@@ -96,7 +96,7 @@ A fourth difficulty, **Realism**, and a fourth company, **Directorate-7**, are c
 
 ## Tutorial
 
-Three tracks. **Red**: a coached lesson for each of the 22 techniques, in kill-chain order: first spot the technique among decoys, then say what it needs before it can work, with the real MITRE ID and the defense that answers it explained. A Combinations section asks you to order techniques into an attack that actually gets through, checked with the engine's own prerequisite rules (16 chains). **Blue**: a lesson for each of the 25 defenses (what it is for, and whether it stops, spots or helps you recover), then 16 puzzles where you stop a real attack chain within a budget by blocking one step and watching another. **WAF Lab**: see below.
+Three tracks. **Red**: a coached lesson for each of the 32 techniques, in kill-chain order: first spot the technique among decoys, then say what it needs before it can work, with the real MITRE ID and the defense that answers it explained. A Combinations section asks you to order techniques into an attack that actually gets through, checked with the engine's own prerequisite rules (22 chains). **Blue**: a lesson for each of the 35 defenses (what it is for, and whether it stops, spots or helps you recover), then 22 puzzles where you stop a real attack chain within a budget by blocking one step and watching another. **WAF Lab**: see below.
 
 ## Fair play
 
@@ -105,6 +105,10 @@ Sign in with GitHub and your progress follows you. Signed-in games are also the 
 1. **Server dice.** Before each move the page tells the server what it is about to play, and only then gets that move's roll: an HMAC of a secret the server keeps for that game and the move's number. The page cannot know a roll in advance, and a move that was already played cannot be played again with a different outcome.
 2. **A move log.** The server records every move in order, so the game exists on the server, not just in the browser.
 3. **A referee.** A GitHub Actions job runs every 15 minutes, replays each finished game with the same moves and dice through the real engine, and rejects any score the engine does not reproduce. A quit game counts as a loss.
+
+## Shop
+
+You start with a small kit: port scan, phishing, password brute force and data theft for Red; firewall, MFA, an email filter and a SIEM for Blue. Everything else is bought once with coins and kept: every 10 points you score as Red earns a Red coin, and the same for Blue. Coins are counted on the server from refereed games, purchases happen on the server, and the referee rejects a game that used something not bought. The computer opponent always has everything, so the shop never makes the game easier than designed: it lets you catch up and beat it.
 
 ## Achievements
 
@@ -147,7 +151,7 @@ The last one replays a fixed attack plan 1,000 times and prints a day-by-day pos
 - **Terminal UI**: `rich`, `questionary` and `prompt_toolkit`.
 - **Web version**: the same engine runs in the page with [Pyodide](https://pyodide.org) (Python compiled to WebAssembly). `src/bastion/web.py` is the bridge, `web/` is the page with a live network map, and `tools/build_web.py` packages it.
 - **Accounts and fair play**: a small PHP API with MySQL (`web/api`): GitHub sign-in, server dice (`roll.php`), scores and the referee endpoint. The referee itself is `tools/verify_scores.py`, using `src/bastion/dice.py` to replay games and `achievements.py` to award achievements.
-- **Tests**: 156 pytest tests, run on every push with GitHub Actions together with the balance check.
+- **Tests**: 172 pytest tests, run on every push with GitHub Actions together with the balance check.
 
 ## Safety
 
@@ -168,8 +172,10 @@ Bastion never attacks real systems. The network is simulated, and the WAF Lab pa
 - [x] Achievements shown on [dasek.dev](https://dasek.dev)
 - [x] A smarter computer attacker on Hard
 - [x] WAF Lab in the browser, inside the Tutorial
-- [x] Learning in three tracks: Red (22 techniques, 16 attack chains), Blue (25 defenses, 16 defend-the-chain puzzles) and the WAF Lab
-- [ ] Shop: earn Red and Blue coins from your points and spend them on new attacks and defenses (more MITRE ATT&CK techniques), on top of a default set every player has
+- [x] Learning in three tracks: Red (32 techniques, 22 attack chains), Blue (35 defenses, 22 defend-the-chain puzzles) and the WAF Lab
+- [x] Shop with Red and Blue coins and ten new modern techniques on each side
+- [x] An in-game desktop: every tool is a window you can move, resize and maximise
+- [x] Leaderboard for every difficulty
 
 Guests can play without an account; their progress stays in the browser (or `~/.bastion` in the terminal).
 

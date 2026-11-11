@@ -75,6 +75,7 @@ class Foothold:
     direct_admin: set[str] = field(default_factory=set)
     admin_accounts: set[str] = field(default_factory=set)
     isolated: dict[str, int] = field(default_factory=dict)
+    no_recovery: set[str] = field(default_factory=set)
 
     def is_empty(self) -> bool:
         return not self.servers and not self.employees
@@ -251,8 +252,20 @@ def _is_possible(attack: Attack, target_id: str, company: Company, foothold: Foo
             return False, "The bank already sent you money once. A second request would be checked."
         return True, ""
 
-    if attack.id in ("kerberoasting", "dcsync", "pass-the-hash") and foothold.is_empty():
+    if attack.id in ("kerberoasting", "dcsync", "pass-the-hash", "lsass-dump", "golden-ticket") and foothold.is_empty():
         return False, "This needs a logged-in account inside the network first."
+
+    if attack.id == "lsass-dump":
+        if target_id not in foothold.admin_on:
+            return False, "Reading the login process memory needs administrator rights on that machine."
+        return True, ""
+
+    if attack.id == "golden-ticket":
+        if company.server(target_id).role != "domain-controller":
+            return False, "A Golden Ticket is forged on the domain controller."
+        if target_id not in foothold.admin_on:
+            return False, "A Golden Ticket needs administrator rights on the domain controller."
+        return True, ""
 
     if attack.id == "kerberoasting":
         return True, ""
@@ -327,6 +340,30 @@ def _apply(attack: Attack, target_id: str, company: Company, foothold: Foothold,
         for server in company.servers:
             foothold.gain(server.id, admin=True)
         return 0, "You copied every password in the company. You now own the whole domain."
+
+    if attack.id == "golden-ticket":
+        for server in company.servers:
+            foothold.gain(server.id, admin=True)
+        return 0, "Your forged ticket is trusted everywhere. You can be anyone in the domain."
+
+    if attack.id == "lsass-dump":
+        people = [e for e in company.employees if target_id in e.access and e.id not in foothold.employees]
+        admins = []
+        for employee in people:
+            foothold.employees.add(employee.id)
+            foothold.servers.update(s for s in employee.access if s not in foothold.isolated)
+            if has_admin_rights(employee, defense_ids):
+                foothold.admin_accounts.add(employee.id)
+                foothold.admin_on.update(s for s in employee.access if s not in foothold.isolated)
+                admins.append(employee.name)
+        if not people:
+            return 0, "Nobody new logs in here. You found no fresh passwords."
+        extra = f" Administrators among them: {', '.join(admins)}." if admins else ""
+        return 0, f"You pulled the passwords of {len(people)} people who log in here.{extra}"
+
+    if attack.id == "inhibit-recovery":
+        foothold.no_recovery.add(target_id)
+        return 0, "The backups and shadow copies on this machine are gone. Nothing here can be restored now."
 
     if attack.target == "employee":
         employee = next(employee for employee in company.employees if employee.id == target_id)
@@ -505,7 +542,10 @@ class Campaign:
         possible, note = _is_possible(attack, target_id, self.company, self.foothold)
         if not possible:
             return Preview(False, note, 0.0, 0.0, self.heat)
-        chance = success_chance(attack, self.defenses)
+        defenses = self.defenses
+        if attack.tactic == "impact" and target_id in self.foothold.no_recovery:
+            defenses = [d for d in defenses if d.category != "recover" or d.id == "immutable-backups"]
+        chance = success_chance(attack, defenses)
         if attack.target == "employee":
             chance *= person_factor(attack, self.company.employee(target_id))
         if attack.target == "employee" and attack.trait == "password_hygiene" and self._scanned_roles() & set(LOGIN_ROLES):

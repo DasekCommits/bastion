@@ -32,7 +32,9 @@
     "noise": 0.4,
     "cost": 25,
     "description": "Use a known vulnerability in outdated software on an internet-facing server, such as an old CMS or PHP version.",
-    "roles": ["web"]
+    "roles": [
+      "web"
+    ]
   },
   {
     "id": "brute-force",
@@ -112,7 +114,9 @@
     "noise": 0.3,
     "cost": 20,
     "description": "Use a known flaw in an unpatched VPN appliance to get onto the company network without any password.",
-    "roles": ["vpn"],
+    "roles": [
+      "vpn"
+    ],
     "tier": "medium"
   },
   {
@@ -215,7 +219,9 @@
     "noise": 0.3,
     "cost": 25,
     "description": "Hack the outside company that does remote IT support for the bank, then use its trusted access.",
-    "roles": ["vendor"],
+    "roles": [
+      "vendor"
+    ],
     "tier": "large"
   },
   {
@@ -228,7 +234,9 @@
     "noise": 0.2,
     "cost": 20,
     "description": "Ask Active Directory for service tickets, take them home and crack the service account passwords offline.",
-    "roles": ["domain-controller"],
+    "roles": [
+      "domain-controller"
+    ],
     "tier": "large"
   },
   {
@@ -253,7 +261,9 @@
     "noise": 0.5,
     "cost": 30,
     "description": "Pretend to be a domain controller and ask the real one to send you every password in the company.",
-    "roles": ["domain-controller"],
+    "roles": [
+      "domain-controller"
+    ],
     "tier": "large"
   },
   {
@@ -267,7 +277,132 @@
     "cost": 15,
     "description": "Email the finance team pretending to be the CEO or a supplier and ask for an urgent payment to a new account.",
     "trait": "awareness",
-    "roles": ["finance"],
+    "roles": [
+      "finance"
+    ],
     "tier": "large"
+  },
+  {
+    "id": "session-hijack",
+    "name": "Steal a session cookie",
+    "mitre_id": "T1539",
+    "tactic": "credential-access",
+    "target": "employee",
+    "base_success": 0.5,
+    "noise": 0.2,
+    "cost": 15,
+    "trait": "awareness",
+    "description": "Malware that steals browser data copies an employee's logged-in session, so the attacker gets in without the password or the MFA prompt."
+  },
+  {
+    "id": "aitm-phishing",
+    "name": "Adversary-in-the-middle phishing",
+    "mitre_id": "T1557",
+    "tactic": "initial-access",
+    "target": "employee",
+    "base_success": 0.5,
+    "noise": 0.3,
+    "cost": 20,
+    "trait": "awareness",
+    "tier": "medium",
+    "description": "A fake login page sits between the employee and the real one and keeps the session after they pass MFA, so even a phone prompt does not save them."
+  },
+  {
+    "id": "helpdesk-vishing",
+    "name": "Call the help desk",
+    "mitre_id": "T1566.004",
+    "tactic": "initial-access",
+    "target": "employee",
+    "base_success": 0.45,
+    "noise": 0.3,
+    "cost": 15,
+    "tier": "medium",
+    "description": "Phone the IT help desk pretending to be an employee who lost their phone, and ask them to reset the password and MFA."
+  },
+  {
+    "id": "oauth-consent",
+    "name": "Malicious app consent",
+    "mitre_id": "T1528",
+    "tactic": "credential-access",
+    "target": "employee",
+    "base_success": 0.45,
+    "noise": 0.2,
+    "cost": 20,
+    "trait": "awareness",
+    "tier": "large",
+    "description": "Trick an employee into approving a harmless-looking app that asks to read their mail and files. No password needed, and it survives a password change."
+  },
+  {
+    "id": "rmm-abuse",
+    "name": "Remote support tool",
+    "mitre_id": "T1219",
+    "tactic": "lateral-movement",
+    "target": "server",
+    "base_success": 0.65,
+    "noise": 0.3,
+    "cost": 15,
+    "tier": "medium",
+    "description": "Install a legitimate remote support tool with a stolen account and use it to reach another machine. It looks like normal IT work."
+  },
+  {
+    "id": "lsass-dump",
+    "name": "Dump passwords from memory",
+    "mitre_id": "T1003.001",
+    "tactic": "credential-access",
+    "target": "server",
+    "base_success": 0.7,
+    "noise": 0.5,
+    "cost": 20,
+    "tier": "medium",
+    "description": "With admin rights on a machine, copy the memory of the Windows login process and pull out the passwords of everyone who logs in there."
+  },
+  {
+    "id": "golden-ticket",
+    "name": "Golden Ticket",
+    "mitre_id": "T1558.001",
+    "tactic": "credential-access",
+    "target": "server",
+    "base_success": 0.75,
+    "noise": 0.3,
+    "cost": 35,
+    "roles": [
+      "domain-controller"
+    ],
+    "tier": "large",
+    "description": "With admin rights on the domain controller, forge a Kerberos ticket that the whole domain trusts, and become anyone you like."
+  },
+  {
+    "id": "cloud-exfil",
+    "name": "Upload to cloud storage",
+    "mitre_id": "T1567.002",
+    "tactic": "exfiltration",
+    "target": "server",
+    "base_success": 0.8,
+    "noise": 0.3,
+    "cost": 20,
+    "description": "Copy the data to a public cloud storage service. The traffic looks like an employee saving a file."
+  },
+  {
+    "id": "dns-tunnel",
+    "name": "DNS tunneling",
+    "mitre_id": "T1071.004",
+    "tactic": "exfiltration",
+    "target": "server",
+    "base_success": 0.65,
+    "noise": 0.15,
+    "cost": 25,
+    "tier": "medium",
+    "description": "Hide the data inside a stream of DNS lookups, which almost no firewall blocks. Slow and very quiet."
+  },
+  {
+    "id": "inhibit-recovery",
+    "name": "Delete the backups",
+    "mitre_id": "T1490",
+    "tactic": "impact",
+    "target": "server",
+    "base_success": 0.8,
+    "noise": 0.6,
+    "cost": 15,
+    "description": "With admin rights on a machine, delete its backups and shadow copies first, so ransomware there cannot be undone. Immutable backups resist it."
   }
 ]

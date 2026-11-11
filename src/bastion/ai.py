@@ -4,7 +4,7 @@ from bastion.catalog import Catalog
 from bastion.company import Company
 from bastion.engine import BLIND_PENALTY, NEEDS_FOOTHOLD, Campaign, clamp, night_hunt_chance, person_factor
 
-INSIDE_ONLY = ("kerberoasting", "dcsync", "pass-the-hash")
+INSIDE_ONLY = ("kerberoasting", "dcsync", "pass-the-hash", "lsass-dump", "golden-ticket")
 GOOD_ENOUGH = 0.05
 HOT = 0.45
 NIGHT_RISK = 0.1
@@ -125,10 +125,20 @@ class RedAI:
         if attack_id == "kerberoasting":
             gain = sum(data_on(s.id) for s in company.servers if s.role == "database" and s.id not in campaign.foothold.admin_on)
             return gain * safe * 0.6
-        if attack_id == "dcsync":
+        if attack_id in ("dcsync", "golden-ticket"):
             if campaign.foothold.admin_on >= {s.id for s in company.servers}:
                 return 0
             return sum(data_on(s.id) for s in company.servers) * safe * 0.4
+        if attack_id == "lsass-dump":
+            fresh = [e for e in company.employees if target_id in e.access and e.id not in campaign.foothold.employees]
+            reach = {s for e in fresh for s in e.access} - campaign.foothold.servers
+            return sum(data_on(s) for s in reach) * safe * 0.5
+        if attack_id == "inhibit-recovery":
+            recover = any(catalog.defenses[d].category == "recover" for d in campaign.defense_ids) if self.knowledge == "easy" else True
+            wants = any(catalog.attacks[a].tactic == "impact" and a != "inhibit-recovery" for a in campaign.arsenal)
+            if not recover or not wants or target_id in campaign.foothold.no_recovery:
+                return 0
+            return data_on(target_id) * safe * 0.4
         if attack.tactic == "exfiltration":
             return data_on(target_id) * safe
         if attack.tactic == "impact":

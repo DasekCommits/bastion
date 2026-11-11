@@ -55,6 +55,10 @@ DEFENSE_GROUPS = {
     "segmentation": "Servers & network", "vendor-control": "Servers & network",
     "edr": "Monitoring", "siem": "Monitoring", "soc": "Monitoring", "honeytokens": "Monitoring", "dlp": "Monitoring",
     "backups": "Recovery",
+    "token-protection": "Accounts", "app-consent": "Accounts", "credential-guard": "Accounts",
+    "web-gateway": "People & email", "helpdesk-checks": "People & email",
+    "app-allowlisting": "Servers & network", "egress-filtering": "Servers & network",
+    "krbtgt-rotation": "Monitoring", "dns-filtering": "Monitoring", "immutable-backups": "Recovery",
 }
 
 

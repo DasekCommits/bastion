@@ -37,6 +37,15 @@ def prereq(attack) -> dict:
     if aid == "pass-the-hash":
         return {"needs": "admin rights somewhere already, plus an internal target",
                 "gives": "access to another machine without ever knowing the password", "intel_only": False}
+    if aid == "lsass-dump":
+        return {"needs": "administrator rights on the machine you dump",
+                "gives": "the passwords of everyone who logs in there, to move further", "intel_only": False}
+    if aid == "golden-ticket":
+        return {"needs": "administrator rights on the domain controller",
+                "gives": "a forged ticket the whole domain trusts: you can be anyone", "intel_only": False}
+    if aid == "inhibit-recovery":
+        return {"needs": "administrator rights on the target",
+                "gives": "no way back: ransomware there cannot be undone with normal backups", "intel_only": False}
     if aid == "kerberoasting":
         return {"needs": "any logged-in account inside the network",
                 "gives": "a service account's password to crack offline", "intel_only": False}
@@ -172,6 +181,18 @@ CHAINS = [
      "steps": ["phishing", "bec"]},
     {"id": "brute-door", "goal": "Scan, guess your way in, become admin, and encrypt the server.",
      "steps": ["port-scan", "brute-force", "privilege-escalation", "ransomware"]},
+    {"id": "mfa-bypass", "goal": "Get in with a stolen browser session, no password and no MFA prompt, and take the data.",
+     "steps": ["session-hijack", "exfiltration"]},
+    {"id": "aitm-to-cloud", "goal": "Phish a login through a fake page that keeps the session, then upload the files to cloud storage.",
+     "steps": ["aitm-phishing", "privilege-escalation", "cloud-exfil"]},
+    {"id": "helpdesk-quiet", "goal": "Talk the help desk into a reset, move with a remote support tool, and leak the data over DNS.",
+     "steps": ["helpdesk-vishing", "rmm-abuse", "dns-tunnel"]},
+    {"id": "no-way-back", "goal": "Get admin, delete the backups first, then ransom the machine so it cannot be restored.",
+     "steps": ["phishing", "privilege-escalation", "inhibit-recovery", "ransomware"]},
+    {"id": "memory-to-domain", "goal": "Become admin on a machine, dump the passwords in its memory, reach the domain controller and forge a Golden Ticket.",
+     "steps": ["phishing", "privilege-escalation", "lsass-dump", "remote-desktop", "golden-ticket"]},
+    {"id": "quiet-app", "goal": "Get an employee to approve a fake app, then slip the data out through DNS.",
+     "steps": ["oauth-consent", "dns-tunnel"]},
     {"id": "the-big-one", "goal": "Own everything: VPN in, admin, reuse hashes, steal the domain, and ransom it.",
      "steps": ["port-scan", "vpn-exploit", "privilege-escalation", "pass-the-hash", "dcsync", "ransomware"]},
 ]
@@ -198,6 +219,10 @@ def _stage_step(aid, catalog, state):
     if tactic == "lateral-movement":
         state["foothold"] = True
         return True, ""
+    if aid in ("lsass-dump", "golden-ticket") and not state["foothold"]:
+        return False, "The attacker has no way into the company yet. You need a foothold first."
+    if aid in ("lsass-dump", "golden-ticket") and not state["admin"]:
+        return False, f"{a.name} needs administrator rights first. Escalate first."
     if aid == "dcsync" and not state["admin"]:
         return False, "DCSync needs administrator rights on the domain controller. Escalate first."
     if aid == "pass-the-hash" and not state["admin"]:
