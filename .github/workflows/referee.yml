@@ -22,10 +22,12 @@ jobs:
       - name: Fetch finished games
         env:
           TOKEN: ${{ secrets.REFEREE_TOKEN }}
-        run: curl -sf -H "Authorization: Bearer $TOKEN" https://bastion.dasek.dev/api/referee.php -o pending.json
+        run: |
+          curl -sf -H "Authorization: Bearer $TOKEN" https://bastion.dasek.dev/api/referee.php -o pending.json
       - name: Replay them with the server's dice
         run: python tools/verify_scores.py pending.json verdicts.json
       - name: Send the verdicts
         env:
           TOKEN: ${{ secrets.REFEREE_TOKEN }}
-        run: curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data-binary @verdicts.json https://bastion.dasek.dev/api/referee.php
+        run: |
+          curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data-binary @verdicts.json https://bastion.dasek.dev/api/referee.php
