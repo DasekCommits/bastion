@@ -143,8 +143,21 @@
     if (result === "cancelled") S.notice = "Sign-in was cancelled. You can still play, progress stays in this browser.";
   }
 
+  // the browser's back arrow does what the on-page "←" does
+  let backHandler = null;
+  function armBack(fn) {
+    backHandler = fn;
+    if (!(history.state && history.state.bastion)) history.pushState({ bastion: 1 }, "");
+  }
+  window.addEventListener("popstate", () => {
+    const fn = backHandler;
+    if (fn) { backHandler = null; fn(); return; }
+    if (S.rec) history.pushState({ bastion: 1 }, "");  // mid-game: do not leave the page by accident
+  });
+
   function show(html, keepScroll) {
     const y = window.scrollY;
+    backHandler = null;
     app.innerHTML = html;
     app.focus({ preventScroll: true });
     window.scrollTo({ top: keepScroll ? y : 0 });
@@ -383,9 +396,9 @@
       renderSetup(group === "level");  // keep scroll when picking a difficulty (same step reveals Start)
     }));
     app.querySelectorAll("[data-step]").forEach((el) => el.addEventListener("click", () => { S.play.step = el.dataset.step; renderSetup(); }));
-    document.getElementById("play-prev").addEventListener("click", () => {
-      if (prev[1]) { S.play.step = prev[1]; renderSetup(); } else renderHome();
-    });
+    const goPrev = () => { if (prev[1]) { S.play.step = prev[1]; renderSetup(); } else renderHome(); };
+    document.getElementById("play-prev").addEventListener("click", goPrev);
+    armBack(goPrev);
     document.getElementById("go")?.addEventListener("click", startGame);
   }
 
@@ -393,7 +406,7 @@
 
   // one consistent "previous" control at the top-left of every screen
   const backBar = (label, extra = "") => `<div class="back-bar"><button class="back-btn" id="back-prev">← ${esc(label)}</button>${extra}</div>`;
-  const wireBack = (fn) => document.getElementById("back-prev")?.addEventListener("click", fn);
+  const wireBack = (fn) => { document.getElementById("back-prev")?.addEventListener("click", fn); armBack(fn); };
   const backToSetup = () => { S.play = { step: "difficulty" }; renderSetup(); };
 
   function learnTotals() {
@@ -687,6 +700,7 @@
     S.watch = new Set();
     S.peopleFilter = { role: null, server: null, admin: false, starred: false, q: "" };
     S.rec = true;
+    if (!(history.state && history.state.bastion)) history.pushState({ bastion: 1 }, "");
     S.dice = S.user ? { game: null, n: 0 } : null;  // signed in: the server rolls the dice
     try {
       S.start = api("start", company, level, side, Math.floor(Math.random() * 1e9));
