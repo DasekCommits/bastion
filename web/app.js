@@ -35,7 +35,7 @@
   const SIDES = [
     { id: "blue", name: "Blue", text: "Defend the company. The computer runs the attack.", cls: "blue-side" },
     { id: "red", name: "Red", text: "Break in. The computer picked defenses you cannot see.", cls: "red-side" },
-    { id: "random", name: "Random", text: "A coin decides your side. Double points if you win." },
+    { id: "random", name: "Random", text: "A coin decides your side. Double points if you win.", cls: "purple-side" },
   ];
 
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -465,7 +465,7 @@
         const avail = levelAvailable(l.id, sel.company);
         const reason = l.id === "realism" ? "unlock conditions unknown" : (menu.levels[l.id] || menu.locks[l.id][sel.company]);
         if (!avail) return `<button class="choice ${l.id === "realism" ? "classified" : ""}" style="animation-delay:${i * 60}ms" disabled><strong>${l.id === "realism" ? "████████" : esc(l.name)}</strong><small>${l.id === "realism" ? "Unlock conditions: unknown." : `Locked: ${esc(reason)}`}</small></button>`;
-        return `<button class="choice ${l.id === "realism" ? "classified-open" : ""} ${sel.level === l.id ? "selected" : ""}" style="animation-delay:${i * 60}ms" data-pick="level" data-id="${l.id}">
+        return `<button class="choice level-${l.id} ${l.id === "realism" ? "classified-open" : ""} ${sel.level === l.id ? "selected" : ""}" style="animation-delay:${i * 60}ms" data-pick="level" data-id="${l.id}">
           <strong>${esc(l.name)}</strong><small>${esc(l.text)}</small></button>`;
       };
       const all = [...LEVELS, REALISM];

@@ -824,3 +824,18 @@ tr[hidden], .option[hidden] { display: none; }
 .shop-tag.owned { color: var(--green); }
 .option.locked { opacity: .6; cursor: not-allowed; }
 .option.locked .box { border: 0; font-size: 12px; }
+
+/* Random side is purple; difficulty folders carry their colour on the tab */
+:root { --purple: #7a3fc0; }
+.play-flow .choice.purple-side::after { background: var(--purple); border-color: var(--purple); }
+.play-flow .choice.selected.purple-side { background: color-mix(in srgb, var(--purple) 10%, var(--card)); }
+.play-flow .choice.level-easy::after { background: var(--green); border-color: var(--green); }
+.play-flow .choice.level-medium::after { background: var(--amber); border-color: var(--amber); }
+.play-flow .choice.level-hard::after { background: var(--red); border-color: var(--red); }
+.play-flow .choice.level-realism::after { background: var(--ink); border-color: var(--ink); }
+.play-flow .choice.selected.level-easy { background: color-mix(in srgb, var(--green) 10%, var(--card)); }
+.play-flow .choice.selected.level-medium { background: color-mix(in srgb, var(--amber) 12%, var(--card)); }
+.play-flow .choice.selected.level-hard { background: color-mix(in srgb, var(--red) 10%, var(--card)); }
+.play-flow .choice.selected.level-realism { background: color-mix(in srgb, var(--ink) 10%, var(--card)); }
+.play-flow .choice:not(:disabled):hover.purple-side::after, .play-flow .choice:not(:disabled):hover[class*="level-"]::after { filter: brightness(1.15); }
+.play-flow .choice:disabled[class*="level-"]::after { background: var(--paper-2); border-color: var(--line); }
