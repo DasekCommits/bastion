@@ -800,3 +800,10 @@ tr[hidden], .option[hidden] { display: none; }
 .folder:not([aria-disabled="true"]):hover small, .folder:not([aria-disabled="true"]):focus-visible small { color: color-mix(in srgb, var(--paper) 70%, transparent); }
 .folder:not([aria-disabled="true"]):hover .folder-ico { opacity: 1; }
 .folder { transition: transform .15s, box-shadow .15s, background .15s, color .15s; }
+
+/* Play flow folders turn dark on hover, like the home folders */
+.play-flow .choice:not(:disabled):hover, .play-flow .choice:not(:disabled):focus-visible { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.play-flow .choice:not(:disabled):hover small, .play-flow .choice:not(:disabled):hover .muted, .play-flow .choice:not(:disabled):hover .tag,
+.play-flow .choice:not(:disabled):focus-visible small { color: color-mix(in srgb, var(--paper) 72%, transparent); }
+.play-flow .choice:not(:disabled):not(.red-side):not(.blue-side):hover::after { background: var(--ink); }
+.play-flow .choice { transition: transform .15s, box-shadow .15s, background .15s, color .15s; }
