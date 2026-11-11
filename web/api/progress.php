@@ -49,7 +49,7 @@ if (!is_array($learned)) {
     send_json(['error' => 'That progress does not look right.'], 422);
 }
 foreach ($learned as $name) {
-    if (is_string($name) && preg_match('/^[a-z0-9-]{1,32}$/', $name) && !in_array($name, $cleanLearned, true)) {
+    if (is_string($name) && preg_match('/^(chain:)?[a-z0-9-]{1,32}$/', $name) && !in_array($name, $cleanLearned, true)) {
         $cleanLearned[] = $name;
     }
 }

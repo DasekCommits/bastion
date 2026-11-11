@@ -89,6 +89,22 @@ class Session:
         result["profile_json"] = json.dumps(self._profile())
         return json.dumps(result)
 
+    def chains(self) -> str:
+        return json.dumps(learning.chains_summary(self.profile.learned))
+
+    def chain(self, chain_id: str) -> str:
+        return json.dumps(learning.chain(self.catalog, chain_id, self.profile.learned))
+
+    def check_chain(self, chain_id: str, order_json: str) -> str:
+        order = json.loads(order_json) if isinstance(order_json, str) else list(order_json)
+        result = learning.check_chain(self.catalog, chain_id, order)
+        tag = "chain:" + chain_id
+        if result["passed"] and tag not in self.profile.learned:
+            self.profile.learned.append(tag)
+        result["chains"] = learning.chains_summary(self.profile.learned)
+        result["profile_json"] = json.dumps(self._profile())
+        return json.dumps(result)
+
     def start(self, company_id: str, level: str, side: str, seed: int | None = None) -> str:
         self.rng = random.Random(seed)
         self.realism = level == "realism"

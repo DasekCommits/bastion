@@ -24,6 +24,35 @@ TACTIC_HUMAN = {
 }
 
 
+# mirrors engine._is_possible / NEEDS_FOOTHOLD: what a technique needs before it works,
+# what it gives you, and whether it is only intel rather than a step forward.
+def prereq(attack) -> dict:
+    tactic, aid = attack.tactic, attack.id
+    if aid == "bec":
+        return {"needs": "nothing technical — it is pure social engineering",
+                "gives": "a fraudulent payment, if finance does not call back to check", "intel_only": False}
+    if aid == "dcsync":
+        return {"needs": "administrator rights on the domain controller",
+                "gives": "every account's password hash — the keys to the whole domain", "intel_only": False}
+    if aid == "pass-the-hash":
+        return {"needs": "admin rights somewhere already, plus an internal target",
+                "gives": "access to another machine without ever knowing the password", "intel_only": False}
+    if aid == "kerberoasting":
+        return {"needs": "any logged-in account inside the network",
+                "gives": "a service account's password to crack offline", "intel_only": False}
+    table = {
+        "reconnaissance": ("a server reachable from the internet", "a map of what is exposed — intel only, not a break-in", True),
+        "initial-access": ("a reachable server or a person to trick", "your first foothold inside the company", False),
+        "credential-access": ("a foothold inside the network", "more credentials and wider reach", False),
+        "privilege-escalation": ("a foothold on that same machine", "administrator rights on it", False),
+        "lateral-movement": ("a stolen account that can log in there", "a foothold on another machine", False),
+        "exfiltration": ("access to the machine holding the data", "the data out of the company — often the goal", False),
+        "impact": ("administrator rights on the target", "damage: files encrypted or wiped", False),
+    }
+    needs, gives, intel = table.get(tactic, ("a foothold first", "progress in the attack", False))
+    return {"needs": needs, "gives": gives, "intel_only": intel}
+
+
 def order(catalog) -> list[str]:
     """Technique ids in teaching order."""
     def rank(attack):
@@ -69,11 +98,15 @@ def lesson(catalog, attack_id: str, learned: list[str]) -> dict:
     def_options = [{"id": d.id, "label": d.name} for d in def_pool]
     rng.shuffle(def_options)
 
+    needs = prereq(a)
     return {
         "id": attack_id,
         "name": a.name,
         "mitre": a.mitre_id,
         "tactic": TACTIC_HUMAN.get(a.tactic, a.tactic),
+        "needs": needs["needs"],
+        "gives": needs["gives"],
+        "intel_only": needs["intel_only"],
         "teach": f"{a.description} In MITRE ATT&CK this is {a.name} ({a.mitre_id}), a {TACTIC_HUMAN.get(a.tactic, a.tactic)} technique.",
         "attack_prompt": f"An attacker wants to: {a.description.rstrip('.').lower()}. Which technique is that?",
         "attack_options": atk_options,
@@ -106,3 +139,88 @@ def check(catalog, attack_id: str, attack_choice: str, defense_choice: str) -> d
         ),
         "defense_note": defense_note,
     }
+
+
+# "Combinations" exercises: order techniques into a working attack. The order is
+# validated the way the engine would, by tracking a tiny foothold/admin state and
+# refusing a step whose prerequisite is not met yet.
+CHAINS = [
+    {"id": "smash-grab",
+     "goal": "Break into an internet-facing web shop and steal its data — no insider, no email.",
+     "steps": ["port-scan", "exploit-web", "exfiltration"]},
+    {"id": "phish-to-ransom",
+     "goal": "Start from a person and end by ransoming the machine you land on.",
+     "steps": ["phishing", "privilege-escalation", "ransomware"]},
+    {"id": "deep-domain",
+     "goal": "Phish your way in, spread across the network, and empty the domain's secrets.",
+     "steps": ["phishing", "lateral-movement", "privilege-escalation", "dcsync"]},
+]
+CHAINS_BY_ID = {c["id"]: c for c in CHAINS}
+
+
+def _stage_step(aid, catalog, state):
+    """Apply one technique to a tiny attack state; return (ok, reason) using engine-like rules."""
+    a = catalog.attacks[aid]
+    tactic = a.tactic
+    if aid == "bec":
+        return True, ""
+    if tactic in ("reconnaissance",):
+        return True, ""  # intel, always allowed, never required
+    if tactic == "initial-access":
+        state["foothold"] = True
+        return True, ""
+    if not state["foothold"] and (tactic in ("privilege-escalation", "lateral-movement", "exfiltration", "impact")
+                                  or aid in ("kerberoasting", "dcsync", "pass-the-hash")):
+        return False, "The attacker has no way into the company yet — you need a foothold first."
+    if tactic == "privilege-escalation":
+        state["admin"] = True
+        return True, ""
+    if tactic == "lateral-movement":
+        state["foothold"] = True
+        return True, ""
+    if aid == "dcsync" and not state["admin"]:
+        return False, "DCSync needs administrator rights on the domain controller — escalate first."
+    if aid == "pass-the-hash" and not state["admin"]:
+        return False, "Pass-the-Hash needs admin rights somewhere first, to dump hashes from memory."
+    if tactic == "impact" and not state["admin"]:
+        return False, "Encrypting a machine needs administrator rights on it — escalate first."
+    return True, ""
+
+
+def chains_summary(learned: list[str]) -> dict:
+    done = set(learned or [])
+    rows = [{"id": c["id"], "goal": c["goal"], "steps": len(c["steps"]),
+             "done": ("chain:" + c["id"]) in done} for c in CHAINS]
+    return {"total": len(CHAINS), "done": len([r for r in rows if r["done"]]), "chains": rows}
+
+
+def chain(catalog, chain_id: str, learned: list[str]) -> dict:
+    c = CHAINS_BY_ID[chain_id]
+    rng = random.Random("chain:" + chain_id)
+    cards = [{"id": aid, "name": catalog.attacks[aid].name,
+              "mitre": catalog.attacks[aid].mitre_id,
+              "tactic": TACTIC_HUMAN.get(catalog.attacks[aid].tactic, catalog.attacks[aid].tactic)}
+             for aid in c["steps"]]
+    rng.shuffle(cards)
+    return {"id": chain_id, "goal": c["goal"], "cards": cards, "length": len(c["steps"]),
+            "done": ("chain:" + chain_id) in set(learned or [])}
+
+
+def check_chain(catalog, chain_id: str, submitted: list[str]) -> dict:
+    c = CHAINS_BY_ID[chain_id]
+    state = {"foothold": False, "admin": False}
+    steps = []
+    passed = True
+    for aid in submitted:
+        if aid not in c["steps"]:
+            continue
+        ok, reason = _stage_step(aid, catalog, state)
+        steps.append({"id": aid, "name": catalog.attacks[aid].name, "ok": ok, "reason": reason})
+        if not ok:
+            passed = False
+            break
+    if passed and len(steps) < len(c["steps"]):
+        passed = False
+    return {"passed": passed, "steps": steps,
+            "note": ("That chain works — each step sets up the next." if passed
+                     else "That order does not work yet. Follow the reason and try again.")}
