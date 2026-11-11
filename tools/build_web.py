@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "src" / "bastion"
 WEB = ROOT / "web"
 OUT = ROOT / "build" / "web"
-TERMINAL_ONLY = {"__main__.py", "play.py", "look.py", "picker.py", "waf_cli.py", "waf.py", "tuning.py", "gamelog.py"}
+TERMINAL_ONLY = {"__main__.py", "play.py", "look.py", "picker.py", "waf_cli.py", "tuning.py", "gamelog.py"}
 
 
 def package(zip_path: Path) -> None:

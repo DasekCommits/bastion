@@ -430,10 +430,81 @@
         <p class="muted" style="margin:12px 0 0;font-size:14px">A technique rarely works alone. Order these into an attack that actually gets through — the engine checks it the way a real one would.</p>
       </div>
       <div class="lesson-list">${chains}</div>
+      <div class="panel" style="margin-top:28px">
+        <div class="learn-banner-top"><strong>WAF Lab — train the doorman</strong><span class="learn-count">best ${store.get(WAF_BEST_KEY, 0)}/100</span></div>
+        <div class="bar big"><span style="width:${store.get(WAF_BEST_KEY, 0)}%"></span></div>
+        <p class="muted" style="margin:12px 0 0;font-size:14px">Build a web application firewall from plain-language rules. Stop 40 real attacks without turning away 25 innocent customers. Practice only, no points.</p>
+      </div>
+      <div class="lesson-list"><button class="lesson-row" id="open-waf"><span class="num">WAF</span>
+        <span class="lesson-name"><strong>Open the WAF Lab</strong><small>SQL injection · XSS · path traversal</small></span>
+        <span class="lesson-mark">${store.get(WAF_BEST_KEY, 0) >= 100 ? "✓ perfect" : "build →"}</span></button></div>
     </section>`);
+    document.getElementById("open-waf").addEventListener("click", () => renderWafLab());
     app.querySelectorAll("[data-lesson]").forEach((el) => el.addEventListener("click", () => renderLesson(el.dataset.lesson)));
     app.querySelectorAll("[data-chain]").forEach((el) => el.addEventListener("click", () => renderChain(el.dataset.chain)));
     wireBack(renderHome);
+  }
+
+  const WAF_BEST_KEY = "bastion-waf-best";
+  const WAF_PICK_KEY = "bastion-waf-pick";
+  const KIND_NAMES = { sqli: "SQL injection", xss: "XSS", traversal: "Path traversal" };
+
+  function renderWafLab() {
+    setGauges(null);
+    const lab = api("waf_lab");
+    const picked = new Set(store.get(WAF_PICK_KEY, []));
+    const firstTime = !store.get(WAF_BEST_KEY, 0) && !picked.size;
+    const card = (i) => `<button class="choice waf-item ${picked.has(i.id) ? "selected" : ""}" data-waf="${esc(i.id)}" aria-pressed="${picked.has(i.id)}">
+      <strong>${esc(i.title)}</strong><small>${esc(i.explain)}</small></button>`;
+    show(`<section class="step waf-lab">
+      ${backBar("All lessons")}
+      <div><p class="eyebrow">WAF Lab · practice, no points</p><h1>Train the doorman.</h1></div>
+      <details class="panel waf-intro" ${firstTime ? "open" : ""}><summary><strong>What is a WAF? (read this first)</strong></summary>
+        <ol class="waf-steps">
+          <li><strong>A normal login.</strong> You type a name and a password. The site asks its database:<code>find user maria AND password 1234</code></li>
+          <li><strong>SQL injection.</strong> A hacker types <code class="bad">' OR 1=1</code> as the password. The question becomes:<code>find user maria AND password '' OR 1=1</code>1=1 is always true, so the database lets them in without a password.</li>
+          <li><strong>XSS.</strong> A hacker leaves a product review containing <code class="bad">&lt;script&gt;…&lt;/script&gt;</code>. Every visitor's browser runs that code.</li>
+          <li><strong>The WAF.</strong> A doorman in front of the site who reads every message first. Too relaxed and attacks slip past in disguise; too strict and real customers like <em>Mr O'Brien</em> are turned away. Each innocent customer you block costs ${lab.penalty} points.</li>
+        </ol></details>
+      <div class="waf-board panel" id="waf-board" aria-live="polite"></div>
+      <div class="panel"><h3>1 · Clean up first</h3><p class="muted">Attackers disguise their messages. These steps undo the disguise before any rule looks.</p>
+        <div class="choices waf-grid">${lab.items.filter((i) => i.kind === "clean").map(card).join("")}</div></div>
+      <div class="panel"><h3>2 · Then block</h3><p class="muted">Some of these are traps: they catch attacks but also block real customers.</p>
+        <div class="choices waf-grid">${lab.items.filter((i) => i.kind === "rule").map(card).join("")}</div></div>
+      <div class="panel waf-detail" id="waf-detail"></div>
+    </section>`);
+    const update = () => {
+      const r = api("waf_check", JSON.stringify([...picked]));
+      store.set(WAF_PICK_KEY, [...picked]);
+      if (r.score > store.get(WAF_BEST_KEY, 0)) store.set(WAF_BEST_KEY, r.score);
+      const bar = (n, total, cls) => `<span class="bar ${cls}"><span style="width:${total ? Math.round((n / total) * 100) : 0}%"></span></span>`;
+      const color = r.score >= 85 ? "good" : r.score >= 60 ? "mid" : "low";
+      document.getElementById("waf-board").innerHTML = `
+        <div class="waf-score ${color}"><span class="waf-num">${r.score}</span><span class="muted">/100 WAF score · best ${store.get(WAF_BEST_KEY, 0)}</span></div>
+        <div class="waf-meters">
+          <div><span class="waf-label">Hackers blocked <b>${r.caught}/${r.attacks}</b></span>${bar(r.caught, r.attacks, "good")}</div>
+          <div><span class="waf-label">Innocent customers blocked <b>${r.wrongly.length}/${r.innocent}</b></span>${bar(r.wrongly.length, r.innocent, "bad")}</div>
+          <div class="waf-kinds">${Object.entries(r.kinds).map(([k, v]) => `<span>${KIND_NAMES[k]} <b>${v.caught}/${v.total}</b></span>`).join("")}</div>
+        </div>
+        ${r.score === 100 ? '<p class="waf-perfect">Perfect: every attack stopped and nobody innocent turned away.</p>' : ""}`;
+      const title = (id) => (lab.items.find((i) => i.id === id) || {}).title || id;
+      const missed = r.missed.map((m) => `<li><code>${esc(m.text)}</code><span>${esc(KIND_NAMES[m.kind])} · ${esc(m.hint)}</span></li>`).join("");
+      const wrong = r.wrongly.map((w) => `<li><code>${esc(w.text)}</code><span>${esc(w.why)} · blocked by “${esc(title(w.rule))}”</span></li>`).join("");
+      document.getElementById("waf-detail").innerHTML = `
+        <div class="waf-cols">
+          <div><h3>Still getting in (${r.missed.length})</h3>${missed ? `<ul class="waf-list bad">${missed}</ul>` : '<p class="muted">Nothing. Every attack is stopped.</p>'}</div>
+          <div><h3>Wrongly blocked (${r.wrongly.length})</h3>${wrong ? `<ul class="waf-list warn">${wrong}</ul>` : '<p class="muted">Nobody. Every real customer gets in.</p>'}</div>
+        </div>`;
+    };
+    app.querySelectorAll("[data-waf]").forEach((el) => el.addEventListener("click", () => {
+      const id = el.dataset.waf;
+      if (picked.has(id)) picked.delete(id); else picked.add(id);
+      el.classList.toggle("selected", picked.has(id));
+      el.setAttribute("aria-pressed", String(picked.has(id)));
+      update();
+    }));
+    update();
+    wireBack(renderLearn);
   }
 
   function renderChain(id) {

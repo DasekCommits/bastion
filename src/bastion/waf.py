@@ -1,10 +1,8 @@
 import html
 import json
-import multiprocessing
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from queue import Empty
 from urllib.parse import unquote_plus
 
 from bastion.catalog import DATA_DIR
@@ -129,6 +127,9 @@ def _worker(ruleset: RuleSet, corpus: dict, queue) -> None:
 
 
 def evaluate_safely(ruleset: RuleSet, corpus: dict, timeout: float = TIMEOUT_SECONDS) -> WafReport:
+    import multiprocessing
+    from queue import Empty
+
     queue = multiprocessing.Queue()
     process = multiprocessing.Process(target=_worker, args=(ruleset, corpus, queue))
     process.start()

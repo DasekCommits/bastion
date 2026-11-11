@@ -6,7 +6,7 @@ from bastion.catalog import load_catalog, load_edge
 from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, PlanError
-from bastion import learning
+from bastion import learning, waf
 from bastion.realism.game import RealismGame
 from bastion.realism.spl import QueryError
 from bastion.realism.terminal import VERBS, help_lines, resolve
@@ -92,6 +92,25 @@ class Session:
         result["summary"] = learning.summary(self.catalog, self.profile.learned)
         result["profile_json"] = json.dumps(self._profile())
         return json.dumps(result)
+
+    def waf_lab(self) -> str:
+        items = [{"id": i.id, "kind": i.kind, "title": i.title, "explain": i.explain} for i in waf.load_library()]
+        return json.dumps({"items": items})
+
+    def waf_check(self, selected_json: str) -> str:
+        library = waf.load_library()
+        known = {i.id for i in library}
+        selected = [i for i in json.loads(selected_json) if i in known]
+        report = waf.evaluate(waf.library_ruleset(selected, library), waf.load_corpus())
+        kinds = {k: {"caught": report.caught.get(k, 0), "total": report.totals.get(k, 0)} for k in waf.KINDS}
+        return json.dumps({
+            "score": report.score, "kinds": kinds,
+            "caught": sum(v["caught"] for v in kinds.values()), "attacks": sum(v["total"] for v in kinds.values()),
+            "innocent": report.totals.get("benign", 0),
+            "missed": [{"text": v.text, "kind": v.kind, "hint": v.hint} for v in report.missed],
+            "wrongly": [{"text": v.text, "why": v.hint, "rule": v.blocked_by} for v in report.false_positives],
+            "penalty": waf.FALSE_POSITIVE_PENALTY,
+        })
 
     def chains(self) -> str:
         return json.dumps(learning.chains_summary(self.profile.learned))

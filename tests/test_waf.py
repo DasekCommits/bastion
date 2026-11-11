@@ -39,3 +39,17 @@ def test_catastrophic_regex_is_stopped():
     rules = parse_rules({"rules": [{"id": "evil", "pattern": "^(a+)+$"}]})
     with pytest.raises(RuleError, match="ReDoS"):
         evaluate_safely(rules, corpus, timeout=1)
+
+
+def test_web_lab_scores_the_library_like_the_terminal():
+    import json
+    from bastion.web import Session
+
+    session = Session()
+    items = json.loads(session.waf_lab())["items"]
+    assert {i["kind"] for i in items} == {"clean", "rule"}
+    empty = json.loads(session.waf_check("[]"))
+    assert empty["score"] == 0 and empty["caught"] == 0 and empty["attacks"] == 40 and not empty["wrongly"]
+    everything = json.loads(session.waf_check(json.dumps([i["id"] for i in items])))
+    assert everything["caught"] == 40 and everything["wrongly"]
+    assert json.loads(session.waf_check('["no-such-rule"]'))["score"] == 0
