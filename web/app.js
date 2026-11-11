@@ -288,27 +288,22 @@
     const anyQuest = knownQuests.length > 0;
     const notice = S.notice ? `<p class="notice" role="status">${esc(S.notice)}</p>` : "";
     S.notice = "";
-    const row = (id, num, title, desc, meta, cls = "") => `<button class="nav-row ${cls}" data-nav="${id}">
-      <span class="nav-text"><strong>${title}</strong><small>${desc}</small></span>
-      <span class="nav-meta">${meta || ""}</span><span class="nav-arrow">→</span></button>`;
+    const folder = (id, ico, title, desc, cls = "") => `<button class="folder ${cls}" ${id ? `data-nav="${id}"` : 'type="button" aria-disabled="true"'}>
+      <span class="folder-tab" aria-hidden="true"></span>
+      <span class="folder-ico" aria-hidden="true">${ico}</span>
+      <strong>${title}</strong><small>${desc}</small></button>`;
     show(`<section class="step home" id="home">
       ${notice}
       <header class="hero">
         <h1 class="wordmark">BASTION</h1>
         <p class="hero-sub">Attack a company or defend it. Every move maps to a real technique.</p>
       </header>
-      <nav class="nav-rows">
-        ${row("play", "01", "Play", "Choose a side, a target and a difficulty, then go.", "")}
-        ${row("tutorial", "02", "Tutorial", "Red, Blue and WAF tracks: techniques, defenses and how to combine them.", "")}
-        ${menu.realism
-          ? row("leaderboards", "03", "Realism", "The leaderboard: the best Red and Blue players, ranked.", "")
-          : `<button class="nav-row nav-classified locked sealed" type="button" aria-disabled="true">
-             <span class="nav-text"><strong>Classified</strong><small>Opens when you find what is hidden.</small></span><span class="nav-arrow">🔒</span></button>`}
-        ${row("achievements", "04", "Achievements", "Ten feats. Few players will see them all.", "")}
-        ${anyQuest
-          ? row("quests", "", "Classified", `${knownQuests.length} classified objective${knownQuests.length > 1 ? "s" : ""} in play.`, "")
-          : `<button class="nav-row nav-classified locked" data-nav="quests">
-             <span class="nav-text"><strong>Classified</strong><small>Some files are not on any inventory.</small></span><span class="nav-arrow">→</span></button>`}
+      <nav class="folders">
+        ${folder("play", "▶", "Play", "Pick a side, a target and a difficulty.", "primary")}
+        ${folder("tutorial", "✎", "Tutorial", "Red, Blue and WAF tracks.")}
+        ${menu.realism ? folder("leaderboards", "☰", "Leaderboard", "The best players at every difficulty.") : folder("", "🔒", "Classified", "Opens when you find what is hidden.", "sealed")}
+        ${folder("achievements", "★", "Achievements", "Ten feats. Few will see them all.")}
+        ${anyQuest ? folder("quests", "▤", "Classified", `${knownQuests.length} hidden objective${knownQuests.length > 1 ? "s" : ""} in play.`, "secret") : folder("quests", "▤", "Classified", "Some files are not on any inventory.", "sealed")}
       </nav>
       <p class="disclaimer">Bastion is a simulation for learning. The companies are fictional and no real company, network or system is ever attacked.</p>
     </section>`);
@@ -1673,11 +1668,11 @@
     const profile = JSON.parse(final.profile_json);
     store.set(PROFILE_KEY, profile);
     saveProgress(profile);
-    if (final.realism && final.realism_side && final.score && S.user && S.dice && S.dice.game) {
+    if (final.score && ["red", "blue"].includes(final.score.side) && S.user && S.dice && S.dice.game) {
       const seconds = S.startedAt ? Math.round((Date.now() - S.startedAt) / 1000) : 0;
       fetch("api/score.php", { method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-Bastion": "1" },
-        body: JSON.stringify({ side: final.realism_side, points: final.score.total, seconds, game: S.dice.game }) }).catch(() => {});
+        body: JSON.stringify({ side: final.score.side, points: final.score.total, seconds, game: S.dice.game }) }).catch(() => {});
     }
     S.rec = false;
     S.dice = null;
@@ -1714,32 +1709,41 @@
     document.getElementById("board")?.addEventListener("click", renderLeaderboard);
   }
 
-  async function renderLeaderboard() {
+  const BOARD_LEVELS = [["easy", "Easy"], ["medium", "Medium"], ["hard", "Hard"], ["realism", "Realism"]];
+  async function renderLeaderboard(level) {
     setGauges(null);
-    show('<section class="step"><h1>Leaderboard.</h1><p class="muted">Loading…</p></section>');
+    level = level || S.boardLevel || "easy";
+    S.boardLevel = level;
+    const tabs = `<div class="pick-tabs" role="tablist">${BOARD_LEVELS.map(([id, label]) =>
+      `<button class="pick-tab ${id === level ? "on" : ""}" role="tab" aria-selected="${id === level}" data-board="${id}">${label}</button>`).join("")}</div>`;
+    const frame = (inner) => `<section class="step">
+      ${backBar("Home")}
+      <div><h1>Leaderboard.</h1>${S.user ? "" : '<p class="muted">Sign in with GitHub to appear here.</p>'}</div>
+      ${tabs}${inner}</section>`;
+    show(frame('<p class="muted">Loading…</p>'), true);
     let data;
     try {
-      const r = await fetch("api/leaderboard.php", { credentials: "same-origin", cache: "no-store" });
+      const r = await fetch(`api/leaderboard.php?level=${encodeURIComponent(level)}`, { credentials: "same-origin", cache: "no-store" });
       data = await r.json();
     } catch { data = { error: "The leaderboard is not available right now." }; }
-    const fmtTime = (s) => s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "";
+    if (S.boardLevel !== level) return;
+    const fmtTime = (t) => t > 0 ? `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}` : "";
+    const mapName = (id) => ({ "olive-byte": "Olive Byte", "harbor-clinic": "Harbor Clinic", "meridian-bank": "Meridian Bank", "directorate-7": "Directorate-7" }[id] || id || "");
     const table = (side) => {
       const rows = (data.board && data.board[side]) || [];
       const body = rows.length
-        ? rows.map((e, i) => `<tr class="${data.me && data.me.login === e.login ? "mine" : ""}"><td class="num">${i + 1}</td><td>${e.avatar ? `<img src="${esc(e.avatar)}" alt="">` : ""}${esc(e.login)}</td><td class="num">${e.score}</td><td class="num">${fmtTime(e.secs)}</td></tr>`).join("")
-        : '<tr><td colspan="4" class="muted">No scores yet. Be the first.</td></tr>';
-      const mine = data.me && data.me[side] ? `<p class="profile-line">Your best: ${data.me[side]} · ${fmtTime(data.me[side + "_secs"])}</p>` : "";
+        ? rows.map((e, i) => `<tr class="${data.me && data.me.login === e.login ? "mine" : ""}"><td class="num">${i + 1}</td><td>${e.avatar ? `<img src="${esc(e.avatar)}" alt="">` : ""}${esc(e.login)}</td><td class="muted">${esc(mapName(e.map))}</td><td class="num">${e.score}</td><td class="num">${fmtTime(e.secs)}</td></tr>`).join("")
+        : '<tr><td colspan="5" class="muted">No scores yet. Be the first.</td></tr>';
+      const me = data.me && data.me[side];
+      const mine = me ? `<p class="profile-line">Your best: ${me.score} on ${esc(mapName(me.map))}${me.secs ? ` · ${fmtTime(me.secs)}` : ""}</p>` : "";
       return `<div class="panel"><h3 class="${side}">${side === "red" ? "Red" : "Blue"} Team</h3>
-        <table class="sheet board-table"><thead><tr><th class="num">#</th><th>Player</th><th class="num">Score</th><th class="num">Time</th></tr></thead><tbody>${body}</tbody></table>${mine}</div>`;
+        <table class="sheet board-table"><thead><tr><th class="num">#</th><th>Player</th><th>Map</th><th class="num">Score</th><th class="num">Time</th></tr></thead><tbody>${body}</tbody></table>${mine}</div>`;
     };
-    show(`<section class="step">
-      ${backBar("Home")}
-      <div><h1>Leaderboard.</h1>
-      ${S.user ? "" : '<p class="muted">Sign in with GitHub to appear here.</p>'}</div>
-      ${data.error ? `<p class="why">${esc(data.error)}</p>` : `<div class="brief-grid">${table("red")}${table("blue")}</div>`}
-    </section>`);
+    show(frame(data.error ? `<p class="why">${esc(data.error)}</p>` : `<div class="brief-grid">${table("red")}${table("blue")}</div>`), true);
+    app.querySelectorAll("[data-board]").forEach((el) => el.addEventListener("click", () => renderLeaderboard(el.dataset.board)));
     wireBack(renderHome);
   }
+
 
   boot();
 })();

@@ -722,3 +722,33 @@ tr[hidden], .option[hidden] { display: none; }
   background: linear-gradient(135deg, transparent 50%, var(--ink-soft) 50%, var(--ink-soft) 60%, transparent 60%, transparent 72%, var(--ink-soft) 72%, var(--ink-soft) 82%, transparent 82%); opacity: .7; }
 .desk-area.free .win.resizing { user-select: none; }
 .desk-area.free .desk-empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; }
+
+/* home: compact hero and sections as file folders */
+.home .hero { padding: 8px 0 0; }
+.home .hero .wordmark { font-size: clamp(44px, 8vw, 84px); margin: 0 0 8px; }
+.home .hero-sub { margin: 0 0 22px; font-size: 15px; }
+.folders { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 22px 16px; padding-top: 10px; }
+.folder { position: relative; display: grid; gap: 6px; align-content: start; min-height: 132px; padding: 18px 18px 16px; text-align: left; cursor: pointer;
+  border: 1px solid var(--ink); border-radius: 4px 12px 12px 12px; background: var(--card); color: var(--ink); font: inherit;
+  box-shadow: 4px 4px 0 var(--paper-2); transition: transform .15s, box-shadow .15s; }
+.folder-tab { position: absolute; top: -10px; left: -1px; width: 84px; height: 10px; border: 1px solid var(--ink); border-bottom: 0; border-radius: 6px 6px 0 0; background: inherit; }
+.folder:hover { transform: translateY(-3px); box-shadow: 4px 8px 0 var(--paper-2); }
+.folder-ico { font-size: 18px; line-height: 1; opacity: .7; }
+.folder strong { font-size: 20px; }
+.folder small { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.folder.primary { background: var(--ink); color: var(--paper); }
+.folder.primary small { color: color-mix(in srgb, var(--paper) 70%, transparent); }
+.folder.primary .folder-ico { opacity: 1; }
+.folder.sealed { background: repeating-linear-gradient(-45deg, var(--card), var(--card) 10px, var(--paper-2) 10px, var(--paper-2) 20px); }
+.folder.sealed .folder-tab { background: var(--card); }
+.folder.sealed[aria-disabled="true"] { cursor: not-allowed; }
+.folder.sealed[aria-disabled="true"]:hover { transform: none; box-shadow: 4px 4px 0 var(--paper-2); }
+.folder.secret { border-color: var(--red); }
+.folder.secret .folder-tab { border-color: var(--red); }
+.home .disclaimer { margin-top: 28px; }
+
+/* Play flow: a picked card is a soft tint, no tick and no black ring */
+.play-flow .choice.selected { border-color: var(--line); box-shadow: none; background: var(--paper-2); }
+.play-flow .choice.selected::before { display: none; }
+.play-flow .choice.selected.red-side { background: color-mix(in srgb, var(--red) 10%, var(--card)); border-left-color: var(--red); }
+.play-flow .choice.selected.blue-side { background: color-mix(in srgb, var(--blue) 10%, var(--card)); border-left-color: var(--blue); }

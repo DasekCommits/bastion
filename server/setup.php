@@ -75,7 +75,9 @@ db()->exec(
 );
 
 foreach (['users' => ['achievements' => 'ALTER TABLE users ADD COLUMN achievements TEXT NULL'],
-          'games' => ['summary' => 'ALTER TABLE games ADD COLUMN summary TEXT NULL']] as $table => $columns) {
+          'games' => ['summary' => 'ALTER TABLE games ADD COLUMN summary TEXT NULL',
+                      'level' => 'ALTER TABLE games ADD COLUMN level VARCHAR(10) NULL',
+                      'company' => 'ALTER TABLE games ADD COLUMN company VARCHAR(32) NULL']] as $table => $columns) {
     foreach ($columns as $col => $sql) {
         if (!db()->query("SHOW COLUMNS FROM $table LIKE '$col'")->fetchAll()) {
             db()->exec($sql);
