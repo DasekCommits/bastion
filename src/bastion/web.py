@@ -204,7 +204,7 @@ class Session:
         if self.side == "red":
             self.defense_ids = ai.pick_defenses(self.company, self.catalog, self.rng)
         if self.side == "blue":
-            self.arsenal = ai.pick_arsenal(self.company, self.catalog, self.rng)
+            self.arsenal = ai.pick_arsenal(self.company, self.catalog, self.rng, expert=self.level == "hard")
         edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
         self.campaign = Campaign(self.company, self.catalog, self.defense_ids, self.arsenal, rng=self.rng, edge=edge,
                                  active_blue=True, egg_rng=random.Random(self.rng.random()))

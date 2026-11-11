@@ -2,11 +2,13 @@ import random
 
 from bastion.catalog import Catalog
 from bastion.company import Company
-from bastion.engine import BLIND_PENALTY, NEEDS_FOOTHOLD, Campaign, person_factor
+from bastion.engine import BLIND_PENALTY, NEEDS_FOOTHOLD, Campaign, clamp, night_hunt_chance, person_factor
 
 INSIDE_ONLY = ("kerberoasting", "dcsync", "pass-the-hash")
 GOOD_ENOUGH = 0.05
 HOT = 0.45
+NIGHT_RISK = 0.1
+PLANS = 8
 RED_AI_KNOWLEDGE = {"easy": "hard", "medium": "medium", "hard": "easy"}
 BLUE_AI_KNOWLEDGE = {"easy": "hard", "medium": "medium", "hard": "easy"}
 
@@ -24,7 +26,17 @@ def pick_defenses(company: Company, catalog: Catalog, rng: random.Random) -> lis
     return chosen
 
 
-def pick_arsenal(company: Company, catalog: Catalog, rng: random.Random) -> list[str]:
+def plan_score(ids: list[str], catalog: Catalog) -> float:
+    tactics = [catalog.attacks[a].tactic for a in ids]
+    entries = sum(t in ("initial-access", "credential-access") for t in tactics)
+    return (3 * ("exfiltration" in ids) + ("privilege-escalation" in tactics) + ("lateral-movement" in tactics)
+            + 0.5 * min(3, entries) + 0.1 * len(ids))
+
+
+def pick_arsenal(company: Company, catalog: Catalog, rng: random.Random, expert: bool = False) -> list[str]:
+    if expert:
+        plans = [pick_arsenal(company, catalog, rng) for _ in range(PLANS)]
+        return max(plans, key=lambda ids: plan_score(ids, catalog))
     attacks = catalog.attacks_for(company.tier)
     entries = [a for a in attacks if a.tactic == "initial-access" or (a.tactic == "credential-access" and a.target == "employee")]
     payloads = [a for a in attacks if a.tactic in ("exfiltration", "impact")]
@@ -131,15 +143,22 @@ class RedAI:
             return (data_on(target_id) + bonus) * safe * 0.7
         return 0
 
+    def too_loud(self, campaign: Campaign, attack_id: str, target_id: str) -> bool:
+        heat = campaign.preview(attack_id, target_id).heat_after
+        return clamp(night_hunt_chance(heat, campaign.defenses, campaign.edge)) > NIGHT_RISK
+
     def next_move(self, campaign: Campaign) -> tuple[str, str] | None:
         if campaign.moves_left_today <= 0:
             return None
         if self.knowledge == "easy" and campaign.heat > HOT:
             return None
         best = None
+        night_watch = self.knowledge == "easy" and "soc" in campaign.defense_ids
         for attack_id in campaign.arsenal:
             for target_id in campaign.targets_for(attack_id):
                 score = self.value(campaign, attack_id, target_id)
+                if night_watch and score > 0 and self.too_loud(campaign, attack_id, target_id):
+                    continue
                 if best is None or score > best[0]:
                     best = (score, attack_id, target_id)
         if best is None or best[0] <= GOOD_ENOUGH:
