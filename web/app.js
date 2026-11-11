@@ -245,7 +245,7 @@
         <div class="setting"><h3>Side</h3><div class="choices">${SIDES.map((s) => card("side", s)).join("")}</div></div>
         <div class="setting"><h3>Company</h3><div class="choices">${companies}</div></div>
       </div>
-      <div class="btn-row"><button class="btn" id="go" ${ready ? "" : "disabled"}>Start the game</button></div>
+      <div class="btn-row"><button class="btn" id="go" ${ready ? "" : "disabled"}>Start the game</button><button class="btn ghost" id="to-board">Realism leaderboard</button></div>
       <div class="panel quests"><h3>Classified quests</h3><table class="sheet"><tr><th>Quest</th><th>What to do</th><th class="num">Progress</th><th>Reward</th></tr>
         ${menu.quests.map((q) => `<tr class="${q.known ? (q.done ? "done" : "known") : "hidden"}"><td>${esc(q.title)}</td><td>${esc(q.text)}</td><td class="num">${esc(q.progress)}</td><td>${esc(q.reward)}</td></tr>`).join("")}
       </table></div>
@@ -256,6 +256,7 @@
       renderMenu(true);
     }));
     document.getElementById("go").addEventListener("click", startGame);
+    document.getElementById("to-board")?.addEventListener("click", renderLeaderboard);
   }
 
   function startGame() {
@@ -914,6 +915,11 @@
     const profile = JSON.parse(final.profile_json);
     store.set(PROFILE_KEY, profile);
     saveProgress(profile);
+    if (final.realism && final.realism_side && final.score && S.user) {
+      fetch("api/score.php", { method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-Bastion": "1" },
+        body: JSON.stringify({ side: final.realism_side, points: final.score.total }) }).catch(() => {});
+    }
     const r = final.result;
     const color = r.defense_score >= 70 ? "var(--green)" : r.defense_score >= 40 ? "var(--amber)" : "var(--red)";
     let scoreHtml = "";
@@ -940,10 +946,37 @@
         <div><small>Attacker</small><strong class="${r.caught ? "blue" : r.damage ? "red" : ""}">${r.caught ? "caught" : r.damage ? "got away" : "stayed outside"}</strong></div>
       </div>
       ${scoreHtml}${tips}${pm}
-      <div class="btn-row"><button class="btn" id="again">Play again</button><button class="btn ghost" id="menu">Main menu</button></div>
+      <div class="btn-row"><button class="btn" id="again">Play again</button><button class="btn ghost" id="menu">Main menu</button>${final.realism ? '<button class="btn ghost" id="board">Leaderboard</button>' : ""}</div>
     </section>`);
     document.getElementById("again").addEventListener("click", startGame);
     document.getElementById("menu").addEventListener("click", renderMenu);
+    document.getElementById("board")?.addEventListener("click", renderLeaderboard);
+  }
+
+  async function renderLeaderboard() {
+    setGauges(null);
+    show('<section class="step"><p class="eyebrow">Realism</p><h1>Leaderboard.</h1><p class="muted">Loading…</p></section>');
+    let data;
+    try {
+      const r = await fetch("api/leaderboard.php", { credentials: "same-origin", cache: "no-store" });
+      data = await r.json();
+    } catch { data = { error: "The leaderboard is not available right now." }; }
+    const table = (side) => {
+      const rows = (data.board && data.board[side]) || [];
+      const body = rows.length
+        ? rows.map((e, i) => `<tr class="${data.me && data.me.login === e.login ? "mine" : ""}"><td class="num">${i + 1}</td><td>${e.avatar ? `<img src="${esc(e.avatar)}" alt="">` : ""}${esc(e.login)}</td><td class="num">${e.score}</td></tr>`).join("")
+        : '<tr><td colspan="3" class="muted">No scores yet. Be the first.</td></tr>';
+      const mine = data.me && data.me[side] ? `<p class="profile-line">Your best: ${data.me[side]}</p>` : "";
+      return `<div class="panel"><h3 class="${side}">${side === "red" ? "Red" : "Blue"} Team</h3>
+        <table class="sheet board-table"><thead><tr><th class="num">#</th><th>Player</th><th class="num">Best score</th></tr></thead><tbody>${body}</tbody></table>${mine}</div>`;
+    };
+    show(`<section class="step">
+      <div><p class="eyebrow">Realism · best score per player</p><h1>Leaderboard.</h1>
+      ${S.user ? "" : '<p class="muted">Sign in with GitHub to appear here.</p>'}</div>
+      ${data.error ? `<p class="why">${esc(data.error)}</p>` : `<div class="brief-grid">${table("red")}${table("blue")}</div>`}
+      <div class="btn-row"><button class="btn" id="back-menu">Main menu</button></div>
+    </section>`);
+    document.getElementById("back-menu").addEventListener("click", renderMenu);
   }
 
   boot();

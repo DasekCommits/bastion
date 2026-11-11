@@ -22,9 +22,12 @@ db()->exec(
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
 );
 
-$columns = db()->query("SHOW COLUMNS FROM users LIKE 'secrets'")->fetchAll();
-if (!$columns) {
-    db()->exec('ALTER TABLE users ADD COLUMN secrets TEXT NULL AFTER wins');
+foreach (['secrets' => 'ALTER TABLE users ADD COLUMN secrets TEXT NULL AFTER wins',
+          'realism_red' => 'ALTER TABLE users ADD COLUMN realism_red INT UNSIGNED NOT NULL DEFAULT 0',
+          'realism_blue' => 'ALTER TABLE users ADD COLUMN realism_blue INT UNSIGNED NOT NULL DEFAULT 0'] as $col => $sql) {
+    if (!db()->query("SHOW COLUMNS FROM users LIKE '$col'")->fetchAll()) {
+        db()->exec($sql);
+    }
 }
 
 echo "Tables ready.\n";

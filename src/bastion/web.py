@@ -572,4 +572,5 @@ class Session:
             "result": result, "post_mortem": post_mortem, "tips": tips, "score": score,
             "unlocked": unlocked, "locks": locks, "profile": self._profile(), "blue_actions": blue_actions,
             "profile_json": json.dumps(self._profile()),
+            "realism": self.realism, "realism_side": self.side if self.realism and self.side in ("blue", "red") else None,
         })
