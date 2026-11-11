@@ -42,6 +42,7 @@ class Profile:
     wins: dict[str, int] = field(default_factory=dict)
     secrets: dict[str, int] = field(default_factory=dict)
     learned: list[str] = field(default_factory=list)
+    achievements: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         migrated = {}

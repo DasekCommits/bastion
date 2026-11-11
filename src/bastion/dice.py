@@ -29,13 +29,16 @@ def play(session: Session, method: str, args: list, value: int):
     return getattr(session, method)(*args)
 
 
-def replay(moves: list) -> dict | None:
+def replay_session(moves: list) -> tuple[Session, dict | None]:
     session = Session(UNLOCKED)
     result = None
     for method, args, value in moves:
         if method not in LOGGED:
             raise ValueError(f"'{method}' is not a move")
         result = play(session, method, args, value)
-    if result is None:
-        return None
-    return json.loads(result) if isinstance(result, str) else result
+    final = json.loads(result) if isinstance(result, str) else result
+    return session, final
+
+
+def replay(moves: list) -> dict | None:
+    return replay_session(moves)[1]

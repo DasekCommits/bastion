@@ -74,4 +74,13 @@ db()->exec(
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
 );
 
+foreach (['users' => ['achievements' => 'ALTER TABLE users ADD COLUMN achievements TEXT NULL'],
+          'games' => ['summary' => 'ALTER TABLE games ADD COLUMN summary TEXT NULL']] as $table => $columns) {
+    foreach ($columns as $col => $sql) {
+        if (!db()->query("SHOW COLUMNS FROM $table LIKE '$col'")->fetchAll()) {
+            db()->exec($sql);
+        }
+    }
+}
+
 echo "Tables ready.\n";

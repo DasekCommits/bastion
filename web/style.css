@@ -506,3 +506,15 @@ tr[hidden], .option[hidden] { display: none; }
 .option.watched { border-left: 3px solid var(--red); }
 .map .watch-star { fill: var(--red); font-size: 13px; }
 @media (max-width: 560px) { .pf-label { min-width: 0; width: 100%; } }
+
+.feats { display: grid; gap: 10px; }
+.feat { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 14px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.feat-mark { font-size: 22px; line-height: 1; color: var(--muted); text-align: center; }
+.feat-text { display: grid; gap: 4px; }
+.feat-text small { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.feat-state { font: 600 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.feat.done { border-color: var(--ink); box-shadow: inset 4px 0 0 var(--red); }
+.feat.done .feat-mark, .feat.done .feat-state { color: var(--red); }
+.feat.classified { background: repeating-linear-gradient(-45deg, var(--card), var(--card) 10px, var(--paper-2) 10px, var(--paper-2) 20px); }
+.feat.classified strong { letter-spacing: .1em; }
+@media (max-width: 560px) { .feat { grid-template-columns: 26px 1fr; } .feat-state { grid-column: 2; } }

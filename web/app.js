@@ -250,6 +250,8 @@
     const p = menu.profile;
     const learn = api("learn");
     const chains = api("chains");
+    const feats = api("achievements");
+    const featsDone = feats.filter((a) => a.done).length;
     const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
     const knownQuests = menu.quests.filter((q) => q.known);
     const anyQuest = knownQuests.length > 0;
@@ -272,6 +274,7 @@
         ${row("play", "01", "Play", "Choose a side, a target and a difficulty, then go.", "")}
         ${row("tutorial", "02", "Tutorial", "Learn the techniques and how to chain them into an attack.", `<span class="bar mini"><span style="width:${Math.round((learn.done / learn.total) * 100)}%"></span></span> ${learn.done}/${learn.total}`)}
         ${row("leaderboards", "03", "Leaderboards", "Realism high scores, Red and Blue.", "")}
+        ${row("achievements", "04", "Achievements", "Ten feats. Few players will see them all.", `${featsDone}/${feats.length}`)}
         ${anyQuest
           ? row("quests", "◆", "Dossiers", `${knownQuests.length} classified objective${knownQuests.length > 1 ? "s" : ""} in play.`, '<span class="pill">classified</span>')
           : `<button class="nav-row nav-classified locked" data-nav="quests"><span class="nav-num">▓▓</span>
@@ -284,7 +287,28 @@
       else if (to === "tutorial") renderLearn();
       else if (to === "leaderboards") renderLeaderboard();
       else if (to === "quests") renderQuests();
+      else if (to === "achievements") renderAchievements();
     }));
+  }
+
+  function renderAchievements() {
+    setGauges(null);
+    const list = api("achievements");
+    const done = list.filter((a) => a.done).length;
+    const cards = list.map((a) => `<div class="feat ${a.done ? "done" : ""} ${a.classified ? "classified" : ""}">
+      <span class="feat-mark">${a.done ? "★" : a.classified ? "▓" : "☆"}</span>
+      <span class="feat-text"><strong>${esc(a.name)}</strong><small>${esc(a.text)}</small></span>
+      <span class="feat-state">${a.done ? "earned" : a.classified ? "classified" : "locked"}</span></div>`).join("");
+    const how = S.user
+      ? "Earned only in signed-in games, where the server rolls the dice. A referee replays every finished game and awards these on its own, usually within the hour."
+      : "Sign in with GitHub to earn these: they count only in games where the server rolls the dice and a referee replays the result.";
+    show(`<section class="step">
+      ${backBar("Home")}
+      <div><p class="eyebrow">${done} of ${list.length} earned</p><h1>Achievements.</h1>
+      <p class="muted">${esc(how)}</p></div>
+      <div class="feats">${cards}</div>
+    </section>`);
+    wireBack(renderHome);
   }
 
   function renderQuests() {

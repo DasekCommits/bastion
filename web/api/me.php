@@ -24,5 +24,6 @@ send_json([
         'wins' => json_decode((string) $user['wins'], true) ?: new stdClass(),
         'secrets' => json_decode((string) $user['secrets'], true) ?: new stdClass(),
         'learned' => json_decode((string) ($user['learned'] ?? ''), true) ?: [],
+        'achievements' => json_decode((string) ($user['achievements'] ?? ''), true) ?: [],
     ],
 ]);

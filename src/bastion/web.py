@@ -1,7 +1,7 @@
 import json
 import random
 
-from bastion import advice, ai, scoring
+from bastion import achievements, advice, ai, scoring
 from bastion.catalog import load_catalog, load_edge
 from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
@@ -73,7 +73,11 @@ class Session:
 
     def _profile(self) -> dict:
         return {"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins,
-                "secrets": self.profile.secrets, "learned": self.profile.learned}
+                "secrets": self.profile.secrets, "learned": self.profile.learned,
+                "achievements": self.profile.achievements}
+
+    def achievements(self) -> str:
+        return json.dumps(achievements.board(self.profile))
 
     def learn(self) -> str:
         return json.dumps(learning.summary(self.catalog, self.profile.learned))

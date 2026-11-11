@@ -1,0 +1,31 @@
+name: referee
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: referee
+  cancel-in-progress: false
+
+jobs:
+  referee:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install -e .
+      - name: Fetch finished games
+        env:
+          TOKEN: ${{ secrets.REFEREE_TOKEN }}
+        run: curl -sf -H "Authorization: Bearer $TOKEN" https://bastion.dasek.dev/api/referee.php -o pending.json
+      - name: Replay them with the server's dice
+        run: python tools/verify_scores.py pending.json verdicts.json
+      - name: Send the verdicts
+        env:
+          TOKEN: ${{ secrets.REFEREE_TOKEN }}
+        run: curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data-binary @verdicts.json https://bastion.dasek.dev/api/referee.php
