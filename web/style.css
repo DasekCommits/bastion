@@ -354,8 +354,9 @@ table.sheet { width: 100%; border-collapse: collapse; font-size: 13px; }
 details.pm summary { cursor: pointer; font-weight: 600; }
 details.pm pre { font: 12px/1.6 var(--mono); white-space: pre-wrap; margin: 12px 0 0; color: var(--ink); }
 
-.choice.classified-open { border: 1px solid var(--ink); background: var(--ink); color: var(--paper); }
-.choice.classified-open small { color: var(--paper-2); }
+.choice.classified-open { border: 2px solid var(--ink); }
+.choice.classified-open strong::after { content: "unlocked"; margin-left: 8px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--red); vertical-align: 2px; }
+.choice.selected.classified-open strong::after { color: var(--paper-2); }
 .searchbar { display: flex; gap: 8px; }
 .searchbar input { flex: 1; font: 14px var(--mono); padding: 10px 12px; border: 1px solid var(--ink); border-radius: var(--radius); background: var(--paper); color: var(--ink); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
