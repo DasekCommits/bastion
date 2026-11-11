@@ -855,3 +855,7 @@ tr[hidden], .option[hidden] { display: none; }
 .play-flow .choice.level-realism:not(:disabled):hover::after, .play-flow .choice.tier-huge:not(:disabled):hover::after { background: var(--ink); border-color: var(--paper-2); }
 .play-flow .choice.purple-side:not(:disabled):hover::after { background: var(--purple); border-color: var(--purple); }
 .play-flow .choice:not(:disabled):hover::after { filter: none; }
+
+/* a picked card under the pointer is dark like any hovered card, so the light text stays readable */
+.play-flow .choices .choice.selected:not(:disabled):hover,
+.play-flow .choices .choice.selected:not(:disabled):focus-visible { background: var(--ink); color: var(--paper); }
