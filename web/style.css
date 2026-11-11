@@ -790,3 +790,13 @@ tr[hidden], .option[hidden] { display: none; }
 .option.watched { border-left-width: 1px; }
 .option.watched::after { background: var(--red); border-color: var(--red); }
 .choice.classified::after, .choice:disabled::after { background: var(--paper-2); }
+
+/* home folders: all the same at rest, dark on hover */
+.folder.primary, .folder.secret { background: var(--card); color: var(--ink); border-color: var(--ink); }
+.folder.primary small { color: var(--muted); }
+.folder.secret .folder-tab, .folder.primary .folder-tab { border-color: var(--ink); background: var(--card); }
+.folder:not([aria-disabled="true"]):hover, .folder:not([aria-disabled="true"]):focus-visible { background: var(--ink); color: var(--paper); }
+.folder:not([aria-disabled="true"]):hover .folder-tab, .folder:not([aria-disabled="true"]):focus-visible .folder-tab { background: var(--ink); }
+.folder:not([aria-disabled="true"]):hover small, .folder:not([aria-disabled="true"]):focus-visible small { color: color-mix(in srgb, var(--paper) 70%, transparent); }
+.folder:not([aria-disabled="true"]):hover .folder-ico { opacity: 1; }
+.folder { transition: transform .15s, box-shadow .15s, background .15s, color .15s; }
