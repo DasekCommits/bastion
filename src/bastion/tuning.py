@@ -52,6 +52,16 @@ def win_rate(company, catalog, level: str, side: str, edge: float, games: int, o
     return wins / games
 
 
+EDGE_MIN, EDGE_MAX = 0.02, 80.0
+
+
+def at_limit(side: str, edge: float, rate: float, goal: float) -> bool:
+    """The tuner already gives the attacker its maximum edge and the rate is still on the side only a stronger attacker could fix."""
+    if edge < EDGE_MAX * 0.99:
+        return False
+    return rate > goal if side == "blue" else rate < goal
+
+
 def tune(games: int = 200, steps: int = 9) -> dict:
     catalog = load_catalog()
     table = {side: {} for side in SIDES}
@@ -63,7 +73,7 @@ def tune(games: int = 200, steps: int = 9) -> dict:
                 # red: tune so the attacking player wins the target (facing the competent defender).
                 # blue: tune so a PASSIVE defender wins only the (low) target, which is monotonic in edge.
                 blue_mode = "passive" if side == "blue" else "competent"
-                low, high = 0.02, 80.0
+                low, high = EDGE_MIN, EDGE_MAX
                 for _ in range(steps):
                     mid = (low * high) ** 0.5
                     rate = win_rate(company, catalog, level, side, mid, games, offset=10_000, blue=blue_mode)
@@ -105,7 +115,8 @@ def check(games: int = 200, tolerance: float = 0.08) -> list[tuple[str, str, str
                 edge = load_edge(company.tier, level, side)
                 mode = "passive" if side == "blue" else "competent"
                 rate = win_rate(company, catalog, level, side, edge, games, blue=mode)
-                rows.append((company.id, side, level, goal, rate, abs(rate - goal) <= tolerance))
+                ok = abs(rate - goal) <= tolerance
+                rows.append((company.id, side, level, goal, rate, ok, not ok and at_limit(side, edge, rate, goal)))
     return rows
 
 

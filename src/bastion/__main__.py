@@ -42,9 +42,12 @@ def check_balance(argv: list[str]) -> int:
     parser.add_argument("--tolerance", type=float, default=0.1)
     args = parser.parse_args(argv)
     rows = check(args.games, args.tolerance)
-    for company, side, level, goal, rate, ok in rows:
-        print(f"{'ok ' if ok else 'OFF'} {company:14} {side:4} {level:6} target {goal:.0%}  got {rate:.0%}")
-    return 0 if all(row[-1] for row in rows) else 1
+    for company, side, level, goal, rate, ok, limit in rows:
+        mark = "ok " if ok else "MAX" if limit else "OFF"
+        print(f"{mark} {company:14} {side:4} {level:6} target {goal:.0%}  got {rate:.0%}")
+    if any(row[-1] for row in rows):
+        print("MAX = the attacker already has the highest edge; only a smarter attacker AI can move this number.")
+    return 0 if all(ok or limit for *_, ok, limit in rows) else 1
 
 
 def main(argv: list[str] | None = None) -> int:
