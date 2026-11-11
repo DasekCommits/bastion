@@ -805,7 +805,7 @@ tr[hidden], .option[hidden] { display: none; }
 .play-flow .choice:not(:disabled):hover, .play-flow .choice:not(:disabled):focus-visible { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .play-flow .choice:not(:disabled):hover small, .play-flow .choice:not(:disabled):hover .muted, .play-flow .choice:not(:disabled):hover .tag,
 .play-flow .choice:not(:disabled):focus-visible small { color: color-mix(in srgb, var(--paper) 72%, transparent); }
-.play-flow .choice:not(:disabled):not(.red-side):not(.blue-side):hover::after { background: var(--ink); }
+.play-flow .choice:not(:disabled):not(.red-side):not(.blue-side):not(.purple-side):not([class*="level-"]):not([class*="tier-"]):hover::after { background: var(--ink); }
 .play-flow .choice { transition: transform .15s, box-shadow .15s, background .15s, color .15s; }
 
 /* shop */
