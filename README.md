@@ -25,7 +25,7 @@ It runs in the terminal and in the browser, with the same Python engine in both.
 | **Blue** | Pick the defenses, then work the alerts as the analyst while the computer attacks. |
 | **Red** | Break in. The computer picked defenses you cannot see and plays the analyst against you. |
 | **Random** | A coin decides Blue or Red. Double points if you win. |
-| **Practice** | Play both sides. No points and no unlocks. |
+| **Practice** | Terminal only: play both sides. No points and no unlocks. |
 
 ## Companies
 
@@ -94,6 +94,22 @@ A fourth difficulty, **Realism**, and a fourth company, **Directorate-7**, are c
 - **Red:** the share of data stolen or destroyed (0-100), plus up to 10 for finishing early and 10 for owning the whole domain. Never getting caught multiplies the score by 1.5. Each piece of data counts once, even if it is stolen and then encrypted.
 - **Random side:** a win counts double.
 
+## Tutorial
+
+A coached lesson for each of the 22 techniques, in kill-chain order: first spot the attack among decoys, then pick the control that best stops it, with the real MITRE ID and block rate explained. Each lesson shows what a technique needs first and what it opens up, and a Combinations section asks you to order techniques into an attack that actually gets through, checked with the engine's own prerequisite rules.
+
+## Fair play
+
+Sign in with GitHub and your progress follows you. Signed-in games are also the only ones that count for the leaderboard and achievements, because their dice are rolled on the server:
+
+1. **Server dice.** Before each move the page tells the server what it is about to play, and only then gets that move's roll: an HMAC of a secret the server keeps for that game and the move's number. The page cannot know a roll in advance, and a move that was already played cannot be played again with a different outcome.
+2. **A move log.** The server records every move in order, so the game exists on the server, not just in the browser.
+3. **A referee.** A GitHub Actions job runs every 15 minutes, replays each finished game with the same moves and dice through the real engine, and rejects any score the engine does not reproduce. A quit game counts as a loss.
+
+## Achievements
+
+Ten, and all of them hard: for example **Ghost** (win as Red on the bank, on Hard, without a single move spotted) or **Iron Streak** (seven Hard wins in a row). Five are classified and stay redacted until you unlock the content they belong to. Only the referee awards them, from games it has replayed itself.
+
 ## WAF Lab
 
 A practice mode in the terminal. A short tutorial explains SQL injection and XSS with a login example, then you build a Web Application Firewall from plain-language rules and watch live how many of 40 real attack payloads it stops and how many of 25 innocent customers it blocks by mistake. It does not change your points: in the game every player's WAF is the same.
@@ -130,7 +146,8 @@ The last one replays a fixed attack plan 1,000 times and prints a day-by-day pos
 - **Balance** (`tuning.py`): searches the attacker edge for every company, difficulty and side by playing computer games, and CI fails if a win rate drifts from its target.
 - **Terminal UI**: `rich`, `questionary` and `prompt_toolkit`.
 - **Web version**: the same engine runs in the page with [Pyodide](https://pyodide.org) (Python compiled to WebAssembly). `src/bastion/web.py` is the bridge, `web/` is the page with a live network map, and `tools/build_web.py` packages it.
-- **Tests**: 110 pytest tests, run on every push with GitHub Actions together with the balance check.
+- **Accounts and fair play**: a small PHP API with MySQL (`web/api`): GitHub sign-in, server dice (`roll.php`), scores and the referee endpoint. The referee itself is `tools/verify_scores.py`, using `src/bastion/dice.py` to replay games and `achievements.py` to award achievements.
+- **Tests**: 156 pytest tests, run on every push with GitHub Actions together with the balance check.
 
 ## Safety
 
@@ -139,16 +156,20 @@ Bastion never attacks real systems. The network is simulated, and the WAF Lab pa
 ## Roadmap
 
 - [x] Simulation engine, post-mortem and MITRE ATT&CK mapping
-- [x] Three companies, three difficulties, Blue, Red and random against the computer
+- [x] Four companies, four difficulties, Blue, Red and random against the computer
+- [x] Blue as an active SOC analyst; Realism with a SIEM and a terminal
 - [x] Scoring, tier unlocks and a balance tuned by simulation
-- [x] WAF Lab
 - [x] Playable in the browser at [bastion.dasek.dev](https://bastion.dasek.dev)
+- [x] Tutorial with lessons and attack chains
+- [x] Sign in with GitHub, progress saved to your account, Realism leaderboard
+- [x] Server-side dice and a referee that replays every game
+- [x] Ten achievements, awarded by the referee
 - [x] CI with tests and an automatic balance check
-- [ ] Accounts and shared leaderboards (Blue, Red and combined) with ELO, player against player
-- [ ] Server-side dice and replay checks, so scores cannot be faked in the browser
 - [ ] Achievements shown on [dasek.dev](https://dasek.dev)
+- [ ] A smarter computer attacker for Directorate-7 on Hard
+- [ ] WAF Lab in the browser
 
-Progress is saved on your own device for now: `~/.bastion` in the terminal, the browser's storage on the web.
+Guests can play without an account; their progress stays in the browser (or `~/.bastion` in the terminal).
 
 ## License
 
