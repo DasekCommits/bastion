@@ -752,3 +752,16 @@ tr[hidden], .option[hidden] { display: none; }
 .play-flow .choice.selected::before { display: none; }
 .play-flow .choice.selected.red-side { background: color-mix(in srgb, var(--red) 10%, var(--card)); border-left-color: var(--red); }
 .play-flow .choice.selected.blue-side { background: color-mix(in srgb, var(--blue) 10%, var(--card)); border-left-color: var(--blue); }
+
+/* Play flow cards as file folders */
+.play-flow .choices { gap: 24px 14px; padding-top: 10px; }
+.play-flow .choice { border: 1px solid var(--ink); border-radius: 4px 12px 12px 12px; box-shadow: 4px 4px 0 var(--paper-2); overflow: visible; transition: transform .15s, box-shadow .15s, background .15s; }
+.play-flow .choice::after { content: ""; position: absolute; top: -10px; left: -1px; width: 84px; height: 10px; border: 1px solid var(--ink); border-bottom: 0; border-radius: 6px 6px 0 0; background: var(--card); }
+.play-flow .choice:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 4px 8px 0 var(--paper-2); }
+.play-flow .choice.red-side, .play-flow .choice.blue-side { border-left-width: 1px; border-left-color: var(--ink); }
+.play-flow .choice.red-side::after { background: var(--red); border-color: var(--red); }
+.play-flow .choice.blue-side::after { background: var(--blue); border-color: var(--blue); }
+.play-flow .choice.selected { border-color: var(--ink); background: var(--paper-2); }
+.play-flow .choice.selected.red-side { background: color-mix(in srgb, var(--red) 10%, var(--card)); border-left-color: var(--ink); }
+.play-flow .choice.selected.blue-side { background: color-mix(in srgb, var(--blue) 10%, var(--card)); border-left-color: var(--ink); }
+.play-flow .choice:disabled::after { opacity: .5; }

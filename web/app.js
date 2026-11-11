@@ -309,7 +309,7 @@
     </section>`);
     app.querySelectorAll("[data-nav]").forEach((el) => el.addEventListener("click", () => {
       const to = el.dataset.nav;
-      if (to === "play") { S.play = { step: "side" }; renderSetup(); }
+      if (to === "play") { S.play = { step: "side" }; S.settings = { level: null, side: null, company: null }; renderSetup(); }
       else if (to === "tutorial") renderLearn();
       else if (to === "leaderboards") renderLeaderboard();
       else if (to === "quests") renderQuests();
