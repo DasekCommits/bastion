@@ -165,8 +165,8 @@ Bastion never attacks real systems. The network is simulated, and the WAF Lab pa
 - [x] Server-side dice and a referee that replays every game
 - [x] Ten achievements, awarded by the referee
 - [x] CI with tests and an automatic balance check
-- [ ] Achievements shown on [dasek.dev](https://dasek.dev)
-- [ ] A smarter computer attacker for Directorate-7 on Hard
+- [x] Achievements shown on [dasek.dev](https://dasek.dev)
+- [x] A smarter computer attacker on Hard
 - [ ] WAF Lab in the browser
 
 Guests can play without an account; their progress stays in the browser (or `~/.bastion` in the terminal).
