@@ -322,13 +322,23 @@
   function renderQuests() {
     setGauges(null);
     const menu = api("menu");
-    const rows = menu.quests.map((q) => `<tr class="${q.known ? (q.done ? "done" : "known") : "hidden"}">
-      <td>${esc(q.title)}</td><td>${esc(q.text)}</td><td class="num">${esc(q.progress)}</td><td>${esc(q.reward)}</td></tr>`).join("");
+    const files = menu.quests.map((q, i) => {
+      const [n, goal] = String(q.progress || "0/1").split("/").map(Number);
+      const state = q.done ? "done" : q.known ? "open" : "sealed";
+      const stamp = { done: "Declassified", open: "Active", sealed: "Sealed" }[state];
+      return `<article class="dossier ${state}">
+        <header><span class="dossier-ref">FILE ${String(i + 1).padStart(3, "0")}</span><span class="dossier-stamp">${stamp}</span></header>
+        <h3>${esc(q.title)}</h3>
+        <p>${esc(q.text)}</p>
+        <div class="dossier-progress"><span class="bar"><span style="width:${goal ? Math.min(100, Math.round((n / goal) * 100)) : 0}%"></span></span><b>${esc(q.progress)}</b></div>
+        <footer><span>Reward</span><strong>${esc(q.reward)}</strong></footer>
+      </article>`;
+    }).join("");
     show(`<section class="step">
       ${backBar("Home")}
       <div><p class="eyebrow">Hidden objectives</p><h1>Classified.</h1>
-      <p class="muted">Hidden objectives. You will not see one until something in a game points you to it.</p></div>
-      <div class="panel quests"><table class="sheet"><tr><th>Quest</th><th>What to do</th><th class="num">Progress</th><th>Reward</th></tr>${rows}</table></div>
+      <p class="muted">You will not see a file until something in a game points you to it.</p></div>
+      <div class="dossiers">${files}</div>
     </section>`);
     wireBack(renderHome);
   }

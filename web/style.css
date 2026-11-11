@@ -574,3 +574,24 @@ tr[hidden], .option[hidden] { display: none; }
 .waf-mini-score.mid { color: var(--amber); }
 .waf-mini-score.low { color: var(--red); }
 .waf-mini b.warn { color: var(--red); }
+
+.dossiers { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; max-width: 900px; }
+.dossier { position: relative; display: grid; gap: 10px; padding: 18px 20px 16px; border: 1px solid var(--ink); border-radius: 4px 14px 14px 14px; background: var(--card); box-shadow: 4px 4px 0 var(--paper-2); }
+.dossier::before { content: ""; position: absolute; top: -9px; left: -1px; width: 92px; height: 9px; border: 1px solid var(--ink); border-bottom: 0; border-radius: 6px 6px 0 0; background: var(--card); }
+.dossier header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.dossier-ref { font: 600 11px/1 var(--mono); letter-spacing: .14em; color: var(--muted); }
+.dossier-stamp { font: 700 10px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; padding: 5px 8px; border: 1.5px solid currentColor; border-radius: 4px; transform: rotate(-4deg); }
+.dossier.done .dossier-stamp { color: var(--green); }
+.dossier.open .dossier-stamp { color: var(--red); }
+.dossier.sealed .dossier-stamp { color: var(--muted); }
+.dossier h3 { margin: 0; font-size: 19px; }
+.dossier p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
+.dossier-progress { display: flex; align-items: center; gap: 10px; }
+.dossier-progress .bar { flex: 1; height: 6px; border-radius: 99px; background: var(--paper-2); overflow: hidden; }
+.dossier-progress .bar span { display: block; height: 100%; background: var(--ink); }
+.dossier.done .dossier-progress .bar span { background: var(--green); }
+.dossier-progress b { font: 600 13px/1 var(--mono); }
+.dossier footer { display: flex; justify-content: space-between; gap: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 13px; }
+.dossier footer span { color: var(--muted); font: 600 11px/1.6 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.dossier.sealed { background: repeating-linear-gradient(-45deg, var(--card), var(--card) 10px, var(--paper-2) 10px, var(--paper-2) 20px); }
+.dossier.sealed h3, .dossier.sealed p, .dossier.sealed footer strong { letter-spacing: .08em; color: var(--muted); }
