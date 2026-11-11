@@ -390,7 +390,14 @@
       const target = menu.companies.find((c) => c.id === sel.company);
       body = `<div><p class="eyebrow">Step 3 of 3 · ${capital(sel.side)} vs ${esc(target ? target.name : "")}</p><h1>How hard?</h1></div>
         <div class="choices play-reveal">${all.map(levelCard).join("")}</div>
-        ${sel.level ? `<div class="btn-row start-row"><button class="btn big" id="go">Start — ${capital(sel.side)} · ${esc(target ? target.name : "")} · ${capital(sel.level)}</button></div>` : ""}`;
+        ${sel.level ? `<div class="launch side-${esc(sel.side)}">
+          <div class="launch-picks">
+            <span><em>Side</em><strong class="launch-side">${capital(sel.side)}</strong></span>
+            <span><em>Target</em><strong>${esc(target ? target.name : "")}</strong></span>
+            <span><em>Difficulty</em><strong>${capital(sel.level)}</strong></span>
+          </div>
+          <button class="launch-go" id="go">Start <span aria-hidden="true">→</span></button>
+        </div>` : ""}`;
     }
     const prev = { side: ["Home", null], company: ["Change side", "side"], difficulty: ["Change the map", "company"] }[step];
     show(`<section class="step play-flow">
