@@ -292,10 +292,17 @@ tr.fresh td { background: var(--amber-wash); }
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
-  background: var(--paper);
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 12px 14px 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(24, 32, 44, 0.22);
 }
+.budget .muted { color: color-mix(in srgb, var(--paper) 70%, transparent) !important; }
+.budget .budget-bar { background: color-mix(in srgb, var(--paper) 18%, transparent); border-color: transparent; }
+.budget .budget-bar span { background: var(--paper); }
+.budget .btn { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+.budget .btn:hover { background: var(--card); }
 .budget-bar { flex: 1; min-width: 160px; height: 10px; background: var(--paper-2); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
 .budget-bar span { display: block; height: 100%; background: var(--ink); transition: width 0.25s ease; }
 .budget-text { font: 500 14px var(--mono); }
