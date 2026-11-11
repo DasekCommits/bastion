@@ -9,11 +9,29 @@ GOOD_ENOUGH = 0.05
 HOT = 0.45
 NIGHT_RISK = 0.1
 PLANS = 8
+FIRST_WIN = 10
 RED_AI_KNOWLEDGE = {"easy": "hard", "medium": "medium", "hard": "easy"}
 BLUE_AI_KNOWLEDGE = {"easy": "hard", "medium": "medium", "hard": "easy"}
 
 
-def pick_defenses(company: Company, catalog: Catalog, rng: random.Random) -> list[str]:
+ENTRY = ("initial-access", "credential-access")
+PAYOFF = ("exfiltration", "impact")
+
+
+def coverage_score(ids: list[str], company: Company, catalog: Catalog) -> float:
+    """How well a defense set covers the kill chain: a way in and a way out matter most."""
+    defenses = [catalog.defenses[d] for d in ids]
+    score = 0.0
+    for attack in catalog.attacks_for(company.tier):
+        best = max([max(d.blocks.get(attack.id, 0), d.detects.get(attack.id, 0)) for d in defenses] or [0])
+        score += best * (2 if attack.tactic in ENTRY or attack.tactic in PAYOFF else 1)
+    return score
+
+
+def pick_defenses(company: Company, catalog: Catalog, rng: random.Random, expert: bool = False) -> list[str]:
+    if expert:
+        plans = [pick_defenses(company, catalog, rng) for _ in range(PLANS)]
+        return max(plans, key=lambda ids: coverage_score(ids, company, catalog))
     pool = catalog.defenses_for(company.tier)
     chosen, spent = [], 0
     while pool:
@@ -157,7 +175,10 @@ class RedAI:
         for attack_id in campaign.arsenal:
             for target_id in campaign.targets_for(attack_id):
                 score = self.value(campaign, attack_id, target_id)
-                if night_watch and score > 0 and self.too_loud(campaign, attack_id, target_id):
+                first_win = self.knowledge == "easy" and score > 0 and not campaign.report().points                     and campaign.catalog.attacks[attack_id].tactic in ("exfiltration", "impact")
+                if first_win:
+                    score *= FIRST_WIN  # anything taken is already a win: grab it before the night
+                elif night_watch and score > 0 and self.too_loud(campaign, attack_id, target_id):
                     continue
                 if best is None or score > best[0]:
                     best = (score, attack_id, target_id)

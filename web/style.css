@@ -677,3 +677,36 @@ tr[hidden], .option[hidden] { display: none; }
 .company-file .pf-group { grid-template-columns: 1fr; gap: 6px; }
 .company-file .pf-group .pf-label { padding-top: 0; }
 .people-filters { gap: 10px; padding: 12px 14px; }
+
+/* ---------- in-game desktop ---------- */
+.desk { display: grid; gap: 14px; min-height: calc(100vh - 170px); align-content: start; padding-bottom: 92px; }
+.desk-area { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.desk-area.single { grid-template-columns: minmax(0, 1fr); }
+.desk-area .win.wide { grid-column: 1 / -1; }
+.desk-empty { grid-column: 1 / -1; margin: 60px 0; text-align: center; color: var(--muted); font-size: 15px; }
+.win { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--ink); border-radius: 12px; background: var(--card); box-shadow: 0 8px 22px rgba(24, 32, 44, 0.08); overflow: hidden; animation: winIn .18s ease-out; }
+@keyframes winIn { from { opacity: 0; transform: translateY(6px) scale(.99); } to { opacity: 1; transform: none; } }
+.win-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px 8px 14px; background: var(--ink); color: var(--paper); }
+.win-title { display: flex; align-items: center; gap: 8px; font: 600 13px/1 var(--mono); letter-spacing: .04em; }
+.win-ico { opacity: .8; }
+.win-btns { display: flex; gap: 4px; }
+.win-btn { width: 26px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 6px; background: color-mix(in srgb, var(--paper) 14%, transparent); color: var(--paper); font-size: 13px; line-height: 1; cursor: pointer; }
+.win-btn:hover { background: color-mix(in srgb, var(--paper) 30%, transparent); }
+.win-body { padding: 16px; min-width: 0; overflow: auto; max-height: calc(100vh - 230px); }
+.win-body .log { max-height: none; }
+.win-body h3:first-child { margin-top: 0; }
+.dock { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 40; display: flex; gap: 4px; padding: 6px; max-width: calc(100vw - 24px); overflow-x: auto; border: 1px solid var(--ink); border-radius: 16px; background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(8px); box-shadow: 0 14px 30px rgba(24, 32, 44, 0.22); }
+.dock-app { position: relative; display: flex; align-items: center; gap: 7px; padding: 9px 14px; border: 0; border-radius: 11px; background: transparent; color: var(--ink-soft); font-family: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
+.dock-app:hover { background: var(--card); color: var(--ink); }
+.dock-app.on { background: var(--ink); color: var(--paper); }
+.dock-ico { font-size: 15px; line-height: 1; }
+.dock-badge { min-width: 18px; height: 18px; padding: 0 5px; display: inline-grid; place-items: center; border-radius: 99px; background: var(--red); color: #fff; font: 700 11px/1 var(--mono); }
+@media (max-width: 900px) {
+  .desk-area { grid-template-columns: minmax(0, 1fr); }
+  .win-body { max-height: none; }
+  .dock-name { display: none; }
+  .dock-app { padding: 10px 14px; }
+}
+
+.win .map { max-height: 62vh; }
+.win.wide .map-panel { display: grid; }

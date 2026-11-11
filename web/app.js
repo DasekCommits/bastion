@@ -75,6 +75,8 @@
     document.getElementById("dice-home").addEventListener("click", renderHome);
   }
 
+  const DESK_RENDER = {};  // screen name -> its render function, used by the in-game desktop
+
   function api(method, ...args) {
     if (S.rec) S.transcript.push([method, args]);
     if (S.dice && MOVES.has(method)) {
@@ -735,6 +737,8 @@
     const { company, level, side } = S.settings;
     S.transcript = [];
     S.watch = new Set();
+    S.desk = {};
+    S.redLog = "";
     S.peopleFilter = { role: null, servers: [], admin: false, starred: false, q: "" };
     S.rec = true;
     if (!(history.state && history.state.bastion)) history.pushState({ bastion: 1 }, "");
@@ -1144,6 +1148,7 @@
       ${!event.possible ? `<span class="detail">${esc(event.note)}</span>` : ""}${blockers}${nothing}${detection}</div>`;
   }
 
+  DESK_RENDER.red = (keep) => renderPlay(keep);
   function renderPlay(log = "") {
     const t = S.turn;
     syncMapFromTurn(t);
@@ -1178,7 +1183,7 @@
         }).join("")}</div>
         <div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="back">Back</button></div></div>`;
     } else {
-      side = `<div class="panel"><h3>Your move</h3>
+      side = `<div class="panel">
         ${t.foothold ? footholdHtml(t.foothold) : ""}
         ${t.intel.length ? `<p class="detail" style="font:12px var(--mono);margin:0 0 10px"><b>Intel:</b> ${esc(t.intel.join(", "))}</p>` : ""}
         <div class="options">${t.actions.map((a) => `<button class="option" data-attack="${a.id}" ${a.disabled ? "disabled" : ""}>
@@ -1187,13 +1192,13 @@
           <span class="odds">${esc(a.tag || "")}</span></button>`).join("")}</div>
         <div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="end-day">End the day</button><button class="btn ghost" id="give-up">Give up</button></div></div>`;
     }
-    const current = document.getElementById("log");
-    const logHtml = log || (current ? current.innerHTML : "");
-    show(`<section class="layout">
-      <div>${mapPanel()}${companyFile()}</div>
-      <div class="step">${side}
-        <div class="panel"><h3>Log</h3><div class="log" id="log" aria-live="polite">${logHtml || '<p class="muted" style="margin:0">Nothing has happened yet. Find a way in.</p>'}</div></div>
-      </div></section>`);
+    const apps = [
+      { id: "moves", icon: "⚔", title: "Your move", html: side.replace('<div class="panel">', '<div>') },
+      { id: "log", icon: "☰", title: "Log", html: `<div class="log" id="log" aria-live="polite">${S.redLog || '<p class="muted" style="margin:0">Nothing has happened yet. Find a way in.</p>'}</div>` },
+      { id: "map", icon: "◉", title: "Network map", wide: true, html: `<div class="map-panel">${mapInner()}</div>` },
+      { id: "file", icon: "▤", title: "Company file", wide: true, html: briefHtml(S.start.company) },
+    ];
+    show(deskHtml("red", apps, ["moves", "log"]), log === true);
     app.querySelectorAll("[data-attack]").forEach((el) => el.addEventListener("click", () => { S.attack = el.dataset.attack; renderPlay(); }));
     app.querySelectorAll("[data-target]").forEach((el) => el.addEventListener("click", () => doMove(el.dataset.target)));
     app.querySelectorAll("[data-sort]").forEach((el) => el.addEventListener("click", () => { S.targetSort = el.dataset.sort; renderPlay(); }));
@@ -1203,14 +1208,64 @@
     document.getElementById("give-up")?.addEventListener("click", () => renderFinal(api("give_up")));
   }
 
+  // In-game desktop: every tool is a window you open from the dock. Open windows tile neatly.
+  function deskState(screen, defaults) {
+    S.desk = S.desk || {};
+    if (!S.desk[screen]) S.desk[screen] = { open: [...defaults], max: null };
+    return S.desk[screen];
+  }
+  function deskOpen(screen, id) {
+    const d = S.desk && S.desk[screen];
+    if (d && !d.open.includes(id)) d.open.push(id);
+  }
+  function deskHtml(screen, apps, defaults) {
+    const d = deskState(screen, defaults);
+    d.open = d.open.filter((id) => apps.some((a) => a.id === id));
+    if (d.max && !d.open.includes(d.max)) d.max = null;
+    const visible = d.max ? [d.max] : d.open;
+    const wins = visible.map((id) => {
+      const a = apps.find((x) => x.id === id);
+      return `<div class="win ${a.wide ? "wide" : ""}" data-win="${a.id}">
+        <div class="win-bar"><span class="win-title"><span class="win-ico" aria-hidden="true">${a.icon}</span>${esc(a.title)}</span>
+          <span class="win-btns"><button class="win-btn" data-win-max="${a.id}" title="${d.max ? "Restore" : "Maximise"}" aria-label="${d.max ? "Restore" : "Maximise"} ${esc(a.title)}">${d.max ? "❐" : "▢"}</button>
+          <button class="win-btn" data-win-close="${a.id}" title="Close" aria-label="Close ${esc(a.title)}">×</button></span></div>
+        <div class="win-body">${a.html}</div></div>`;
+    }).join("");
+    const dock = apps.map((a) => `<button class="dock-app ${d.open.includes(a.id) ? "on" : ""}" data-dock="${a.id}" aria-pressed="${d.open.includes(a.id)}" title="${esc(a.title)}">
+      <span class="dock-ico" aria-hidden="true">${a.icon}</span><span class="dock-name">${esc(a.title)}</span>${a.badge ? `<span class="dock-badge">${esc(a.badge)}</span>` : ""}</button>`).join("");
+    return `<section class="desk" data-screen="${screen}">
+      <div class="desk-area ${visible.length === 1 ? "single" : ""}">${wins || '<p class="desk-empty">Open a tool from the bar below.</p>'}</div>
+      <nav class="dock" aria-label="Tools">${dock}</nav></section>`;
+  }
+  app.addEventListener("click", (e) => {
+    const desk = e.target.closest(".desk");
+    if (!desk) return;
+    const screen = desk.dataset.screen, d = S.desk && S.desk[screen], redraw = DESK_RENDER[screen];
+    if (!d || !redraw) return;
+    const dockBtn = e.target.closest("[data-dock]"), close = e.target.closest("[data-win-close]"), max = e.target.closest("[data-win-max]");
+    if (dockBtn) {
+      const id = dockBtn.dataset.dock;
+      if (d.max) d.max = d.open.includes(id) && d.max !== id ? id : null;
+      if (d.open.includes(id) && !d.max) d.open = d.open.filter((x) => x !== id); else if (!d.open.includes(id)) d.open.push(id);
+    } else if (close) {
+      d.open = d.open.filter((x) => x !== close.dataset.winClose);
+      if (d.max === close.dataset.winClose) d.max = null;
+    } else if (max) {
+      d.max = d.max ? null : max.dataset.winMax;
+    } else return;
+    redraw(true);
+  });
+
   function footholdHtml(f) {
     const rows = [["Accounts", f.accounts], ["On machines", f.machines], ["Admin on", f.admin], ["Scanned", f.scanned]].filter(([, v]) => v.length);
     if (!rows.length) return '<p class="muted" style="margin:0 0 10px;font-size:13px">No foothold yet. Find a way in first.</p>';
     return `<p style="margin:0 0 10px;font:12px/1.6 var(--mono)">${rows.map(([k, v]) => `<span class="muted">${k}:</span> <span class="red">${esc(v.join(", "))}</span>`).join("<br>")}</p>`;
   }
 
-  function prependLog(html) {
+  function prependLog(html, transient = false) {
+    if (!transient) S.redLog = html + (S.redLog || "");
     const log = document.getElementById("log");
+    if (!log) return;
     const placeholder = log.querySelector("p.muted");
     if (placeholder) placeholder.remove();
     log.insertAdjacentHTML("afterbegin", html);
@@ -1222,9 +1277,10 @@
     const event = api("move", S.attack, targetId);
     S.attack = null;
     S.map.targets = new Set();
+    if (!document.getElementById("log")) { deskOpen("red", "log"); renderPlay(true); }
     app.querySelectorAll("button").forEach((b) => { b.disabled = true; });
     for (const line of event.suspense || []) {
-      prependLog(`<div class="entry"><span class="suspense">${esc(line)}…</span></div>`);
+      prependLog(`<div class="entry"><span class="suspense">${esc(line)}…</span></div>`, true);
       await sleep(STEP_MS);
       document.querySelector("#log .entry")?.remove();
     }
@@ -1233,8 +1289,8 @@
     S.turn = api("turn");
     S.busy = false;
     if (S.turn.finished) { prependLog(entry); await sleep(STEP_MS); return renderFinal(api("finish")); }
-    renderPlay();
     prependLog(entry);
+    renderPlay(true);
   }
 
   function blueNotice(text) {
@@ -1251,9 +1307,9 @@
     S.attack = null;
     const notices = (res.blue || []).map(blueNotice).join("") + (res.kicked_out ? kickedNotice() : "");
     if (S.turn.finished) return renderFinal(api("finish"));
-    renderPlay();
     const html = notices + (res.night ? logEntry(res.night) : "");
     if (html) prependLog(html);
+    renderPlay(true);
   }
 
   const BLUE_ACTIONS = [
@@ -1302,7 +1358,8 @@
     renderBlue();
   }
 
-  function renderBlue() {
+  DESK_RENDER.blue = (keep) => renderBlue(keep);
+  function renderBlue(keep) {
     const st = S.blue.state;
     const c = S.start.company;
     blueGauges(st);
@@ -1338,16 +1395,19 @@
       const disabled = { investigate: open ? "" : "read the logs first", block: st.logs.length ? "" : "read the logs first" };
       const tag = { logs: st.new_logs ? `${st.new_logs} new` : "", investigate: open ? `${open} open` : "" };
       const note = st.phase === "day_end" ? "The attacker has stopped for today. Use the rest of your time, or let the night come." : "Each time the attacker moves, you get one move.";
-      side = `<div class="panel"><h3>Your move as the analyst</h3><p class="muted" style="margin:0 0 10px;font-size:13px">${note}</p><div class="options">
+      side = `<div class="panel"><p class="muted" style="margin:0 0 10px;font-size:13px">${note}</p><div class="options">
         ${BLUE_ACTIONS.map((a) => `<button class="option" data-blue="${a.id}" ${disabled[a.id] ? "disabled" : ""}><span></span><span><span class="name">${esc(a.name)}</span>
           ${disabled[a.id] ? `<span class="why">${esc(disabled[a.id])}</span>` : explain ? `<span class="desc">${esc(a.text)}</span>` : ""}</span><span class="odds">${esc(tag[a.id] || "")}</span></button>`).join("")}
         </div><div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="wait">${st.phase === "day_end" ? "End the day" : "Let time pass"}</button></div></div>`;
     }
-    show(`<section class="layout">
-      <div class="step">${mapPanel()}${companyFile()}<div class="panel"><h3>Logs you have read</h3>${logsTable(st)}</div></div>
-      <div class="step">${side}
-        <div class="panel"><h3>What happened</h3><div class="log" id="log" aria-live="polite">${S.blue.feed || '<p class="muted" style="margin:0">Your tools are recording. The attacker is out there.</p>'}</div></div>
-      </div></section>`);
+    const apps = [
+      { id: "analyst", icon: "⛨", title: "Analyst", html: side.replace('<div class="panel">', '<div>') },
+      { id: "logs", icon: "☰", title: "Logs", badge: st.new_logs ? String(st.new_logs) : "", html: logsTable(st) },
+      { id: "feed", icon: "◷", title: "What happened", html: `<div class="log" id="log" aria-live="polite">${S.blue.feed || '<p class="muted" style="margin:0">Your tools are recording. The attacker is out there.</p>'}</div>` },
+      { id: "map", icon: "◉", title: "Network map", wide: true, html: `<div class="map-panel">${mapInner()}</div>` },
+      { id: "file", icon: "▤", title: "Company file", wide: true, html: briefHtml(c) },
+    ];
+    show(deskHtml("blue", apps, ["analyst", "logs"]), keep === true);
     app.querySelectorAll("[data-blue]").forEach((el) => el.addEventListener("click", () => {
       if (el.dataset.blue === "logs") return blueAct("logs", null);
       S.blue.pending = el.dataset.blue;
@@ -1443,7 +1503,8 @@
     return count + `<div class="results raw">${shown.map((e) => `<div class="rawline"><span class="tag">${esc(e.index)} · ${esc(e.host)}</span>${esc(e._raw)}</div>`).join("")}</div>`;
   }
 
-  function renderSiem() {
+  DESK_RENDER.siem = (keep) => renderSiem(keep);
+  function renderSiem(keep) {
     const st = S.siem.state;
     siemGauges(st);
     const hosts = st.hosts.filter((h) => !h.isolated);
@@ -1454,25 +1515,23 @@
         <form class="act" data-kind="disable"><label>Disable an account</label><div class="row"><select id="disable-user">${st.accounts.map((a) => `<option value="${esc(a.username)}">${esc(a.username)} (${esc(a.name)})</option>`).join("")}</select><button class="btn">Disable</button></div></form>
         <form class="act" data-kind="isolate"><label>Isolate a machine</label><div class="row"><select id="isolate-host">${hosts.map((h) => `<option value="${esc(h.hostname)}">${esc(h.hostname)} (${esc(h.name)})</option>`).join("")}</select><button class="btn">Isolate</button></div></form>
         <div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="wait">${st.phase === "day_end" ? "End the day" : "Let time pass"}</button><button class="btn ghost" id="giveup">End it now</button></div></div>`;
-    show(`<section class="step siem">
-      <div class="panel">
-        <form id="search" class="searchbar"><input id="query" value="${esc(S.siem.query)}" spellcheck="false" autocomplete="off" aria-label="Search"><button class="btn">Search</button></form>
-        <div class="chips">${EXAMPLES.map(([label], i) => `<button class="chip" data-example="${i}">${esc(label)}</button>`).join("")}</div>
-        <p class="muted" style="margin:8px 0 0;font:12px var(--mono)">You can search: ${st.indexes.map((i) => `index=${esc(i)}`).join(" · ")}. Fields work like user=emily, src_ip=203.0.113.*, bytes_out>1000000.</p>
-      </div>
-      <div class="layout">
-        <div class="panel"><h3>Results</h3>${resultsHtml()}</div>
-        <div class="step">${actions}
-          <div class="panel"><h3>What happened</h3><div class="log" id="log">${S.siem.feed || '<p class="muted" style="margin:0">Your SIEM is collecting. Somewhere in there is an attacker.</p>'}</div></div>
-          <details class="panel"><summary><b>Inventory</b> <span class="muted">machines and accounts</span></summary>
-            <table class="sheet mono"><tr><th>Host</th><th>Internal</th><th>Public</th><th>What</th></tr>
+    const inventory = `<table class="sheet mono"><tr><th>Host</th><th>Internal</th><th>Public</th><th>What</th></tr>
             ${st.hosts.map((h) => `<tr><td>${esc(h.hostname)}${h.isolated ? ' <span class="why">isolated</span>' : ""}</td><td>${esc(h.ip)}</td><td>${esc(h.public_ip || "-")}</td><td>${esc(h.name)}</td></tr>`).join("")}</table>
             <table class="sheet mono" style="margin-top:12px"><tr><th>User</th><th>Name</th><th>Workstation</th><th>IP</th></tr>
             ${st.accounts.map((a) => `<tr><td>${esc(a.username)}</td><td>${esc(a.name)}</td><td>${esc(a.workstation)}</td><td>${esc(a.ip)}</td></tr>`).join("")}</table>
-            ${st.blocked.length ? `<p class="muted" style="font:12px var(--mono)">Blocked: ${st.blocked.map(esc).join(", ")}</p>` : ""}
-          </details>
-        </div>
-      </div></section>`);
+            ${st.blocked.length ? `<p class="muted" style="font:12px var(--mono)">Blocked: ${st.blocked.map(esc).join(", ")}</p>` : ""}`;
+    const searchHtml = `
+        <form id="search" class="searchbar"><input id="query" value="${esc(S.siem.query)}" spellcheck="false" autocomplete="off" aria-label="Search"><button class="btn">Search</button></form>
+        <div class="chips">${EXAMPLES.map(([label], i) => `<button class="chip" data-example="${i}">${esc(label)}</button>`).join("")}</div>
+        <p class="muted" style="margin:8px 0 12px;font:12px var(--mono)">You can search: ${st.indexes.map((i) => `index=${esc(i)}`).join(" · ")}. Fields work like user=emily, src_ip=203.0.113.*, bytes_out>1000000.</p>
+        ${resultsHtml()}`;
+    const apps = [
+      { id: "search", icon: "⌕", title: "SIEM search", wide: true, html: searchHtml },
+      { id: "respond", icon: "⛨", title: "Respond", html: actions.replace('<div class="panel">', '<div>') },
+      { id: "feed", icon: "◷", title: "What happened", html: `<div class="log" id="log">${S.siem.feed || '<p class="muted" style="margin:0">Your SIEM is collecting. Somewhere in there is an attacker.</p>'}</div>` },
+      { id: "inventory", icon: "▤", title: "Inventory", html: inventory },
+    ];
+    show(deskHtml("siem", apps, ["search", "respond"]), keep === true);
     document.getElementById("search").addEventListener("submit", (e) => { e.preventDefault(); S.siem.query = document.getElementById("query").value; runSearch(); });
     app.querySelectorAll("[data-example]").forEach((el) => el.addEventListener("click", () => { S.siem.query = EXAMPLES[Number(el.dataset.example)][1]; runSearch(); }));
     app.querySelectorAll("button.ip").forEach((el) => el.addEventListener("click", () => { const box = document.getElementById("block-ip"); if (box) { box.value = el.dataset.ip; box.focus(); } }));

@@ -270,7 +270,7 @@ class Session:
 
     def begin(self) -> str:
         if self.side == "red":
-            self.defense_ids = ai.pick_defenses(self.company, self.catalog, self.rng)
+            self.defense_ids = ai.pick_defenses(self.company, self.catalog, self.rng, expert=self.level != "easy")
         if self.side == "blue":
             self.arsenal = ai.pick_arsenal(self.company, self.catalog, self.rng, expert=self.level == "hard")
         edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")

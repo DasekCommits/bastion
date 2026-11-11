@@ -6,22 +6,24 @@ from bastion.catalog import DATA_DIR, load_catalog, load_edge
 from bastion.company import list_scenarios, roll_mistakes
 from bastion.engine import Campaign
 
+# How often a GOOD player should win. Harder with every level and every bigger company.
+# Red is measured with its best plan (the smart attacker or a plain phish-and-steal),
+# Blue with a competent analyst; a passive analyst must lose far more often.
 TARGETS = {
     "red": {
-        "small": {"easy": 0.8, "medium": 0.7, "hard": 0.5},
-        "medium": {"easy": 0.7, "medium": 0.5, "hard": 0.3},
-        "large": {"easy": 0.6, "medium": 0.3, "hard": 0.1},
-        "huge": {"easy": 0.5, "medium": 0.25, "hard": 0.1},
+        "small": {"easy": 0.65, "medium": 0.45, "hard": 0.3},
+        "medium": {"easy": 0.55, "medium": 0.35, "hard": 0.2},
+        "large": {"easy": 0.45, "medium": 0.25, "hard": 0.12},
+        "huge": {"easy": 0.4, "medium": 0.2, "hard": 0.08},
     },
-    # blue targets are how often DOING NOTHING should win (low): the attacker is strong,
-    # so a passive analyst loses and active response is what earns the win.
     "blue": {
-        "small": {"easy": 0.3, "medium": 0.2, "hard": 0.1},
-        "medium": {"easy": 0.25, "medium": 0.15, "hard": 0.08},
-        "large": {"easy": 0.2, "medium": 0.1, "hard": 0.05},
-        "huge": {"easy": 0.18, "medium": 0.1, "hard": 0.05},
+        "small": {"easy": 0.6, "medium": 0.45, "hard": 0.3},
+        "medium": {"easy": 0.5, "medium": 0.35, "hard": 0.22},
+        "large": {"easy": 0.42, "medium": 0.28, "hard": 0.15},
+        "huge": {"easy": 0.35, "medium": 0.22, "hard": 0.1},
     },
 }
+PHISH_PLAN = ["phishing", "exfiltration"]
 LEVELS = ("easy", "medium", "hard")
 SIDES = ("red", "blue")
 
@@ -31,11 +33,14 @@ class _Passive:
         return None
 
 
-def player_won(company, catalog, level: str, side: str, edge: float, seed: int, blue="competent") -> bool:
+def player_won(company, catalog, level: str, side: str, edge: float, seed: int, blue="competent", plan="ai") -> bool:
     rng = random.Random(seed)
     rolled = roll_mistakes(company, rng)
-    defenses = ai.pick_defenses(rolled, catalog, rng)
+    smart_defense = (side == "red" and level != "easy") or (side == "blue" and blue == "competent")
+    defenses = ai.pick_defenses(rolled, catalog, rng, expert=smart_defense)
     arsenal = ai.pick_arsenal(rolled, catalog, rng, expert=side == "blue" and level == "hard")
+    if side == "red" and plan == "phish":
+        arsenal = PHISH_PLAN
     if side == "red":
         red, blue_ai = ai.RedAI(level), ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[level], random.Random(seed), ai.OPPONENT_ACTIONS[level])
     else:
@@ -48,8 +53,9 @@ def player_won(company, catalog, level: str, side: str, edge: float, seed: int, 
 
 
 def win_rate(company, catalog, level: str, side: str, edge: float, games: int, offset: int = 0, blue="competent") -> float:
-    wins = sum(player_won(company, catalog, level, side, edge, seed, blue) for seed in range(offset, offset + games))
-    return wins / games
+    plans = ("ai", "phish") if side == "red" else ("ai",)
+    return max(sum(player_won(company, catalog, level, side, edge, seed, blue, plan) for seed in range(offset, offset + games)) / games
+               for plan in plans)
 
 
 EDGE_MIN, EDGE_MAX = 0.02, 80.0
@@ -70,9 +76,7 @@ def tune(games: int = 200, steps: int = 9) -> dict:
             table[side][company.tier] = {}
             for level in LEVELS:
                 goal = TARGETS[side][company.tier][level]
-                # red: tune so the attacking player wins the target (facing the competent defender).
-                # blue: tune so a PASSIVE defender wins only the (low) target, which is monotonic in edge.
-                blue_mode = "passive" if side == "blue" else "competent"
+                blue_mode = "competent"
                 low, high = EDGE_MIN, EDGE_MAX
                 for _ in range(steps):
                     mid = (low * high) ** 0.5
@@ -113,8 +117,7 @@ def check(games: int = 200, tolerance: float = 0.08) -> list[tuple[str, str, str
             for level in LEVELS:
                 goal = TARGETS[side][company.tier][level]
                 edge = load_edge(company.tier, level, side)
-                mode = "passive" if side == "blue" else "competent"
-                rate = win_rate(company, catalog, level, side, edge, games, blue=mode)
+                rate = win_rate(company, catalog, level, side, edge, games)
                 ok = abs(rate - goal) <= tolerance
                 rows.append((company.id, side, level, goal, rate, ok, not ok and at_limit(side, edge, rate, goal)))
     return rows
