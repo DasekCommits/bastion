@@ -248,7 +248,6 @@
     setGauges(null);
     const menu = api("menu");
     const p = menu.profile;
-    const learn = learnTotals();
     const feats = api("achievements");
     const featsDone = feats.filter((a) => a.done).length;
     const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
@@ -271,7 +270,7 @@
       </header>
       <nav class="nav-rows">
         ${row("play", "01", "Play", "Choose a side, a target and a difficulty, then go.", "")}
-        ${row("tutorial", "02", "Tutorial", "Red, Blue and WAF tracks: techniques, defenses and how to combine them.", `<span class="bar mini"><span style="width:${Math.round((learn.done / learn.total) * 100)}%"></span></span> ${learn.done}/${learn.total}`)}
+        ${row("tutorial", "02", "Tutorial", "Red, Blue and WAF tracks: techniques, defenses and how to combine them.", "")}
         ${row("leaderboards", "03", "Leaderboards", "Realism high scores, Red and Blue.", "")}
         ${row("achievements", "04", "Achievements", "Ten feats. Few players will see them all.", `${featsDone}/${feats.length}`)}
         ${anyQuest
