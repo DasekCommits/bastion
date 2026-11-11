@@ -255,7 +255,10 @@
           profile = server;
           store.set(PROFILE_KEY, profile);
         }
+        profile.owned = server.owned || [];
       }
+      if (profile && !Array.isArray(profile.owned)) profile.owned = [];
+      if (!profile) profile = { owned: [] };
       renderAccount();
       S.session = web.Session(profile ? JSON.stringify(profile) : "");
       progress("Ready.", "100%");
@@ -302,6 +305,7 @@
         ${folder("play", "▶", "Play", "Pick a side, a target and a difficulty.", "primary")}
         ${folder("tutorial", "✎", "Tutorial", "Red, Blue and WAF tracks.")}
         ${menu.realism ? folder("leaderboards", "☰", "Leaderboard", "The best players at every difficulty.") : folder("", "🔒", "Classified", "Opens when you find what is hidden.", "sealed")}
+        ${folder("shop", "◈", "Shop", "Spend Red and Blue coins on new attacks and defenses.")}
         ${folder("achievements", "★", "Achievements", "Ten feats. Few will see them all.")}
         ${anyQuest ? folder("quests", "▤", "Classified", `${knownQuests.length} hidden objective${knownQuests.length > 1 ? "s" : ""} in play.`, "secret") : folder("quests", "▤", "Classified", "Some files are not on any inventory.", "sealed")}
       </nav>
@@ -314,7 +318,76 @@
       else if (to === "leaderboards") renderLeaderboard();
       else if (to === "quests") renderQuests();
       else if (to === "achievements") renderAchievements();
+      else if (to === "shop") renderShop();
     }));
+  }
+
+  async function renderShop(side) {
+    setGauges(null);
+    side = side || S.shopSide || "red";
+    S.shopSide = side;
+    let wallet = null;
+    if (S.user) {
+      try { wallet = await (await fetch("api/shop.php", { credentials: "same-origin", cache: "no-store" })).json(); } catch {}
+      if (wallet && Array.isArray(wallet.owned)) syncOwned(wallet.owned);
+    }
+    drawShop(side, wallet);
+  }
+
+  function syncOwned(owned) {
+    const r = api("set_owned", JSON.stringify(owned));
+    const profile = JSON.parse(r.profile_json);
+    store.set(PROFILE_KEY, profile);
+  }
+
+  function drawShop(side, wallet, note = "") {
+    const items = api("shop_items").filter((i) => i.side === side);
+    const coins = wallet && wallet.coins ? wallet.coins[side] : null;
+    const tiers = [["small", "Olive Byte and up"], ["medium", "Harbor Clinic and up"], ["large", "Meridian Bank and up"], ["huge", "Directorate-7"]];
+    const card = (i) => {
+      const state = i.free ? "starter" : i.owned ? "owned" : "";
+      const button = i.free ? '<span class="shop-tag">Starter</span>'
+        : i.owned ? '<span class="shop-tag owned">Owned</span>'
+        : S.user ? `<button class="btn shop-buy" data-buy="${i.id}" ${coins !== null && coins < i.price ? "disabled" : ""}>Buy · ${i.price}</button>`
+        : `<span class="shop-tag">${i.price} coins</span>`;
+      return `<div class="option shop-item ${state}">
+        <span class="box" aria-hidden="true">${i.owned ? "✓" : "🔒"}</span>
+        <span><span class="name">${esc(i.name)}</span>${i.mitre ? ` <span class="muted" style="font:12px var(--mono)">${esc(i.mitre)}</span>` : ""}
+        <span class="desc">${esc(i.description)}</span></span>
+        <span class="shop-right">${button}</span></div>`;
+    };
+    const sections = tiers.map(([tier, label]) => {
+      const list = items.filter((i) => i.tier === tier);
+      return list.length ? `<h3 class="shop-tier">${label}</h3><div class="options pick-grid">${list.map(card).join("")}</div>` : "";
+    }).join("");
+    const head = S.user
+      ? (wallet && wallet.coins
+        ? `<div class="wallet"><span class="coin red">◈ ${wallet.coins.red} <small>Red coins</small></span><span class="coin blue">◈ ${wallet.coins.blue} <small>Blue coins</small></span><span class="muted">10 points in a game = 1 coin, counted by the referee.</span></div>`
+        : '<p class="why">The shop is not available right now.</p>')
+      : '<p class="muted">Sign in with GitHub to earn coins: every 10 points you score is 1 coin. Until then you play with the starter kit.</p>';
+    show(`<section class="step shop">
+      ${backBar("Home")}
+      <div><h1>Shop.</h1></div>
+      ${head}
+      ${note ? `<p class="notice" role="status">${esc(note)}</p>` : ""}
+      <div class="pick-tabs" role="tablist">
+        <button class="pick-tab ${side === "red" ? "on" : ""}" data-shop="red">Red · attacks</button>
+        <button class="pick-tab ${side === "blue" ? "on" : ""}" data-shop="blue">Blue · defenses</button></div>
+      ${sections}
+    </section>`, true);
+    app.querySelectorAll("[data-shop]").forEach((el) => el.addEventListener("click", () => { S.shopSide = el.dataset.shop; drawShop(el.dataset.shop, wallet); }));
+    app.querySelectorAll("[data-buy]").forEach((el) => el.addEventListener("click", async () => {
+      el.disabled = true;
+      let res = null;
+      try {
+        res = await (await fetch("api/shop.php", { method: "POST", credentials: "same-origin",
+          headers: { "Content-Type": "application/json", "X-Bastion": "1" }, body: JSON.stringify({ item: el.dataset.buy }) })).json();
+      } catch {}
+      if (res && Array.isArray(res.owned)) syncOwned(res.owned);
+      const name = items.find((i) => i.id === el.dataset.buy)?.name || "it";
+      drawShop(side, res && res.coins ? res : wallet, res && res.ok ? `${name} is yours.` : (res && res.error) || "That did not work. Try again.");
+    }));
+    wireBack(renderHome);
   }
 
   function renderAchievements() {
@@ -900,6 +973,13 @@
       const list = options.filter((o) => groups.length < 2 || tab === "*" || o.group === tab).map((o) => {
         const on = chosen.has(o.id);
         const meta = [o.category, o.mitre && `${o.mitre} ${o.tactic}`].filter(Boolean).join(" · ");
+        if (o.locked) {
+          return `<button class="option locked" data-id="${o.id}" aria-disabled="true">
+          <span class="box" aria-hidden="true">🔒</span>
+          <span><span class="name">${esc(o.name)}</span>${meta ? ` <span class="muted" style="font:12px var(--mono)">${esc(meta)}</span>` : ""}
+          <span class="desc">In the shop for ${o.price} ${color === "red" ? "Red" : "Blue"} coins.</span></span>
+          <span class="cost">${o.cost}</span></button>`;
+        }
         return `<button class="option ${on ? "on" : ""}" data-id="${o.id}" aria-pressed="${on}">
           <span class="box" aria-hidden="true"></span>
           <span><span class="name">${esc(o.name)}</span>${meta ? ` <span class="muted" style="font:12px var(--mono)">${esc(meta)}</span>` : ""}
@@ -934,6 +1014,10 @@
       applyPeopleFilter();
       app.querySelectorAll(".option").forEach((el) => el.addEventListener("click", () => {
         const option = options.find((o) => o.id === el.dataset.id);
+        if (option.locked) {
+          document.getElementById("warn").textContent = `${option.name} is locked. Buy it in the Shop for ${option.price} coins, then it is yours for good.`;
+          return;
+        }
         const scroll = window.scrollY;
         if (chosen.has(option.id)) chosen.delete(option.id);
         else if (spent + option.cost > budget) {

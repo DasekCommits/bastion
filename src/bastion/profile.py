@@ -43,6 +43,7 @@ class Profile:
     secrets: dict[str, int] = field(default_factory=dict)
     learned: list[str] = field(default_factory=list)
     achievements: list[str] = field(default_factory=list)
+    owned: list[str] | None = None  # None: no shop limits (terminal, referee); a list: the web shop
 
     def __post_init__(self) -> None:
         migrated = {}

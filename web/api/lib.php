@@ -92,7 +92,7 @@ function current_user(): ?array
     if (!is_int($id)) {
         return null;
     }
-    $stmt = db()->prepare('SELECT id, login, avatar_url, points, games, wins, secrets, learned, achievements, realism_red, realism_blue, realism_red_secs, realism_blue_secs FROM users WHERE id = ?');
+    $stmt = db()->prepare('SELECT id, login, avatar_url, points, games, wins, secrets, learned, achievements, owned, gifted, realism_red, realism_blue, realism_red_secs, realism_blue_secs FROM users WHERE id = ?');
     $stmt->execute([$id]);
     return $stmt->fetch() ?: null;
 }

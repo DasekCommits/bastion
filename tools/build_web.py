@@ -36,6 +36,19 @@ def write_achievements(path: Path) -> None:
     path.write_text(f"<?php\nreturn json_decode(base64_decode('{encoded}'), true);\n", encoding="utf-8")
 
 
+def write_shop(path: Path) -> None:
+    from bastion import shop
+    from bastion.catalog import load_catalog
+
+    catalog = load_catalog()
+    data = json.dumps({
+        "per_coin": shop.POINTS_PER_COIN,
+        "items": {i["id"]: {"side": i["side"], "price": i["price"], "free": i["free"]} for i in shop.items(catalog, [])},
+    })
+    encoded = base64.b64encode(data.encode("utf-8")).decode("ascii")
+    path.write_text(f"<?php\nreturn json_decode(base64_decode('{encoded}'), true);\n", encoding="utf-8")
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for old in OUT.iterdir():
@@ -49,6 +62,7 @@ def main() -> None:
     shutil.copy(WEB / "style.css", OUT / "style.css")
     shutil.copytree(WEB / "api", OUT / "api")
     write_achievements(OUT / "api" / "achievements_data.php")
+    write_shop(OUT / "api" / "shop_data.php")
     html = (WEB / "index.html").read_text(encoding="utf-8")
     html = html.replace('href="style.css"', f'href="style.css?v={version}"').replace('src="app.js"', f'src="app.js?v={version}"')
     (OUT / "index.html").write_text(html, encoding="utf-8")

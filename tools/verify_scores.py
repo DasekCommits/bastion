@@ -16,7 +16,7 @@ Usage:
 import json
 import sys
 
-from bastion import achievements, dice
+from bastion import achievements, dice, shop
 
 
 def judge(game: dict) -> tuple[bool, str, dict | None]:
@@ -26,6 +26,12 @@ def judge(game: dict) -> tuple[bool, str, dict | None]:
         moves.append([method, args, int(value)])
     if not moves or moves[0][0] != "start":
         return False, "no start", None
+    if game.get("owned") is not None:
+        for method, args, _ in moves:
+            if method in ("set_arsenal", "set_defenses"):
+                unowned = [i for i in json.loads(args[0]) if not shop.owns(game["owned"], i)]
+                if unowned:
+                    return False, f"used items not bought in the shop: {', '.join(unowned)}", None
     finished = moves[-1][0] in dice.FINAL
     if not finished:
         session, _ = dice.replay_session(moves[:1])

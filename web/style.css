@@ -807,3 +807,20 @@ tr[hidden], .option[hidden] { display: none; }
 .play-flow .choice:not(:disabled):focus-visible small { color: color-mix(in srgb, var(--paper) 72%, transparent); }
 .play-flow .choice:not(:disabled):not(.red-side):not(.blue-side):hover::after { background: var(--ink); }
 .play-flow .choice { transition: transform .15s, box-shadow .15s, background .15s, color .15s; }
+
+/* shop */
+.wallet { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 14px 18px; border: 1px solid var(--ink); border-radius: 4px 12px 12px 12px; background: var(--card); box-shadow: 4px 4px 0 var(--paper-2); }
+.coin { font: 700 22px/1 var(--mono); }
+.coin small { font: 400 12px var(--body); color: var(--muted); }
+.coin.red { color: var(--red); }
+.coin.blue { color: var(--blue); }
+.wallet .muted { font-size: 13px; }
+.shop-tier { margin: 28px 0 0; font-size: 15px; }
+.shop-item { cursor: default; }
+.shop-item.owned .box, .shop-item.starter .box { color: var(--green); }
+.shop-right { align-self: start; }
+.shop-buy { padding: 7px 14px; font-size: 13px; white-space: nowrap; }
+.shop-tag { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.shop-tag.owned { color: var(--green); }
+.option.locked { opacity: .6; cursor: not-allowed; }
+.option.locked .box { border: 0; font-size: 12px; }

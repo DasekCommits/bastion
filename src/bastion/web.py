@@ -1,7 +1,7 @@
 import json
 import random
 
-from bastion import achievements, advice, ai, scoring
+from bastion import achievements, advice, ai, scoring, shop
 from bastion.catalog import load_catalog, load_edge
 from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
@@ -96,7 +96,17 @@ class Session:
     def _profile(self) -> dict:
         return {"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins,
                 "secrets": self.profile.secrets, "learned": self.profile.learned,
-                "achievements": self.profile.achievements}
+                "achievements": self.profile.achievements, "owned": self.profile.owned}
+
+    def _locked(self, item_id: str) -> bool:
+        return self.profile.owned is not None and not shop.owns(self.profile.owned, item_id)
+
+    def shop_items(self) -> str:
+        return json.dumps(shop.items(self.catalog, self.profile.owned or []))
+
+    def set_owned(self, owned_json: str) -> str:
+        self.profile.owned = [i for i in json.loads(owned_json) if i in self.catalog.attacks or i in self.catalog.defenses]
+        return json.dumps({"ok": True, "profile_json": json.dumps(self._profile())})
 
     def achievements(self) -> str:
         return json.dumps(achievements.board(self.profile))
@@ -231,6 +241,8 @@ class Session:
         options = []
         for d in self.catalog.defenses_for(self.company.tier):
             item = {"id": d.id, "name": d.name, "cost": d.cost, "group": defense_group(d)}
+            if self._locked(d.id):
+                item.update(locked=True, price=shop.price(self.catalog, d.id))
             if self.explain:
                 countered = sorted(set(d.blocks) | set(d.detects))
                 names = ", ".join(self.catalog.attacks[a].name for a in countered)
@@ -242,6 +254,8 @@ class Session:
         options = []
         for a in self.catalog.attacks_for(self.company.tier):
             item = {"id": a.id, "name": a.name, "cost": a.cost, "group": ATTACK_GROUPS.get(a.tactic, "Other")}
+            if self._locked(a.id):
+                item.update(locked=True, price=shop.price(self.catalog, a.id))
             if self.explain:
                 description = f"{a.description} Targets: {a.target}s."
                 if self.easy:
@@ -252,6 +266,9 @@ class Session:
 
     def set_defenses(self, ids_json: str) -> str:
         ids = json.loads(ids_json)
+        locked = [self.catalog.defenses[i].name for i in ids if self._locked(i)]
+        if locked:
+            return json.dumps({"ok": False, "error": f"Buy these in the shop first: {', '.join(locked)}."})
         cost = sum(self.catalog.defenses[i].cost for i in ids)
         if cost > self.company.budget:
             return json.dumps({"ok": False, "error": f"That costs {cost}, but the budget is {self.company.budget}."})
@@ -260,6 +277,9 @@ class Session:
 
     def set_arsenal(self, ids_json: str) -> str:
         ids = json.loads(ids_json)
+        locked = [self.catalog.attacks[i].name for i in ids if self._locked(i)]
+        if locked:
+            return json.dumps({"ok": False, "error": f"Buy these in the shop first: {', '.join(locked)}."})
         cost = sum(self.catalog.attacks[i].cost for i in ids)
         if not ids:
             return json.dumps({"ok": False, "error": "Buy at least one attack."})

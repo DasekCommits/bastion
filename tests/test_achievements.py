@@ -70,3 +70,15 @@ def test_referee_confirms_counts_abandoned_as_loss_and_rejects_forgery():
     assert not verdicts[2]["ok"]
     assert verdicts[3]["ok"] and verdicts[3]["summary"]["won"] is False
     assert "5" in out["achievements"]
+
+
+def test_referee_rejects_a_game_that_used_items_not_bought():
+    final, moves = play_red("olive-byte", "easy")
+    calls = [[json.dumps([m, a]), v] for m, a, v in moves]
+    base = {"user_id": 9, "status": "done", "side": "red", "points": final["score"]["total"], "moves": calls}
+    picked = json.loads(next(a for m, a, v in moves if m == "set_arsenal")[0])
+    out = referee({"games": [dict(base, id=1, owned=picked), dict(base, id=2, owned=[]), dict(base, id=3, owned=None)], "history": {}})
+    ok = {v["id"]: v["ok"] for v in out["verdicts"]}
+    from bastion import shop
+    assert ok[1] and ok[3]
+    assert ok[2] == all(shop.is_free(i) for i in picked)

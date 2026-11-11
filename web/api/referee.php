@@ -14,8 +14,8 @@ $pdo = db();
 $method = $_SERVER['REQUEST_METHOD'] ?? '';
 
 if ($method === 'GET') {
-    $games = $pdo->query("SELECT id, user_id, status, side, points FROM games
-                          WHERE status IN ('done', 'abandoned') AND verified IS NULL ORDER BY id LIMIT 200")->fetchAll();
+    $games = $pdo->query("SELECT g.id, g.user_id, g.status, g.side, g.points, g.shop, u.owned FROM games g JOIN users u ON u.id = g.user_id
+                          WHERE g.status IN ('done', 'abandoned') AND g.verified IS NULL ORDER BY g.id LIMIT 200")->fetchAll();
     $moves = $pdo->prepare('SELECT call_json, roll FROM game_moves WHERE game_id = ? ORDER BY n');
     $history = [];
     $past = $pdo->prepare('SELECT summary FROM games WHERE user_id = ? AND verified = 1 AND summary IS NOT NULL ORDER BY id');
@@ -23,6 +23,8 @@ if ($method === 'GET') {
         $moves->execute([$game['id']]);
         $game['moves'] = array_map(fn ($m) => [$m['call_json'], (int) $m['roll']], $moves->fetchAll());
         $game['points'] = $game['points'] === null ? null : (int) $game['points'];
+        $game['owned'] = (int) $game['shop'] ? (json_decode((string) $game['owned'], true) ?: []) : null;
+        unset($game['shop']);
         $uid = (string) $game['user_id'];
         if (!isset($history[$uid])) {
             $past->execute([$game['user_id']]);

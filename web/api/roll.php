@@ -38,7 +38,7 @@ if ($n === 0) {
         send_json(['error' => 'A game starts with start.'], 422);
     }
     $pdo->prepare("UPDATE games SET status = 'abandoned' WHERE user_id = ? AND status = 'live'")->execute([$user['id']]);
-    $pdo->prepare("INSERT INTO games (user_id, secret, status, moves) VALUES (?, ?, 'live', 0)")
+    $pdo->prepare("INSERT INTO games (user_id, secret, status, moves, shop) VALUES (?, ?, 'live', 0, 1)")
         ->execute([$user['id'], bin2hex(random_bytes(32))]);
     $gameId = (int) $pdo->lastInsertId();
 }
