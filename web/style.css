@@ -839,3 +839,19 @@ tr[hidden], .option[hidden] { display: none; }
 .play-flow .choice.selected.level-realism { background: color-mix(in srgb, var(--ink) 10%, var(--card)); }
 .play-flow .choice:not(:disabled):hover.purple-side::after, .play-flow .choice:not(:disabled):hover[class*="level-"]::after { filter: brightness(1.15); }
 .play-flow .choice:disabled[class*="level-"]::after { background: var(--paper-2); border-color: var(--line); }
+
+/* picking a difficulty keeps the cards still and only reveals Start */
+.play-reveal.settled > * { animation: none; }
+/* map folders: the tab colour grows with the company */
+.play-flow .choice.tier-small::after { background: var(--green); border-color: var(--green); }
+.play-flow .choice.tier-medium::after { background: var(--amber); border-color: var(--amber); }
+.play-flow .choice.tier-large::after { background: var(--red); border-color: var(--red); }
+.play-flow .choice.tier-huge::after { background: var(--ink); border-color: var(--ink); }
+.play-flow .choice:disabled[class*="tier-"]::after { background: var(--paper-2); border-color: var(--line); }
+/* on hover a coloured tab keeps its colour */
+.play-flow .choice.level-easy:not(:disabled):hover::after, .play-flow .choice.tier-small:not(:disabled):hover::after { background: var(--green); border-color: var(--green); }
+.play-flow .choice.level-medium:not(:disabled):hover::after, .play-flow .choice.tier-medium:not(:disabled):hover::after { background: var(--amber); border-color: var(--amber); }
+.play-flow .choice.level-hard:not(:disabled):hover::after, .play-flow .choice.tier-large:not(:disabled):hover::after { background: var(--red); border-color: var(--red); }
+.play-flow .choice.level-realism:not(:disabled):hover::after, .play-flow .choice.tier-huge:not(:disabled):hover::after { background: var(--ink); border-color: var(--paper-2); }
+.play-flow .choice.purple-side:not(:disabled):hover::after { background: var(--purple); border-color: var(--purple); }
+.play-flow .choice:not(:disabled):hover::after { filter: none; }

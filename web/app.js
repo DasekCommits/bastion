@@ -454,7 +454,7 @@
       const cards = menu.companies.map((c, i) => {
         if (c.classified) return `<button class="choice classified" style="animation-delay:${i * 70}ms" disabled><span class="tag">classified · ??? people</span><strong>${esc(c.name)}</strong><small>Unlock conditions: unknown. ${esc(c.description)}</small></button>`;
         const locked = !companyAvailable(c.id) ? menu.locks.easy[c.id] : null;
-        return `<button class="choice ${sel.company === c.id ? "selected" : ""}" style="animation-delay:${i * 70}ms" data-pick="company" data-id="${c.id}" ${locked ? "disabled" : ""}>
+        return `<button class="choice tier-${c.tier} ${sel.company === c.id ? "selected" : ""}" style="animation-delay:${i * 70}ms" data-pick="company" data-id="${c.id}" ${locked ? "disabled" : ""}>
           <span class="tag">${esc(c.tier)} · ${c.people} people</span><strong>${esc(c.name)}</strong>
           <small>${esc(locked ? `Locked: ${locked}` : c.description)}</small></button>`;
       }).join("");
@@ -493,6 +493,10 @@
       if (group === "side") S.play.step = "company";
       else if (group === "company") S.play.step = "difficulty";
       renderSetup(group === "level");  // keep scroll when picking a difficulty (same step reveals Start)
+      if (group === "level") {
+        app.querySelectorAll(".play-reveal").forEach((el) => el.classList.add("settled"));
+        document.querySelector(".launch")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
     }));
     const goPrev = () => { if (prev[1]) { S.play.step = prev[1]; renderSetup(); } else renderHome(); };
     document.getElementById("play-prev").addEventListener("click", goPrev);
