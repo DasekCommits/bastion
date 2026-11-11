@@ -167,7 +167,7 @@ Bastion never attacks real systems. The network is simulated, and the WAF Lab pa
 - [x] CI with tests and an automatic balance check
 - [x] Achievements shown on [dasek.dev](https://dasek.dev)
 - [x] A smarter computer attacker on Hard
-- [ ] WAF Lab in the browser
+- [x] WAF Lab in the browser, inside the Tutorial
 
 Guests can play without an account; their progress stays in the browser (or `~/.bastion` in the terminal).
 
