@@ -25,7 +25,7 @@ ACHIEVEMENTS = (
     Achievement("shoestring", "Shoestring",
                 "Win as Blue on Hard using at most half of your budget."),
     Achievement("iron-streak", "Iron Streak",
-                f"Win {STREAK_GOAL} Hard or Realism games in a row, either side."),
+                f"Win {STREAK_GOAL} games in a row on the hardest difficulties, either side."),
     Achievement("purple", "Purple",
                 "Win Directorate-7 on Hard as Red and as Blue.", secret="cleared"),
     Achievement("full-spectrum", "Full Spectrum",
