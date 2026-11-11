@@ -184,11 +184,18 @@ h3 { font-size: 17px; letter-spacing: 0.02em; }
 .choice.classified { background: repeating-linear-gradient(-45deg, var(--card), var(--card) 10px, var(--paper-2) 10px, var(--paper-2) 20px); opacity: 0.85; }
 .choice.classified strong { letter-spacing: 0.1em; }
 .choice.red-side { border-left: 4px solid var(--red); }
-/* In the stepped Play flow a remembered choice is shown as an outline, not a heavy black fill. */
-.play-flow .choice.selected { background: var(--paper); color: inherit; border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
-.play-flow .choice.selected small { color: var(--muted); }
+/* In the stepped Play flow a remembered choice is a crisp ring with a check, not a heavy black fill. */
+.play-flow .choice { position: relative; }
+.play-flow .choice.selected { background: var(--card); color: inherit; border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.play-flow .choice.selected small, .play-flow .choice.selected .muted { color: var(--ink-soft); }
+.play-flow .choice.selected .tag { color: var(--ink-soft); }
 .play-flow .choice.selected strong::after { color: var(--red); }
-.play-prev-row { margin-top: 18px; }
+.play-flow .choice.selected.blue-side { border-left-color: var(--blue); }
+.play-flow .choice.selected.red-side { border-left-color: var(--red); }
+.play-flow .choice.selected::before { content: "✓"; position: absolute; top: 12px; right: 14px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--paper); font: 700 12px/22px var(--mono); text-align: center; }
+.back-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 0 0 18px; }
+.back-btn { display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-weight: 600; font-size: 14px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); color: var(--ink); cursor: pointer; transition: border-color .15s, transform .15s; }
+.back-btn:hover { border-color: var(--ink); transform: translateX(-2px); }
 
 .settings { display: grid; gap: 26px; }
 .setting h3 { margin-bottom: 10px; }
@@ -359,7 +366,6 @@ table.sheet { width: 100%; border-collapse: collapse; font-size: 13px; }
 details.pm summary { cursor: pointer; font-weight: 600; }
 details.pm pre { font: 12px/1.6 var(--mono); white-space: pre-wrap; margin: 12px 0 0; color: var(--ink); }
 
-.choice.classified-open { border: 2px solid var(--ink); }
 .choice.classified-open strong::after { content: "unlocked"; margin-left: 8px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--red); vertical-align: 2px; }
 .choice.selected.classified-open strong::after { color: var(--paper-2); }
 .searchbar { display: flex; gap: 8px; }
@@ -486,3 +492,17 @@ tr[hidden], .option[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.people-filters { display: grid; gap: 8px; margin: 0 0 12px; }
+.pf-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pf-label { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 92px; }
+.chip-n { opacity: .6; font-size: 11px; margin-left: 2px; }
+.chip.on .chip-n { opacity: .8; }
+.people-q { flex: 1 1 160px; min-width: 140px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 12px; background: var(--card); color: var(--ink); }
+.pf-hint { margin: 0; font-size: 12px; min-height: 1em; }
+.star { border: 0; background: none; cursor: pointer; font-size: 15px; line-height: 1; padding: 0 6px 0 0; color: var(--muted); vertical-align: -1px; }
+.star:hover, .star.on { color: var(--red); }
+.star-mark { color: var(--red); margin-right: 6px; }
+.option.watched { border-left: 3px solid var(--red); }
+.map .watch-star { fill: var(--red); font-size: 13px; }
+@media (max-width: 560px) { .pf-label { min-width: 0; width: 100%; } }
