@@ -31,10 +31,9 @@
     { id: "hard", name: "Hard", text: "The defenders have the edge. No help at all, only the result." },
   ];
   const SIDES = [
-    { id: "blue", name: "Blue", text: "Defend the company. The computer attacks.", cls: "blue-side" },
+    { id: "blue", name: "Blue", text: "Defend the company. The computer runs the attack.", cls: "blue-side" },
     { id: "red", name: "Red", text: "Break in. The computer picked defenses you cannot see.", cls: "red-side" },
     { id: "random", name: "Random", text: "A coin decides your side. Double points if you win." },
-    { id: "practice", name: "Practice", text: "Play both sides. No points, no unlocks." },
   ];
 
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -195,78 +194,134 @@
     gauges.hidden = false;
   }
 
-  function renderMenu(keepScroll) {
+  const NAMES = { small: "Olive Byte", medium: "Harbor Clinic", large: "Meridian Bank" };
+
+  function renderMenu() { renderHome(); }
+
+  function renderHome() {
     setGauges(null);
     const menu = api("menu");
     const p = menu.profile;
     const learn = api("learn");
-    const NAMES = { small: "Olive Byte", medium: "Harbor Clinic", large: "Meridian Bank" };
+    const chains = api("chains");
     const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
-    if (S.settings.level && S.settings.level !== "realism" && menu.levels[S.settings.level]) S.settings.level = null;
-    if (S.settings.level === "realism" && !menu.realism) S.settings.level = null;
-    if (S.settings.level === "realism" && S.settings.side === "practice") S.settings.side = null;
-    const level = S.settings.level || "easy";
-    const card = (group, item, extra = "", cls = "") => {
-      const lockedLevel = group === "level" && menu.levels[item.id];
-      if (group === "side" && S.settings.level === "realism" && item.id === "practice") {
-        return `<button class="choice" disabled><strong>${esc(item.name)}</strong><small>Realism has no practice mode.</small></button>`;
-      }
-      if (lockedLevel) {
-        return `<button class="choice" disabled><strong>${esc(item.name)}</strong><small>Locked: ${esc(lockedLevel)}</small></button>`;
-      }
-      const on = S.settings[group] === item.id;
-      return `<button class="choice ${item.cls || ""} ${cls} ${on ? "selected" : ""}" data-group="${group}" data-id="${item.id}" aria-pressed="${on}" ${extra}>
-        <strong>${esc(item.name)}</strong><small>${esc(item.text)}</small></button>`;
-    };
-    const companies = menu.companies.map((c) => {
-      if (c.classified) {
-        return `<button class="choice classified" disabled><span class="tag">classified · ??? people</span><strong>${esc(c.name)}</strong><small>Unlock conditions: unknown. ${esc(c.description)}</small></button>`;
-      }
-      c.locked = menu.locks[level][c.id];
-      const on = S.settings.company === c.id;
-      return `<button class="choice ${on ? "selected" : ""}" data-group="company" data-id="${c.id}" aria-pressed="${on}" ${c.locked ? "disabled" : ""}>
-        <span class="tag">${esc(c.tier)} · ${c.people} people</span>
-        <strong>${esc(c.name)}</strong>
-        <small>${esc(c.locked ? `Locked: ${c.locked}` : c.description)}</small></button>`;
-    }).join("");
-    if (S.settings.company && menu.locks[level][S.settings.company]) S.settings.company = null;
-    const ready = S.settings.level && S.settings.side && S.settings.company;
+    const knownQuests = menu.quests.filter((q) => q.known);
+    const anyQuest = knownQuests.length > 0;
     const notice = S.notice ? `<p class="notice" role="status">${esc(S.notice)}</p>` : "";
     S.notice = "";
-    const saveNote = S.user ? "Progress is saved to your GitHub account." : S.accounts ? "Progress is saved in this browser. Sign in with GitHub to keep it on every device." : "";
-    show(`<section class="step">
+    const saveNote = S.user ? "Progress saved to your GitHub account." : S.accounts ? "Progress saved in this browser — sign in to keep it everywhere." : "";
+    const row = (id, num, title, desc, meta, cls = "") => `<button class="nav-row ${cls}" data-nav="${id}">
+      <span class="nav-num">${num}</span>
+      <span class="nav-text"><strong>${title}</strong><small>${desc}</small></span>
+      <span class="nav-meta">${meta || ""}</span><span class="nav-arrow">→</span></button>`;
+    show(`<section class="step home" id="home">
       ${notice}
-      <div class="step-head">
-        <div><p class="eyebrow">New game</p><h1>Pick your fight.</h1>${saveNote ? `<p class="muted" style="margin:8px 0 0;font-size:14px">${esc(saveNote)}</p>` : ""}</div>
-        <p class="profile-line">${p.points} points · ${p.games} games · wins: ${esc(wins)}${menu.goal ? `<br>${esc(menu.goal)}` : ""}</p>
-      </div>
-      <button class="learn-banner" id="to-learn">
-        <div class="learn-banner-top"><div><p class="eyebrow">New to this? Start here</p><strong>Learn to play — attack and defend, one technique at a time</strong></div>
-          <span class="learn-count">${learn.done}/${learn.total} learned</span></div>
-        <div class="bar"><span style="width:${Math.round((learn.done / learn.total) * 100)}%"></span></div>
-        <small>${learn.done === learn.total ? "You've learned every technique. Nice." : `${learn.total - learn.done} to go — a coach walks you through each one.`}</small>
-      </button>
-      <div class="settings">
-        <div class="setting"><h3>Difficulty</h3><div class="choices">${LEVELS.map((l) => card("level", l)).join("")}
-          ${menu.realism ? card("level", REALISM, "", "classified-open") : `<button class="choice classified" disabled><span class="tag">classified</span><strong>████████</strong>
-          <small>Unlock conditions: unknown. Some files are not on any inventory.</small></button>`}</div></div>
-        <div class="setting"><h3>Side</h3><div class="choices">${SIDES.map((s) => card("side", s)).join("")}</div></div>
-        <div class="setting"><h3>Company</h3><div class="choices">${companies}</div></div>
-      </div>
-      <div class="btn-row"><button class="btn" id="go" ${ready ? "" : "disabled"}>Start the game</button><button class="btn ghost" id="to-board">Realism leaderboard</button></div>
-      <div class="panel quests"><h3>Classified quests</h3><table class="sheet"><tr><th>Quest</th><th>What to do</th><th class="num">Progress</th><th>Reward</th></tr>
-        ${menu.quests.map((q) => `<tr class="${q.known ? (q.done ? "done" : "known") : "hidden"}"><td>${esc(q.title)}</td><td>${esc(q.text)}</td><td class="num">${esc(q.progress)}</td><td>${esc(q.reward)}</td></tr>`).join("")}
-      </table></div>
-    </section>`, keepScroll);
-    app.querySelectorAll(".choice[data-group]").forEach((el) => el.addEventListener("click", () => {
-      S.settings[el.dataset.group] = el.dataset.id;
-      store.set(SETTINGS_KEY, S.settings);
-      renderMenu(true);
+      <header class="hero">
+        <p class="eyebrow">Purple-team cyber range</p>
+        <h1 class="wordmark">BASTION</h1>
+        <p class="hero-sub">Attack a company or defend it. Every move maps to a real technique — nothing here touches a real system.</p>
+        <p class="profile-line">${p.points} points · ${p.games} games · wins: ${esc(wins)}${saveNote ? `<br>${esc(saveNote)}` : ""}</p>
+      </header>
+      <nav class="nav-rows">
+        ${row("play", "01", "Play", "Choose a side, a target and a difficulty, then go.", "")}
+        ${row("tutorial", "02", "Tutorial", "Learn the techniques and how to chain them into an attack.", `<span class="bar mini"><span style="width:${Math.round((learn.done / learn.total) * 100)}%"></span></span> ${learn.done}/${learn.total}`)}
+        ${row("leaderboards", "03", "Leaderboards", "Realism high scores, Red and Blue.", "")}
+        ${anyQuest
+          ? row("quests", "◆", "Classified", `${knownQuests.length} dossier${knownQuests.length > 1 ? "s" : ""} in play.`, "", "nav-classified")
+          : `<button class="nav-row nav-classified locked" data-nav="quests"><span class="nav-num">▓▓</span>
+             <span class="nav-text"><strong>█████████</strong><small>Some files are not on any inventory.</small></span><span class="nav-arrow">→</span></button>`}
+      </nav>
+    </section>`);
+    app.querySelectorAll("[data-nav]").forEach((el) => el.addEventListener("click", () => {
+      const to = el.dataset.nav;
+      if (to === "play") { S.play = { step: "side" }; renderSetup(); }
+      else if (to === "tutorial") renderLearn();
+      else if (to === "leaderboards") renderLeaderboard();
+      else if (to === "quests") renderQuests();
     }));
-    document.getElementById("go").addEventListener("click", startGame);
-    document.getElementById("to-board")?.addEventListener("click", renderLeaderboard);
-    document.getElementById("to-learn")?.addEventListener("click", renderLearn);
   }
+
+  function renderQuests() {
+    setGauges(null);
+    const menu = api("menu");
+    const rows = menu.quests.map((q) => `<tr class="${q.known ? (q.done ? "done" : "known") : "hidden"}">
+      <td>${esc(q.title)}</td><td>${esc(q.text)}</td><td class="num">${esc(q.progress)}</td><td>${esc(q.reward)}</td></tr>`).join("");
+    show(`<section class="step">
+      <div><p class="eyebrow">Classified</p><h1>Dossiers.</h1>
+      <p class="muted">Hidden objectives. You will not see one until something in a game points you to it.</p></div>
+      <div class="panel quests"><table class="sheet"><tr><th>Quest</th><th>What to do</th><th class="num">Progress</th><th>Reward</th></tr>${rows}</table></div>
+      <div class="btn-row"><button class="btn" id="q-back">Back</button></div>
+    </section>`);
+    document.getElementById("q-back").addEventListener("click", renderHome);
+  }
+
+  function renderSetup() {
+    setGauges(null);
+    const menu = api("menu");
+    S.play = S.play || { step: "side" };
+    const sel = S.settings;
+    // keep selections valid against what is unlocked
+    const companyAvailable = (cid) => !menu.locks.easy[cid];
+    const levelAvailable = (lvl, cid) => lvl === "realism"
+      ? (menu.realism && !menu.locks.realism[cid])
+      : (!menu.levels[lvl] && !menu.locks[lvl][cid]);
+    if (sel.company && (menu.companies.find((c) => c.id === sel.company)?.classified || !companyAvailable(sel.company))) sel.company = null;
+    if (sel.level && sel.company && !levelAvailable(sel.level, sel.company)) sel.level = null;
+
+    const step = S.play.step;
+    const crumb = (key, label, active, ok) => `<button class="crumb ${active ? "active" : ""} ${ok ? "ok" : ""}" data-step="${key}" ${ok || active ? "" : "disabled"}>${ok ? "✓ " : ""}${label}</button>`;
+    const crumbs = `<div class="crumbs">
+      ${crumb("side", sel.side ? capital(sel.side) : "Side", step === "side", !!sel.side)}<span class="crumb-sep">▸</span>
+      ${crumb("company", sel.company ? NAMES[menu.companies.find((c) => c.id === sel.company)?.tier] || "Map" : "Map", step === "company", !!sel.company)}<span class="crumb-sep">▸</span>
+      ${crumb("difficulty", sel.level ? capital(sel.level) : "Difficulty", step === "difficulty", !!sel.level)}</div>`;
+
+    let body = "";
+    if (step === "side") {
+      body = `<div><p class="eyebrow">Step 1 of 3</p><h1>Pick your side.</h1></div>
+        <div class="choices play-reveal">${SIDES.map((s, i) => `<button class="choice ${s.cls || ""} ${sel.side === s.id ? "selected" : ""}" style="animation-delay:${i * 60}ms" data-pick="side" data-id="${s.id}">
+          <strong>${esc(s.name)}</strong><small>${esc(s.text)}</small></button>`).join("")}</div>`;
+    } else if (step === "company") {
+      const cards = menu.companies.map((c, i) => {
+        if (c.classified) return `<button class="choice classified" style="animation-delay:${i * 70}ms" disabled><span class="tag">classified · ??? people</span><strong>${esc(c.name)}</strong><small>Unlock conditions: unknown. ${esc(c.description)}</small></button>`;
+        const locked = !companyAvailable(c.id) ? menu.locks.easy[c.id] : null;
+        return `<button class="choice ${sel.company === c.id ? "selected" : ""}" style="animation-delay:${i * 70}ms" data-pick="company" data-id="${c.id}" ${locked ? "disabled" : ""}>
+          <span class="tag">${esc(c.tier)} · ${c.people} people</span><strong>${esc(c.name)}</strong>
+          <small>${esc(locked ? `Locked: ${locked}` : c.description)}</small></button>`;
+      }).join("");
+      body = `<div><p class="eyebrow">Step 2 of 3 · playing ${capital(sel.side)}</p><h1>Choose the target.</h1></div>
+        <div class="choices play-reveal">${cards}</div>`;
+    } else {
+      const levelCard = (l, i) => {
+        const avail = levelAvailable(l.id, sel.company);
+        const reason = l.id === "realism" ? "unlock conditions unknown" : (menu.levels[l.id] || menu.locks[l.id][sel.company]);
+        if (!avail) return `<button class="choice ${l.id === "realism" ? "classified" : ""}" style="animation-delay:${i * 60}ms" disabled><strong>${l.id === "realism" ? "████████" : esc(l.name)}</strong><small>${l.id === "realism" ? "Unlock conditions: unknown." : `Locked: ${esc(reason)}`}</small></button>`;
+        return `<button class="choice ${l.id === "realism" ? "classified-open" : ""} ${sel.level === l.id ? "selected" : ""}" style="animation-delay:${i * 60}ms" data-pick="level" data-id="${l.id}">
+          <strong>${esc(l.name)}${l.id === "realism" ? ' <span class="pill">unlocked</span>' : ""}</strong><small>${esc(l.text)}</small></button>`;
+      };
+      const all = [...LEVELS, REALISM];
+      const target = menu.companies.find((c) => c.id === sel.company);
+      body = `<div><p class="eyebrow">Step 3 of 3 · ${capital(sel.side)} vs ${esc(target ? target.name : "")}</p><h1>How hard?</h1></div>
+        <div class="choices play-reveal">${all.map(levelCard).join("")}</div>
+        ${sel.level ? `<div class="btn-row start-row"><button class="btn big" id="go">Start — ${capital(sel.side)} · ${esc(target ? target.name : "")} · ${capital(sel.level)}</button></div>` : ""}`;
+    }
+    show(`<section class="step play-flow">
+      <div class="play-top"><button class="linkish" id="play-home">← Home</button>${crumbs}</div>
+      <div class="play-step">${body}</div>
+    </section>`);
+    app.querySelectorAll("[data-pick]").forEach((el) => el.addEventListener("click", () => {
+      const group = el.dataset.pick;
+      sel[group === "level" ? "level" : group] = el.dataset.id;
+      store.set(SETTINGS_KEY, sel);
+      if (group === "side") S.play.step = "company";
+      else if (group === "company") S.play.step = "difficulty";
+      renderSetup();
+    }));
+    app.querySelectorAll("[data-step]").forEach((el) => el.addEventListener("click", () => { S.play.step = el.dataset.step; renderSetup(); }));
+    document.getElementById("play-home").addEventListener("click", renderHome);
+    document.getElementById("go")?.addEventListener("click", startGame);
+  }
+
+  function capital(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
 
   function renderLearn() {
     setGauges(null);
