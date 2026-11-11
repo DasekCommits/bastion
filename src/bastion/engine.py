@@ -392,6 +392,7 @@ class Campaign:
         rng: random.Random | None = None,
         edge: float = 1.0,
         active_blue: bool = False,
+        egg_rng: random.Random | None = None,
     ):
         self.edge = edge
         self.active_blue = active_blue
@@ -427,8 +428,9 @@ class Campaign:
         self.reached_on: dict[str, int] = {}
         self.egg_day: int | None = None
         self.egg_planned_day = 0
-        if active_blue and company.tier == "large" and soc.EGG_RNG.random() < soc.EGG_CHANCE:
-            self.egg_planned_day = soc.EGG_RNG.randint(1, company.max_days)
+        egg_rng = egg_rng or soc.EGG_RNG
+        if active_blue and company.tier == "large" and egg_rng.random() < soc.EGG_CHANCE:
+            self.egg_planned_day = egg_rng.randint(1, company.max_days)
         self.egg_target: str | None = None
         if active_blue:
             self._add_noise()

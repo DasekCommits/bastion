@@ -47,4 +47,31 @@ db()->exec(
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
 );
 
+db()->exec(
+    'CREATE TABLE IF NOT EXISTS games (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        user_id INT UNSIGNED NOT NULL,
+        secret CHAR(64) NOT NULL,
+        status VARCHAR(10) NOT NULL DEFAULT \'live\',
+        moves INT UNSIGNED NOT NULL DEFAULT 0,
+        side VARCHAR(8) NULL,
+        points INT UNSIGNED NULL,
+        secs INT UNSIGNED NOT NULL DEFAULT 0,
+        verified TINYINT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        finished_at DATETIME NULL,
+        INDEX (user_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+);
+
+db()->exec(
+    'CREATE TABLE IF NOT EXISTS game_moves (
+        game_id INT UNSIGNED NOT NULL,
+        n INT UNSIGNED NOT NULL,
+        call_json TEXT NOT NULL,
+        roll BIGINT UNSIGNED NOT NULL,
+        PRIMARY KEY (game_id, n)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+);
+
 echo "Tables ready.\n";

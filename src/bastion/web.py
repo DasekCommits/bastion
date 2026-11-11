@@ -105,6 +105,9 @@ class Session:
         result["profile_json"] = json.dumps(self._profile())
         return json.dumps(result)
 
+    def reseed(self, roll: int) -> None:
+        self.rng.seed(roll)
+
     def start(self, company_id: str, level: str, side: str, seed: int | None = None) -> str:
         self.rng = random.Random(seed)
         self.realism = level == "realism"
@@ -115,7 +118,8 @@ class Session:
         self.real = None
         self.random_side = side == "random"
         self.side = self.rng.choice(("blue", "red")) if self.random_side else side
-        self.company = plant_sealed_file(roll_mistakes(load_scenario(company_id), self.rng), level)
+        self.company = plant_sealed_file(roll_mistakes(load_scenario(company_id), self.rng), level,
+                                         random.Random(self.rng.random()))
         self.defense_ids: list[str] = []
         self.arsenal: list[str] = []
         self.campaign = None
@@ -199,7 +203,7 @@ class Session:
             self.arsenal = ai.pick_arsenal(self.company, self.catalog, self.rng)
         edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
         self.campaign = Campaign(self.company, self.catalog, self.defense_ids, self.arsenal, rng=self.rng, edge=edge,
-                                 active_blue=True)
+                                 active_blue=True, egg_rng=random.Random(self.rng.random()))
         self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[self.level], self.rng)
         if self.realism:
             self.real = RealismGame(self.campaign, self.rng)

@@ -1,65 +1,53 @@
-"""Replay stored score transcripts against the engine to catch forged scores.
+"""Referee: replay finished games with the dice the server rolled and confirm their scores.
 
-The game runs in the player's browser, so a submitted score cannot be trusted on
-its own. Every submission stores its transcript (the ordered list of engine calls,
-starting from the seed). This tool re-runs each transcript here, where the engine is
-authoritative, and flags any score that does not match what the real game produces.
+The server exports the scored games that are still unchecked (server/referee.php export),
+this tool replays each one against the real engine, and the verdicts go back to the server
+(server/referee.php apply). A score is confirmed only if the engine, given exactly the same
+moves and dice, produces exactly the claimed total.
 
 Usage:
-    # pull the audit rows from the server, then verify them:
-    ssh -i ~/.ssh/dasek_deploy dasek@server33.cretaforce.gr \
-        'cd ~/dasek.dev/bastion && php -r "require \"api/lib.php\";
-         echo json_encode(db()->query(\"SELECT id,user_id,side,points,transcript FROM score_audit WHERE accepted=1 AND transcript IS NOT NULL\")->fetchAll(PDO::FETCH_ASSOC));"' \
-        > audit.json
-    .venv/Scripts/python.exe tools/verify_scores.py audit.json
+    python tools/verify_scores.py pending.json verdicts.json
 """
 import json
 import sys
 
-from bastion.web import Session
-
-# a profile with everything unlocked, so replaying any game's start() is allowed
-UNLOCKED = json.dumps({
-    "points": 0, "games": 99,
-    "wins": {f"{t}/{l}": 99 for t in ("small", "medium", "large") for l in ("easy", "medium", "hard")},
-    "secrets": {"sealed": 99, "script": 99},
-})
+from bastion import dice
 
 
-def replay(moves: list) -> int | None:
-    """Re-run a transcript and return the score the engine actually produces."""
-    session = Session(UNLOCKED)
-    result = None
-    for method, args in moves:
-        result = getattr(session, method)(*args)
-    if result is None:
-        return None
-    final = json.loads(result) if isinstance(result, str) else result
-    score = final.get("score")
-    return score["total"] if score else None
+def judge(game: dict) -> tuple[bool, str]:
+    moves = []
+    for call_json, value in game["moves"]:
+        method, args = json.loads(call_json)
+        moves.append([method, args, int(value)])
+    if not moves or moves[0][0] != "start" or moves[-1][0] not in dice.FINAL:
+        return False, "incomplete game"
+    final = dice.replay(moves)
+    score = (final or {}).get("score")
+    if not score:
+        return False, "no score in replay"
+    if score["side"] != game["side"]:
+        return False, f"claimed {game['side']}, engine played {score['side']}"
+    if score["total"] != int(game["points"]):
+        return False, f"claimed {game['points']}, engine says {score['total']}"
+    return True, "ok"
 
 
-def main(path: str) -> int:
-    rows = json.load(open(path, encoding="utf-8"))
-    bad = 0
-    for row in rows:
-        claimed = int(row["points"])
+def main(pending_path: str, verdicts_path: str) -> int:
+    games = json.load(open(pending_path, encoding="utf-8"))
+    verdicts, bad = [], 0
+    for game in games:
         try:
-            transcript = json.loads(row["transcript"])
-            actual = replay(transcript["moves"])
-        except Exception as error:  # a transcript that will not replay is itself suspect
-            print(f"  audit #{row['id']} user {row['user_id']} {row['side']}: UNREPLAYABLE ({error})")
+            ok, why = judge(game)
+        except Exception as error:
+            ok, why = False, f"unreplayable ({error})"
+        verdicts.append({"id": game["id"], "ok": ok})
+        if not ok:
             bad += 1
-            continue
-        if actual is None:
-            print(f"  audit #{row['id']} user {row['user_id']} {row['side']}: no final score in replay")
-            bad += 1
-        elif actual != claimed:
-            print(f"  audit #{row['id']} user {row['user_id']} {row['side']}: claimed {claimed}, engine says {actual}  <-- MISMATCH")
-            bad += 1
-    print(f"\n{len(rows)} checked, {bad} suspicious.")
-    return 1 if bad else 0
+        print(f"  game #{game['id']} user {game['user_id']} {game['side']} {game['points']}: {why}")
+    json.dump(verdicts, open(verdicts_path, "w", encoding="utf-8"))
+    print(f"\n{len(games)} checked, {bad} rejected.")
+    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "audit.json"))
+    sys.exit(main(*(sys.argv[1:3] if len(sys.argv) > 2 else ("pending.json", "verdicts.json"))))

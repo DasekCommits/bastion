@@ -46,8 +46,48 @@
     set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} },
   };
 
+  // moves whose dice the server rolls when you are signed in; everything else is a read
+  const MOVES = new Set(["start", "set_defenses", "set_arsenal", "begin", "move", "end_day", "give_up", "finish",
+    "blue_act", "blue_wait", "terminal", "realism_search", "realism_act", "realism_wait"]);
+
+  function serverRoll(method, args) {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "api/roll.php", false);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("X-Bastion", "1");
+    xhr.send(JSON.stringify({ game: S.dice.game, n: S.dice.n, call: [method, args] }));
+    let reply = null;
+    try { reply = JSON.parse(xhr.responseText); } catch {}
+    if (xhr.status !== 200 || !reply || typeof reply.roll !== "number") {
+      throw new Error((reply && reply.error) || "The dice server did not answer.");
+    }
+    S.dice.game = reply.game;
+    S.dice.n += 1;
+    return reply.roll;
+  }
+
+  function diceFailed(error) {
+    S.dice = null;
+    S.rec = false;
+    show(`<section class="step"><div><p class="eyebrow">Connection lost</p><h1>The dice server did not answer.</h1>
+      <p class="muted">${esc(error.message)} Signed-in games roll their dice on the server so nobody can fake a result, so this game cannot go on. Check your connection and start again.</p></div>
+      <div class="btn-row"><button class="btn" id="dice-home">Home</button></div></section>`);
+    document.getElementById("dice-home").addEventListener("click", renderHome);
+  }
+
   function api(method, ...args) {
     if (S.rec) S.transcript.push([method, args]);
+    if (S.dice && MOVES.has(method)) {
+      let value;
+      try {
+        value = serverRoll(method, method === "start" ? args.slice(0, 3) : args);
+      } catch (error) {
+        diceFailed(error);
+        throw error;
+      }
+      if (method === "start") args = [args[0], args[1], args[2], value];
+      else S.session.reseed(value);
+    }
     const out = S.session[method](...args);
     return typeof out === "string" ? JSON.parse(out) : out;
   }
@@ -475,8 +515,11 @@
     S.transcript = [];
     S.watch = new Set();
     S.peopleFilter = { role: null, server: null, admin: false, starred: false, q: "" };
-    S.rec = true;  // record every engine call so a realism score can be re-simulated offline
-    S.start = api("start", company, level, side, Math.floor(Math.random() * 1e9));
+    S.rec = true;
+    S.dice = S.user ? { game: null, n: 0 } : null;  // signed in: the server rolls the dice
+    try {
+      S.start = api("start", company, level, side, Math.floor(Math.random() * 1e9));
+    } catch { return; }
     S.startedAt = Date.now();
     S.turn = null;
     S.attack = null;
@@ -1222,14 +1265,14 @@
     const profile = JSON.parse(final.profile_json);
     store.set(PROFILE_KEY, profile);
     saveProgress(profile);
-    if (final.realism && final.realism_side && final.score && S.user) {
+    if (final.realism && final.realism_side && final.score && S.user && S.dice && S.dice.game) {
       const seconds = S.startedAt ? Math.round((Date.now() - S.startedAt) / 1000) : 0;
-      const transcript = S.transcript && S.transcript.length ? { moves: S.transcript } : null;
       fetch("api/score.php", { method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-Bastion": "1" },
-        body: JSON.stringify({ side: final.realism_side, points: final.score.total, seconds, transcript }) }).catch(() => {});
+        body: JSON.stringify({ side: final.realism_side, points: final.score.total, seconds, game: S.dice.game }) }).catch(() => {});
     }
     S.rec = false;
+    S.dice = null;
     const r = final.result;
     const color = r.defense_score >= 70 ? "var(--green)" : r.defense_score >= 40 ? "var(--amber)" : "var(--red)";
     let scoreHtml = "";
