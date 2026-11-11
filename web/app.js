@@ -248,8 +248,7 @@
     setGauges(null);
     const menu = api("menu");
     const p = menu.profile;
-    const learn = api("learn");
-    const chains = api("chains");
+    const learn = learnTotals();
     const feats = api("achievements");
     const featsDone = feats.filter((a) => a.done).length;
     const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
@@ -272,7 +271,7 @@
       </header>
       <nav class="nav-rows">
         ${row("play", "01", "Play", "Choose a side, a target and a difficulty, then go.", "")}
-        ${row("tutorial", "02", "Tutorial", "Learn the techniques and how to chain them into an attack.", `<span class="bar mini"><span style="width:${Math.round((learn.done / learn.total) * 100)}%"></span></span> ${learn.done}/${learn.total}`)}
+        ${row("tutorial", "02", "Tutorial", "Red, Blue and WAF tracks: techniques, defenses and how to combine them.", `<span class="bar mini"><span style="width:${Math.round((learn.done / learn.total) * 100)}%"></span></span> ${learn.done}/${learn.total}`)}
         ${row("leaderboards", "03", "Leaderboards", "Realism high scores, Red and Blue.", "")}
         ${row("achievements", "04", "Achievements", "Ten feats. Few players will see them all.", `${featsDone}/${feats.length}`)}
         ${anyQuest
@@ -401,12 +400,48 @@
   const wireBack = (fn) => document.getElementById("back-prev")?.addEventListener("click", fn);
   const backToSetup = () => { S.play = { step: "difficulty" }; renderSetup(); };
 
+  function learnTotals() {
+    const h = api("learn_hub");
+    const parts = [h.red.techniques, h.red.chains, h.blue.defenses, h.blue.guards];
+    return { hub: h, done: parts.reduce((n, p) => n + p.done, 0), total: parts.reduce((n, p) => n + p.total, 0) };
+  }
+
+  const progressPanel = (title, done, total, unit, text) => `<div class="panel" style="margin-top:28px">
+      <div class="learn-banner-top"><strong>${title}</strong><span class="learn-count">${done}/${total} ${unit}</span></div>
+      <div class="bar big"><span style="width:${total ? Math.round((done / total) * 100) : 0}%"></span></div>
+      ${text ? `<p class="muted" style="margin:12px 0 0;font-size:14px">${text}</p>` : ""}</div>`;
+
   function renderLearn() {
     setGauges(null);
-    const s = api("learn");
-    const c = api("chains");
-    const pct = Math.round((s.done / s.total) * 100);
-    const cpct = Math.round((c.done / c.total) * 100);
+    const { hub } = learnTotals();
+    const waf = store.get(WAF_BEST_KEY, 0);
+    const red = hub.red.techniques.done + hub.red.chains.done, redAll = hub.red.techniques.total + hub.red.chains.total;
+    const blue = hub.blue.defenses.done + hub.blue.guards.done, blueAll = hub.blue.defenses.total + hub.blue.guards.total;
+    const cat = (id, cls, title, text, done, total, unit) => `<button class="learn-cat ${cls}" data-cat="${id}">
+      <span class="learn-cat-top"><strong>${title}</strong><span class="learn-count">${done}/${total} ${unit}</span></span>
+      <small>${text}</small>
+      <span class="bar"><span style="width:${total ? Math.round((done / total) * 100) : 0}%"></span></span></button>`;
+    show(`<section class="step">
+      ${backBar("Home")}
+      <div><p class="eyebrow">Learning mode</p><h1>Learn to play.</h1>
+      <p class="muted">Three tracks. Every lesson is built from the game's own rules and real MITRE ATT&CK techniques, so what you learn here is exactly how the game behaves.</p></div>
+      <div class="learn-cats">
+        ${cat("red", "red-cat", "Red · attack", `${hub.red.techniques.total} techniques, then ${hub.red.chains.total} combinations: chain them into an attack that gets through.`, red, redAll, "done")}
+        ${cat("blue", "blue-cat", "Blue · defend", `${hub.blue.defenses.total} defenses, then ${hub.blue.guards.total} combinations: stop a real attack chain on a budget.`, blue, blueAll, "done")}
+        ${cat("waf", "waf-cat", "WAF Lab", "Train the doorman: stop 40 web attacks without turning away 25 real customers.", waf, 100, "best")}
+      </div>
+    </section>`);
+    app.querySelectorAll("[data-cat]").forEach((el) => el.addEventListener("click", () => {
+      const c = el.dataset.cat;
+      if (c === "red") renderLearnRed(); else if (c === "blue") renderLearnBlue(); else renderWafLab();
+    }));
+    wireBack(renderHome);
+  }
+
+  function renderLearnRed() {
+    setGauges(null);
+    const { hub } = learnTotals();
+    const s = hub.red.techniques, c = hub.red.chains;
     const lessons = s.lessons.map((l, i) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
       <span class="num">${String(i + 1).padStart(2, "0")}</span>
       <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.mitre)} · ${esc(l.tactic)}</small></span>
@@ -416,33 +451,81 @@
       <span class="lesson-name"><strong>${esc(ch.goal)}</strong><small>${ch.steps} steps to order</small></span>
       <span class="lesson-mark">${ch.done ? "✓ solved" : "build →"}</span></button>`).join("");
     show(`<section class="step">
-      ${backBar("Home")}
-      <div><p class="eyebrow">Learning mode</p><h1>Learn to play.</h1>
-      <p class="muted">First learn the techniques one by one, then practise chaining them into a real attack. Based on real MITRE ATT&CK techniques.</p></div>
-      <div class="panel">
-        <div class="learn-banner-top"><strong>Techniques</strong><span class="learn-count">${s.done}/${s.total} learned</span></div>
-        <div class="bar big"><span style="width:${pct}%"></span></div>
-      </div>
+      ${backBar("Learning")}
+      <div><p class="eyebrow">Learning · Red</p><h1>Think like the attacker.</h1></div>
+      ${progressPanel("Techniques", s.done, s.total, "learned", "Spot each technique, then learn what it needs before it can work.")}
       <div class="lesson-list">${lessons}</div>
-      <div class="panel" style="margin-top:28px">
-        <div class="learn-banner-top"><strong>Combinations — chain them into an attack</strong><span class="learn-count">${c.done}/${c.total} solved</span></div>
-        <div class="bar big"><span style="width:${cpct}%"></span></div>
-        <p class="muted" style="margin:12px 0 0;font-size:14px">A technique rarely works alone. Order these into an attack that actually gets through — the engine checks it the way a real one would.</p>
-      </div>
+      ${progressPanel("Combinations — chain them into an attack", c.done, c.total, "solved", "A technique rarely works alone. Order these into an attack that actually gets through; the engine checks it the way a real one would.")}
       <div class="lesson-list">${chains}</div>
-      <div class="panel" style="margin-top:28px">
-        <div class="learn-banner-top"><strong>WAF Lab — train the doorman</strong><span class="learn-count">best ${store.get(WAF_BEST_KEY, 0)}/100</span></div>
-        <div class="bar big"><span style="width:${store.get(WAF_BEST_KEY, 0)}%"></span></div>
-        <p class="muted" style="margin:12px 0 0;font-size:14px">Build a web application firewall from plain-language rules. Stop 40 real attacks without turning away 25 innocent customers. Practice only, no points.</p>
-      </div>
-      <div class="lesson-list"><button class="lesson-row" id="open-waf"><span class="num">WAF</span>
-        <span class="lesson-name"><strong>Open the WAF Lab</strong><small>SQL injection · XSS · path traversal</small></span>
-        <span class="lesson-mark">${store.get(WAF_BEST_KEY, 0) >= 100 ? "✓ perfect" : "build →"}</span></button></div>
     </section>`);
-    document.getElementById("open-waf").addEventListener("click", () => renderWafLab());
-    app.querySelectorAll("[data-lesson]").forEach((el) => el.addEventListener("click", () => renderLesson(el.dataset.lesson)));
+    app.querySelectorAll("[data-lesson]").forEach((el) => el.addEventListener("click", () => renderLesson("red", el.dataset.lesson)));
     app.querySelectorAll("[data-chain]").forEach((el) => el.addEventListener("click", () => renderChain(el.dataset.chain)));
-    wireBack(renderHome);
+    wireBack(renderLearn);
+  }
+
+  function renderLearnBlue() {
+    setGauges(null);
+    const { hub } = learnTotals();
+    const s = hub.blue.defenses, g = hub.blue.guards;
+    const lessons = s.lessons.map((l, i) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
+      <span class="num">${String(i + 1).padStart(2, "0")}</span>
+      <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.sub)}</small></span>
+      <span class="lesson-mark">${l.done ? "✓ learned" : "learn →"}</span></button>`).join("");
+    const guards = g.guards.map((ch) => `<button class="lesson-row ${ch.done ? "done" : ""}" data-guard="${ch.id}">
+      <span class="num">🛡</span>
+      <span class="lesson-name"><strong>Stop: ${esc(ch.goal)}</strong><small>${ch.steps}-step attack</small></span>
+      <span class="lesson-mark">${ch.done ? "✓ stopped" : "defend →"}</span></button>`).join("");
+    show(`<section class="step">
+      ${backBar("Learning")}
+      <div><p class="eyebrow">Learning · Blue</p><h1>Think like the defender.</h1></div>
+      ${progressPanel("Defenses", s.done, s.total, "learned", "What each control is for, and whether it stops an attack, spots it, or helps you recover.")}
+      <div class="lesson-list">${lessons}</div>
+      ${progressPanel("Combinations — stop an attack chain", g.done, g.total, "stopped", "One control always fails sometimes. Within a budget, stop one step and watch another: defense in depth.")}
+      <div class="lesson-list">${guards}</div>
+    </section>`);
+    app.querySelectorAll("[data-lesson]").forEach((el) => el.addEventListener("click", () => renderLesson("blue", el.dataset.lesson)));
+    app.querySelectorAll("[data-guard]").forEach((el) => el.addEventListener("click", () => renderGuard(el.dataset.guard)));
+    wireBack(renderLearn);
+  }
+
+  function renderGuard(id, picked = new Set(), result = null) {
+    setGauges(null);
+    const g = api("guard", id);
+    const cost = [...picked].reduce((n, d) => n + (g.options.find((o) => o.id === d)?.cost || 0), 0);
+    const steps = g.steps.map((st, i) => {
+      const row = result && result.rows[i];
+      const cls = row ? (row.blocked.length ? "ok" : row.spotted.length ? "watch" : "bad") : "";
+      const how = row ? [row.blocked.length ? `stopped by ${row.blocked.join(", ")}` : "", row.spotted.length ? `spotted by ${row.spotted.join(", ")}` : ""].filter(Boolean).join(" · ") || "nothing covers this step" : `${st.mitre}`;
+      return `<div class="chain-slot ${cls}"><span class="num">${i + 1}</span><span class="chain-card-name"><strong>${esc(st.name)}</strong><small>${esc(how)}</small></span></div>`;
+    }).join("");
+    const opts = g.options.map((o) => `<button class="choice guard-opt ${picked.has(o.id) ? "selected" : ""}" data-def="${o.id}">
+      <strong>${esc(o.name)}</strong><small>${esc(o.category)} · costs ${o.cost}</small></button>`).join("");
+    show(`<section class="step">
+      ${backBar("Blue lessons")}
+      <div><p class="eyebrow">Blue · combination</p><h1>Stop the attack.</h1></div>
+      <div class="panel coach"><p class="coach-label">The attacker's plan</p><p>${esc(g.goal)}</p></div>
+      <div class="panel"><h3>Their steps</h3><div class="chain-slots">${steps}</div>
+        ${result ? `<p class="intel-note" style="color:var(${result.passed ? "--green" : "--red"})">${esc(result.note)}</p>` : ""}</div>
+      <div class="panel"><div class="learn-banner-top"><h3 style="margin:0">Your controls</h3>
+        <span class="learn-count ${cost > g.budget ? "over" : ""}">spent ${cost} / ${g.budget}</span></div>
+        <p class="muted">Stop at least one step and spot at least one other, without going over budget.</p>
+        <div class="choices">${opts}</div>
+        <div class="btn-row" style="margin-top:14px"><button class="btn" id="guard-check" ${picked.size ? "" : "disabled"}>Check my defense</button>
+          <button class="btn ghost" id="guard-clear">Clear</button></div></div>
+    </section>`, true);
+    app.querySelectorAll("[data-def]").forEach((el) => el.addEventListener("click", () => {
+      const d = el.dataset.def;
+      if (picked.has(d)) picked.delete(d); else picked.add(d);
+      renderGuard(id, picked, null);
+    }));
+    document.getElementById("guard-clear").addEventListener("click", () => renderGuard(id, new Set(), null));
+    document.getElementById("guard-check").addEventListener("click", () => {
+      const r = api("check_guard", id, JSON.stringify([...picked]));
+      const profile = JSON.parse(r.profile_json);
+      store.set(PROFILE_KEY, profile); saveProgress(profile);
+      renderGuard(id, picked, r);
+    });
+    wireBack(renderLearnBlue);
   }
 
   const WAF_BEST_KEY = "bastion-waf-best";
@@ -457,7 +540,7 @@
     const card = (i) => `<button class="choice waf-item ${picked.has(i.id) ? "selected" : ""}" data-waf="${esc(i.id)}" aria-pressed="${picked.has(i.id)}">
       <strong>${esc(i.title)}</strong><small>${esc(i.explain)}</small></button>`;
     show(`<section class="step waf-lab">
-      ${backBar("All lessons")}
+      ${backBar("Learning")}
       <div><p class="eyebrow">WAF Lab · practice, no points</p><h1>Train the doorman.</h1></div>
       <details class="panel waf-intro" ${firstTime ? "open" : ""}><summary><strong>What is a WAF? (read this first)</strong></summary>
         <ol class="waf-steps">
@@ -528,8 +611,8 @@
       `<button class="choice chain-card" data-card="${c.id}"><strong>${esc(c.name)}</strong><small>${esc(c.mitre)} · ${esc(c.tactic)}</small></button>`).join("");
     const failStep = result && result.steps.find((x) => !x.ok);
     show(`<section class="step">
-      ${backBar("All lessons")}
-      <div><p class="eyebrow">Combination</p><h1>Build the attack.</h1></div>
+      ${backBar("Red lessons")}
+      <div><p class="eyebrow">Red · combination</p><h1>Build the attack.</h1></div>
       <div class="panel coach"><p class="coach-label">Goal</p><p>${esc(ch.goal)}</p></div>
       <div class="panel"><h3>Your chain</h3><div class="chain-slots">${slots}</div>
         ${failStep ? `<p class="intel-note" style="color:var(--red)">${esc(failStep.reason)}</p>` : ""}
@@ -543,7 +626,7 @@
       S.chain.order.push(el.dataset.card); drawChain(ch, null, true);
     }));
     document.getElementById("chain-reset").addEventListener("click", () => { S.chain.order = []; drawChain(ch, null, true); });
-    wireBack(renderLearn);
+    wireBack(renderLearnRed);
     document.getElementById("chain-check")?.addEventListener("click", () => {
       const r = api("check_chain", ch.id, JSON.stringify(S.chain.order));
       const profile = JSON.parse(r.profile_json);
@@ -552,21 +635,21 @@
     });
   }
 
-  function renderLesson(id) {
+  function renderLesson(kind, id) {
     setGauges(null);
-    const l = api("lesson", id);
-    S.lesson = { id, attackChoice: null };
+    const l = kind === "blue" ? api("blue_lesson", id) : api("lesson", id);
+    const back = kind === "blue" ? renderLearnBlue : renderLearnRed;
+    S.lesson = { id, kind, attackChoice: null };
     const opts = (items, group) => items.map((o) => `<button class="choice learn-opt" data-pick="${group}" data-id="${esc(o.id)}">${esc(o.label)}</button>`).join("");
     show(`<section class="step">
-      ${backBar("All lessons")}
-      <div><p class="eyebrow">${esc(l.mitre)} · ${esc(l.tactic)}</p><h1>${esc(l.name)}</h1></div>
+      ${backBar(kind === "blue" ? "Blue lessons" : "Red lessons")}
+      <div><p class="eyebrow">${kind === "blue" ? "Blue" : "Red"} · ${esc(l.eyebrow)}</p><h1>${esc(l.name)}</h1></div>
       <div class="panel coach"><p class="coach-label">Coach</p><p>${esc(l.teach)}</p>
-        <div class="prereq"><span class="prereq-item"><em>Needs first</em>${esc(l.needs)}</span><span class="prereq-arrow">→</span><span class="prereq-item"><em>Gives you</em>${esc(l.gives)}</span></div>
         ${l.intel_only ? '<p class="intel-note">On its own this is just intelligence — it does not break anything. It sets up the steps that do.</p>' : ""}</div>
-      <div class="panel" id="step-attack"><h3>1 · As the attacker</h3><p>${esc(l.attack_prompt)}</p>
-        <div class="choices">${opts(l.attack_options, "attack")}</div></div>
-      <div class="panel" id="step-defense" hidden><h3>2 · As the defender</h3><p>${esc(l.defense_prompt)}</p>
-        <div class="choices">${opts(l.defense_options, "defense")}</div></div>
+      <div class="panel" id="step-attack"><h3>${esc(l.step1.title)}</h3><p>${esc(l.step1.prompt)}</p>
+        <div class="choices">${opts(l.step1.options, "attack")}</div></div>
+      <div class="panel" id="step-defense" hidden><h3>${esc(l.step2.title)}</h3><p>${esc(l.step2.prompt)}</p>
+        <div class="choices">${opts(l.step2.options, "defense")}</div></div>
       <div id="lesson-result"></div>
     </section>`);
     app.querySelectorAll('[data-pick="attack"]').forEach((el) => el.addEventListener("click", () => {
@@ -578,13 +661,14 @@
     app.querySelectorAll('[data-pick="defense"]').forEach((el) => el.addEventListener("click", () => {
       if (!S.lesson.attackChoice) return;
       app.querySelectorAll('[data-pick="defense"]').forEach((b) => b.classList.toggle("selected", b === el));
-      finishLesson(id, S.lesson.attackChoice, el.dataset.id);
+      finishLesson(kind, id, S.lesson.attackChoice, el.dataset.id);
     }));
-    wireBack(renderLearn);
+    wireBack(back);
   }
 
-  function finishLesson(id, attackChoice, defenseChoice) {
-    const r = api("learn_check", id, attackChoice, defenseChoice);
+  function finishLesson(kind, id, attackChoice, defenseChoice) {
+    const back = kind === "blue" ? renderLearnBlue : renderLearnRed;
+    const r = api("learn_check", kind, id, attackChoice, defenseChoice);
     const profile = JSON.parse(r.profile_json);
     store.set(PROFILE_KEY, profile);
     saveProgress(profile);
@@ -592,17 +676,17 @@
     const next = r.summary.lessons.find((x) => !x.done);
     document.getElementById("lesson-result").innerHTML = `<div class="panel coach ${r.passed ? "pass" : "retry"}">
       <p class="coach-label">Coach</p>
-      <p>${mark(r.attack_ok)} ${esc(r.attack_note)}</p>
-      <p>${mark(r.defense_ok)} ${esc(r.defense_note)}</p>
+      <p>${mark(r.ok1)} ${esc(r.note1)}</p>
+      <p>${mark(r.ok2)} ${esc(r.note2)}</p>
       <p class="learn-count">${r.summary.done}/${r.summary.total} learned</p>
       <div class="btn-row">${r.passed
-        ? (next ? `<button class="btn" id="lesson-next">Next technique</button>` : `<button class="btn" id="lesson-next">Finish</button>`)
+        ? (next ? `<button class="btn" id="lesson-next">Next ${kind === "blue" ? "defense" : "technique"}</button>` : `<button class="btn" id="lesson-next">Finish</button>`)
         : `<button class="btn" id="lesson-retry">Try again</button>`}
         <button class="btn ghost" id="lesson-list">All lessons</button></div></div>`;
     document.getElementById("lesson-result").scrollIntoView({ behavior: "smooth", block: "center" });
-    document.getElementById("lesson-next")?.addEventListener("click", () => next ? renderLesson(next.id) : renderLearn());
-    document.getElementById("lesson-retry")?.addEventListener("click", () => renderLesson(id));
-    document.getElementById("lesson-list").addEventListener("click", renderLearn);
+    document.getElementById("lesson-next")?.addEventListener("click", () => next ? renderLesson(kind, next.id) : back());
+    document.getElementById("lesson-retry")?.addEventListener("click", () => renderLesson(kind, id));
+    document.getElementById("lesson-list").addEventListener("click", back);
   }
 
   function startGame() {

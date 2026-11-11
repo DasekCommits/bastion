@@ -85,11 +85,38 @@ class Session:
     def lesson(self, attack_id: str) -> str:
         return json.dumps(learning.lesson(self.catalog, attack_id, self.profile.learned))
 
-    def learn_check(self, attack_id: str, attack_choice: str, defense_choice: str) -> str:
-        result = learning.check(self.catalog, attack_id, attack_choice, defense_choice)
-        if result["passed"] and attack_id not in self.profile.learned:
-            self.profile.learned.append(attack_id)
-        result["summary"] = learning.summary(self.catalog, self.profile.learned)
+    def learn_hub(self) -> str:
+        learned = self.profile.learned
+        return json.dumps({"red": {"techniques": learning.summary(self.catalog, learned),
+                                   "chains": learning.chains_summary(learned)},
+                           "blue": {"defenses": learning.blue_summary(self.catalog, learned),
+                                    "guards": learning.guards_summary(self.catalog, learned)}})
+
+    def blue_lesson(self, defense_id: str) -> str:
+        return json.dumps(learning.blue_lesson(self.catalog, defense_id, self.profile.learned))
+
+    def guard(self, chain_id: str) -> str:
+        return json.dumps(learning.guard(self.catalog, chain_id, self.profile.learned))
+
+    def check_guard(self, chain_id: str, picked_json: str) -> str:
+        result = learning.check_guard(self.catalog, chain_id, json.loads(picked_json))
+        tag = "guard:" + chain_id
+        if result["passed"] and tag not in self.profile.learned:
+            self.profile.learned.append(tag)
+        result["profile_json"] = json.dumps(self._profile())
+        return json.dumps(result)
+
+    def learn_check(self, kind: str, item_id: str, choice1: str, choice2: str) -> str:
+        if kind == "blue":
+            result = learning.blue_check(self.catalog, item_id, choice1, choice2)
+            tag = "blue:" + item_id
+        else:
+            result = learning.check(self.catalog, item_id, choice1, choice2)
+            tag = item_id
+        if result["passed"] and tag not in self.profile.learned:
+            self.profile.learned.append(tag)
+        summary = (learning.blue_summary if kind == "blue" else learning.summary)(self.catalog, self.profile.learned)
+        result["summary"] = summary
         result["profile_json"] = json.dumps(self._profile())
         return json.dumps(result)
 

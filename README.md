@@ -96,7 +96,7 @@ A fourth difficulty, **Realism**, and a fourth company, **Directorate-7**, are c
 
 ## Tutorial
 
-A coached lesson for each of the 22 techniques, in kill-chain order: first spot the attack among decoys, then pick the control that best stops it, with the real MITRE ID and block rate explained. Each lesson shows what a technique needs first and what it opens up, and a Combinations section asks you to order techniques into an attack that actually gets through, checked with the engine's own prerequisite rules.
+Three tracks. **Red**: a coached lesson for each of the 22 techniques, in kill-chain order: first spot the technique among decoys, then say what it needs before it can work, with the real MITRE ID and the defense that answers it explained. A Combinations section asks you to order techniques into an attack that actually gets through, checked with the engine's own prerequisite rules (16 chains). **Blue**: a lesson for each of the 25 defenses (what it is for, and whether it stops, spots or helps you recover), then 16 puzzles where you stop a real attack chain within a budget by blocking one step and watching another. **WAF Lab**: see below.
 
 ## Fair play
 
@@ -168,6 +168,8 @@ Bastion never attacks real systems. The network is simulated, and the WAF Lab pa
 - [x] Achievements shown on [dasek.dev](https://dasek.dev)
 - [x] A smarter computer attacker on Hard
 - [x] WAF Lab in the browser, inside the Tutorial
+- [x] Learning in three tracks: Red (22 techniques, 16 attack chains), Blue (25 defenses, 16 defend-the-chain puzzles) and the WAF Lab
+- [ ] Shop: earn Red and Blue coins from your points and spend them on new attacks and defenses (more MITRE ATT&CK techniques), on top of a default set every player has
 
 Guests can play without an account; their progress stays in the browser (or `~/.bastion` in the terminal).
 
