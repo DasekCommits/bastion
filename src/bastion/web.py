@@ -6,6 +6,7 @@ from bastion.catalog import load_catalog, load_edge
 from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, PlanError
+from bastion import learning
 from bastion.realism.game import RealismGame
 from bastion.realism.spl import QueryError
 from bastion.realism.terminal import VERBS, help_lines, resolve
@@ -72,7 +73,21 @@ class Session:
 
     def _profile(self) -> dict:
         return {"points": self.profile.points, "games": self.profile.games, "wins": self.profile.wins,
-                "secrets": self.profile.secrets}
+                "secrets": self.profile.secrets, "learned": self.profile.learned}
+
+    def learn(self) -> str:
+        return json.dumps(learning.summary(self.catalog, self.profile.learned))
+
+    def lesson(self, attack_id: str) -> str:
+        return json.dumps(learning.lesson(self.catalog, attack_id, self.profile.learned))
+
+    def learn_check(self, attack_id: str, attack_choice: str, defense_choice: str) -> str:
+        result = learning.check(self.catalog, attack_id, attack_choice, defense_choice)
+        if result["passed"] and attack_id not in self.profile.learned:
+            self.profile.learned.append(attack_id)
+        result["summary"] = learning.summary(self.catalog, self.profile.learned)
+        result["profile_json"] = json.dumps(self._profile())
+        return json.dumps(result)
 
     def start(self, company_id: str, level: str, side: str, seed: int | None = None) -> str:
         self.rng = random.Random(seed)

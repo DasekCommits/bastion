@@ -26,7 +26,8 @@ foreach (['secrets' => 'ALTER TABLE users ADD COLUMN secrets TEXT NULL AFTER win
           'realism_red' => 'ALTER TABLE users ADD COLUMN realism_red INT UNSIGNED NOT NULL DEFAULT 0',
           'realism_blue' => 'ALTER TABLE users ADD COLUMN realism_blue INT UNSIGNED NOT NULL DEFAULT 0',
           'realism_red_secs' => 'ALTER TABLE users ADD COLUMN realism_red_secs INT UNSIGNED NOT NULL DEFAULT 0',
-          'realism_blue_secs' => 'ALTER TABLE users ADD COLUMN realism_blue_secs INT UNSIGNED NOT NULL DEFAULT 0'] as $col => $sql) {
+          'realism_blue_secs' => 'ALTER TABLE users ADD COLUMN realism_blue_secs INT UNSIGNED NOT NULL DEFAULT 0',
+          'learned' => 'ALTER TABLE users ADD COLUMN learned TEXT NULL'] as $col => $sql) {
     if (!db()->query("SHOW COLUMNS FROM users LIKE '$col'")->fetchAll()) {
         db()->exec($sql);
     }

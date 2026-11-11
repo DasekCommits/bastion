@@ -199,6 +199,7 @@
     setGauges(null);
     const menu = api("menu");
     const p = menu.profile;
+    const learn = api("learn");
     const NAMES = { small: "Olive Byte", medium: "Harbor Clinic", large: "Meridian Bank" };
     const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
     if (S.settings.level && S.settings.level !== "realism" && menu.levels[S.settings.level]) S.settings.level = null;
@@ -239,6 +240,12 @@
         <div><p class="eyebrow">New game</p><h1>Pick your fight.</h1>${saveNote ? `<p class="muted" style="margin:8px 0 0;font-size:14px">${esc(saveNote)}</p>` : ""}</div>
         <p class="profile-line">${p.points} points · ${p.games} games · wins: ${esc(wins)}${menu.goal ? `<br>${esc(menu.goal)}` : ""}</p>
       </div>
+      <button class="learn-banner" id="to-learn">
+        <div class="learn-banner-top"><div><p class="eyebrow">New to this? Start here</p><strong>Learn to play — attack and defend, one technique at a time</strong></div>
+          <span class="learn-count">${learn.done}/${learn.total} learned</span></div>
+        <div class="bar"><span style="width:${Math.round((learn.done / learn.total) * 100)}%"></span></div>
+        <small>${learn.done === learn.total ? "You've learned every technique. Nice." : `${learn.total - learn.done} to go — a coach walks you through each one.`}</small>
+      </button>
       <div class="settings">
         <div class="setting"><h3>Difficulty</h3><div class="choices">${LEVELS.map((l) => card("level", l)).join("")}
           ${menu.realism ? card("level", REALISM, "", "classified-open") : `<button class="choice classified" disabled><span class="tag">classified</span><strong>████████</strong>
@@ -258,6 +265,80 @@
     }));
     document.getElementById("go").addEventListener("click", startGame);
     document.getElementById("to-board")?.addEventListener("click", renderLeaderboard);
+    document.getElementById("to-learn")?.addEventListener("click", renderLearn);
+  }
+
+  function renderLearn() {
+    setGauges(null);
+    const s = api("learn");
+    const pct = Math.round((s.done / s.total) * 100);
+    const lessons = s.lessons.map((l, i) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
+      <span class="num">${String(i + 1).padStart(2, "0")}</span>
+      <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.mitre)} · ${esc(l.tactic)}</small></span>
+      <span class="lesson-mark">${l.done ? "✓ learned" : "learn →"}</span></button>`).join("");
+    show(`<section class="step">
+      <div><p class="eyebrow">Learning mode</p><h1>Learn to play.</h1>
+      <p class="muted">A short lesson per technique: first spot the attack, then pick the control that stops it. Based on real MITRE ATT&CK techniques.</p></div>
+      <div class="panel">
+        <div class="learn-banner-top"><strong>Your progress</strong><span class="learn-count">${s.done}/${s.total} learned</span></div>
+        <div class="bar big"><span style="width:${pct}%"></span></div>
+      </div>
+      <div class="lesson-list">${lessons}</div>
+      <div class="btn-row"><button class="btn" id="learn-back">Back to menu</button></div>
+    </section>`);
+    app.querySelectorAll("[data-lesson]").forEach((el) => el.addEventListener("click", () => renderLesson(el.dataset.lesson)));
+    document.getElementById("learn-back").addEventListener("click", renderMenu);
+  }
+
+  function renderLesson(id) {
+    setGauges(null);
+    const l = api("lesson", id);
+    S.lesson = { id, attackChoice: null };
+    const opts = (items, group) => items.map((o) => `<button class="choice learn-opt" data-pick="${group}" data-id="${esc(o.id)}">${esc(o.label)}</button>`).join("");
+    show(`<section class="step">
+      <div><p class="eyebrow">${esc(l.mitre)} · ${esc(l.tactic)}</p><h1>${esc(l.name)}</h1></div>
+      <div class="panel coach"><p class="coach-label">Coach</p><p>${esc(l.teach)}</p></div>
+      <div class="panel" id="step-attack"><h3>1 · As the attacker</h3><p>${esc(l.attack_prompt)}</p>
+        <div class="choices">${opts(l.attack_options, "attack")}</div></div>
+      <div class="panel" id="step-defense" hidden><h3>2 · As the defender</h3><p>${esc(l.defense_prompt)}</p>
+        <div class="choices">${opts(l.defense_options, "defense")}</div></div>
+      <div id="lesson-result"></div>
+      <div class="btn-row"><button class="btn ghost" id="lesson-back">All lessons</button></div>
+    </section>`);
+    app.querySelectorAll('[data-pick="attack"]').forEach((el) => el.addEventListener("click", () => {
+      S.lesson.attackChoice = el.dataset.id;
+      app.querySelectorAll('[data-pick="attack"]').forEach((b) => b.classList.toggle("selected", b === el));
+      const d = document.getElementById("step-defense");
+      d.hidden = false; d.scrollIntoView({ behavior: "smooth", block: "center" });
+    }));
+    app.querySelectorAll('[data-pick="defense"]').forEach((el) => el.addEventListener("click", () => {
+      if (!S.lesson.attackChoice) return;
+      app.querySelectorAll('[data-pick="defense"]').forEach((b) => b.classList.toggle("selected", b === el));
+      finishLesson(id, S.lesson.attackChoice, el.dataset.id);
+    }));
+    document.getElementById("lesson-back").addEventListener("click", renderLearn);
+  }
+
+  function finishLesson(id, attackChoice, defenseChoice) {
+    const r = api("learn_check", id, attackChoice, defenseChoice);
+    const profile = JSON.parse(r.profile_json);
+    store.set(PROFILE_KEY, profile);
+    saveProgress(profile);
+    const mark = (ok) => ok ? '<span class="tick good">✓</span>' : '<span class="tick bad">✗</span>';
+    const next = r.summary.lessons.find((x) => !x.done);
+    document.getElementById("lesson-result").innerHTML = `<div class="panel coach ${r.passed ? "pass" : "retry"}">
+      <p class="coach-label">Coach</p>
+      <p>${mark(r.attack_ok)} ${esc(r.attack_note)}</p>
+      <p>${mark(r.defense_ok)} ${esc(r.defense_note)}</p>
+      <p class="learn-count">${r.summary.done}/${r.summary.total} learned</p>
+      <div class="btn-row">${r.passed
+        ? (next ? `<button class="btn" id="lesson-next">Next technique</button>` : `<button class="btn" id="lesson-next">Finish</button>`)
+        : `<button class="btn" id="lesson-retry">Try again</button>`}
+        <button class="btn ghost" id="lesson-list">All lessons</button></div></div>`;
+    document.getElementById("lesson-result").scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById("lesson-next")?.addEventListener("click", () => next ? renderLesson(next.id) : renderLearn());
+    document.getElementById("lesson-retry")?.addEventListener("click", () => renderLesson(id));
+    document.getElementById("lesson-list").addEventListener("click", renderLearn);
   }
 
   function startGame() {
