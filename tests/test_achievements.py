@@ -14,8 +14,8 @@ def game(tier="small", level="hard", side="red", won=True, earned=()):
     return {"tier": tier, "level": level, "side": side, "won": won, "earned": list(earned)}
 
 
-def test_there_are_ten_and_five_are_classified():
-    assert len(achievements.ACHIEVEMENTS) == 10
+def test_there_are_fourteen_and_five_are_classified():
+    assert len(achievements.ACHIEVEMENTS) == 14
     assert sum(1 for a in achievements.ACHIEVEMENTS if a.secret) == 5
 
 
@@ -82,3 +82,12 @@ def test_referee_rejects_a_game_that_used_items_not_bought():
     from bastion import shop
     assert ok[1] and ok[3]
     assert ok[2] == all(shop.is_free(i) for i in picked)
+
+
+def test_collector_needs_every_shop_item():
+    from bastion import shop
+    from bastion.catalog import load_catalog
+    catalog = load_catalog()
+    everything = [i["id"] for i in shop.items(catalog, []) if not i["free"]]
+    assert achievements.collector(everything, catalog)
+    assert not achievements.collector(everything[1:], catalog)

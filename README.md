@@ -112,7 +112,7 @@ You start with a small kit: port scan, phishing, password brute force and data t
 
 ## Achievements
 
-Ten, and all of them hard: for example **Ghost** (win as Red on the bank, on Hard, without a single move spotted) or **Iron Streak** (seven Hard wins in a row). Five are classified and stay redacted until you unlock the content they belong to. Only the referee awards them, from games it has replayed itself.
+Fourteen, and all of them hard: for example **Ghost** (win as Red on the bank, on Hard, without a single move spotted) or **Iron Streak** (seven Hard wins in a row). Five are classified and stay redacted until you unlock the content they belong to. Four belong to the shop and the new techniques, such as **Bare Hands** (win on Hard with only the starter kit) and **Collector** (own the whole shop). Only the referee awards them, from games it has replayed itself.
 
 ## WAF Lab
 
@@ -167,7 +167,7 @@ Bastion never attacks real systems. The network is simulated, and the WAF Lab pa
 - [x] Tutorial with lessons and attack chains
 - [x] Sign in with GitHub, progress saved to your account, Realism leaderboard
 - [x] Server-side dice and a referee that replays every game
-- [x] Ten achievements, awarded by the referee
+- [x] Fourteen achievements, awarded by the referee
 - [x] CI with tests and an automatic balance check
 - [x] Achievements shown on [dasek.dev](https://dasek.dev)
 - [x] A smarter computer attacker on Hard

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from bastion import scoring
+from bastion import scoring, shop
 from bastion.clearance import SEALED_ID
 
 STREAK_GOAL = 7
@@ -26,6 +26,14 @@ ACHIEVEMENTS = (
                 "Win as Blue on Hard using at most half of your budget."),
     Achievement("iron-streak", "Iron Streak",
                 f"Win {STREAK_GOAL} games in a row on the hardest difficulties, either side."),
+    Achievement("bare-hands", "Bare Hands",
+                "Win on Hard using only the starter kit, either side."),
+    Achievement("golden-hour", "Golden Hour",
+                "As Red on Hard, forge a Golden Ticket without a single move being spotted, and win."),
+    Achievement("no-way-back", "No Way Back",
+                "As Red on Hard, delete a machine's backups, then ransom that same machine."),
+    Achievement("collector", "Collector",
+                "Own everything in the shop."),
     Achievement("purple", "Purple",
                 "Win Directorate-7 on Hard as Red and as Blue.", secret="cleared"),
     Achievement("full-spectrum", "Full Spectrum",
@@ -69,7 +77,16 @@ def summary(session) -> dict:
     tier = session.company.tier
     earned = []
     if won and _hard(session):
+        picks = session.arsenal if side == "red" else session.defense_ids
+        if picks and all(shop.is_free(i) for i in picks):
+            earned.append("bare-hands")
         if side == "red":
+            forged = any(r.attack.id == "golden-ticket" and r.succeeded for r in c.results)
+            if forged and _unseen(c):
+                earned.append("golden-hour")
+            wiped = {r.step.target_id for r in c.results if r.attack.id == "inhibit-recovery" and r.succeeded}
+            if any(r.attack.id == "ransomware" and r.points and r.step.target_id in wiped for r in c.results):
+                earned.append("no-way-back")
             if tier == "large" and _unseen(c):
                 earned.append("ghost")
             loot_days = [r.step.day for r in c.results if r.points > 0]
@@ -87,6 +104,10 @@ def summary(session) -> dict:
             if session.realism and c.caught and c.day <= 2 and c.disruption == 0:
                 earned.append("analyst")
     return {"tier": tier, "level": session.shown_level, "side": side, "won": won, "earned": earned}
+
+
+def collector(owned, catalog) -> bool:
+    return all(shop.owns(owned, i) for i in list(catalog.attacks) + list(catalog.defenses))
 
 
 def from_history(games: list[dict]) -> set[str]:

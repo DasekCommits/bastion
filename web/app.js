@@ -248,7 +248,7 @@
       if (me && me.signed_in) {
         S.user = me.user;
         const server = me.profile;
-        if (server.games === 0 && profile && profile.games > 0) {
+        if (!me.migrated && server.games === 0 && profile && profile.games > 0) {
           await saveProgress(profile);
           S.notice = `Signed in as ${me.user.login}. The progress from this browser is now saved to your account.`;
         } else {
@@ -306,7 +306,7 @@
         ${folder("tutorial", "✎", "Tutorial", "Red, Blue and WAF tracks.")}
         ${menu.realism ? folder("leaderboards", "☰", "Leaderboard", "The best players at every difficulty.") : folder("", "🔒", "Classified", "Opens when you find what is hidden.", "sealed")}
         ${folder("shop", "◈", "Shop", "Spend Red and Blue coins on new attacks and defenses.")}
-        ${folder("achievements", "★", "Achievements", "Ten feats. Few will see them all.")}
+        ${folder("achievements", "★", "Achievements", "Fourteen feats. Few will see them all.")}
         ${anyQuest ? folder("quests", "▤", "Classified", `${knownQuests.length} hidden objective${knownQuests.length > 1 ? "s" : ""} in play.`, "secret") : folder("quests", "▤", "Classified", "Some files are not on any inventory.", "sealed")}
       </nav>
       <p class="disclaimer">Bastion is a simulation for learning. The companies are fictional and no real company, network or system is ever attacked.</p>

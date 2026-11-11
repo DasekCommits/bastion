@@ -64,6 +64,13 @@ def referee(data: dict) -> dict:
             history.setdefault(str(game["user_id"]), []).append(summary)
         print(f"  game #{game['id']} user {game['user_id']}: {'OK' if ok else 'REJECTED'} - {why}")
     earned = {user: sorted(achievements.from_history(games)) for user, games in history.items()}
+    from bastion.catalog import load_catalog
+    catalog = load_catalog()
+    for game in data["games"]:
+        if game.get("owned") is not None and achievements.collector(game["owned"], catalog):
+            earned.setdefault(str(game["user_id"]), [])
+            if "collector" not in earned[str(game["user_id"])]:
+                earned[str(game["user_id"])].append("collector")
     return {"verdicts": verdicts, "achievements": earned}
 
 

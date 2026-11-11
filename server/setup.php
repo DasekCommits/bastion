@@ -76,7 +76,8 @@ db()->exec(
 
 foreach (['users' => ['achievements' => 'ALTER TABLE users ADD COLUMN achievements TEXT NULL',
                       'owned' => 'ALTER TABLE users ADD COLUMN owned TEXT NULL',
-                      'gifted' => 'ALTER TABLE users ADD COLUMN gifted TEXT NULL'],
+                      'gifted' => 'ALTER TABLE users ADD COLUMN gifted TEXT NULL',
+                      'migrated' => 'ALTER TABLE users ADD COLUMN migrated TINYINT NOT NULL DEFAULT 0'],
           'games' => ['summary' => 'ALTER TABLE games ADD COLUMN summary TEXT NULL',
                       'level' => 'ALTER TABLE games ADD COLUMN level VARCHAR(10) NULL',
                       'company' => 'ALTER TABLE games ADD COLUMN company VARCHAR(32) NULL',
@@ -87,5 +88,7 @@ foreach (['users' => ['achievements' => 'ALTER TABLE users ADD COLUMN achievemen
         }
     }
 }
+
+db()->exec('UPDATE users SET migrated = 1 WHERE games > 0');
 
 echo "Tables ready.\n";

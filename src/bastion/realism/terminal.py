@@ -21,6 +21,16 @@ VERBS = {
     "encrypt": "ransomware",
     "wipe": "destruction",
     "invoice": "bec",
+    "hijack": "session-hijack",
+    "aitm": "aitm-phishing",
+    "vish": "helpdesk-vishing",
+    "consent": "oauth-consent",
+    "remote": "rmm-abuse",
+    "dump": "lsass-dump",
+    "golden": "golden-ticket",
+    "upload": "cloud-exfil",
+    "tunnel": "dns-tunnel",
+    "nobackup": "inhibit-recovery",
 }
 
 HELP = [

@@ -18,6 +18,7 @@ if ($user === null) {
 send_json([
     'signed_in' => true,
     'user' => ['login' => $user['login'], 'avatar' => $user['avatar_url']],
+    'migrated' => (int) ($user['migrated'] ?? 0) === 1,
     'profile' => [
         'points' => (int) $user['points'],
         'games' => (int) $user['games'],

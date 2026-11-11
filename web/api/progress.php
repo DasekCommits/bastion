@@ -54,6 +54,6 @@ foreach ($learned as $name) {
     }
 }
 
-$stmt = db()->prepare('UPDATE users SET points = ?, games = ?, wins = ?, secrets = ?, learned = ? WHERE id = ?');
+$stmt = db()->prepare('UPDATE users SET points = ?, games = ?, wins = ?, secrets = ?, learned = ?, migrated = 1 WHERE id = ?');
 $stmt->execute([$points, $games, json_encode((object) $clean), json_encode((object) $cleanSecrets), json_encode(array_values($cleanLearned)), $user['id']]);
 send_json(['ok' => true]);
