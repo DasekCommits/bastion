@@ -77,6 +77,9 @@ class Company:
         return [employee for employee in self.employees if employee.is_admin]
 
 
+TRAITS = ("awareness", "password_hygiene", "loyalty")
+
+
 def roll_mistakes(company: Company, rng) -> Company:
     rolled = copy.deepcopy(company)
     if rolled.budget_range:
@@ -93,6 +96,11 @@ def roll_mistakes(company: Company, rng) -> Company:
         if rng.random() < employee.admin_chance:
             employee.is_admin = True
             break
+    for trait in TRAITS:
+        values = [getattr(e, trait) for e in rolled.employees]
+        rng.shuffle(values)
+        for employee, value in zip(rolled.employees, values):
+            setattr(employee, trait, value)
     return rolled
 
 

@@ -119,14 +119,32 @@ def test_blocking_an_outside_attempt_burns_it(company, catalog):
     assert not campaign.preview("phishing", "emily").possible
 
 
-def test_blue_has_limited_time(company, catalog):
+def test_blue_has_limited_time_but_reading_logs_is_free(company, catalog):
     campaign = active(company, catalog, [], ["phishing"])
+    campaign.blue("logs")
+    assert campaign.blue_moves_left == campaign.blue_moves_per_day
     for _ in range(campaign.blue_moves_per_day):
-        campaign.blue("logs")
+        campaign.blue("hunt", "web-01")
     with pytest.raises(PlanError):
-        campaign.blue("logs")
+        campaign.blue("hunt", "web-01")
+    campaign.blue("logs")
     campaign.end_day()
     assert campaign.blue_moves_left == campaign.blue_moves_per_day
+
+
+def test_a_same_day_grab_works_but_is_loud_and_logged(company, catalog):
+    campaign = active(company, catalog, [], ["exploit-web", "exfiltration"])
+    campaign.foothold.servers.add("web-01")
+    campaign.reached_on["web-01"] = campaign.day
+    quiet = Campaign(company, catalog, [], ["exfiltration"], seed=1, active_blue=True)
+    quiet.foothold.servers.add("web-01")
+    quiet.reached_on["web-01"] = 0
+    rushed, calm = campaign.preview("exfiltration", "web-01"), quiet.preview("exfiltration", "web-01")
+    assert rushed.possible and "Rushed" in rushed.note
+    assert rushed.heat_after > calm.heat_after
+    before = len(campaign.logs)
+    campaign.move("exfiltration", "web-01")
+    assert any(e.real and e.attack_id == "exfiltration" for e in campaign.logs[before:])
 
 
 def test_no_night_hunt_without_a_soc(company, catalog):

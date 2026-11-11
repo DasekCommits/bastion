@@ -180,11 +180,17 @@ def play_out(campaign: Campaign, red: RedAI, on_move=None, on_night=None) -> Cam
     return campaign
 
 
+# the computer analyst you face as Red: on easier levels it has less time per day (reading logs is free)
+OPPONENT_ACTIONS = {"easy": 1, "medium": 2, "hard": None}
+
+
 class BlueAI:
-    def __init__(self, knowledge: str, rng: random.Random | None = None):
+    def __init__(self, knowledge: str, rng: random.Random | None = None, actions_per_day: int | None = None):
         self.knowledge = knowledge
         self.rng = rng or random.Random(0)
         self.handled: set[int] = set()
+        self.actions_per_day = actions_per_day
+        self._spent = (0, 0)
         self.checked_after = -1
         self.hunted: set[str] = set()
 
@@ -211,8 +217,21 @@ class BlueAI:
     _FLOOR = {"easy": 0.55, "medium": 0.7, "hard": 0.85}
 
     def next_action(self, campaign: Campaign) -> tuple[str, str | int | None] | None:
-        if campaign.blue_moves_left <= 0 or campaign.finished:
+        if campaign.finished:
             return None
+        day, spent = self._spent
+        if day != campaign.day:
+            day, spent = campaign.day, 0
+        out_of_time = campaign.blue_moves_left <= 0 or (self.actions_per_day is not None and spent >= self.actions_per_day)
+        if out_of_time:
+            return ("logs", None) if campaign.unseen_logs() else None
+        step = self._decide(campaign)
+        if step and step[0] != "logs":
+            spent += 1
+        self._spent = (day, spent)
+        return step
+
+    def _decide(self, campaign: Campaign) -> tuple[str, str | int | None] | None:
         contain = self._contain(campaign)
         if contain:
             return contain

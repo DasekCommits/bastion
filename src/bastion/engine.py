@@ -19,6 +19,10 @@ FLOOR = 0.05
 CEILING = 0.95
 NEEDS_FOOTHOLD = ("privilege-escalation", "lateral-movement", "exfiltration", "impact")
 BLUE_ACTIONS = ("logs", "investigate", "reset", "isolate", "hunt", "block")
+FREE_BLUE_ACTIONS = ("logs",)
+REPORT_BASE = 0.5
+RUSH_HEAT = 0.25
+RUSH_NOTE = "Rushed: you only reached this machine today. It works, but it is loud and will show up in their logs."
 OUTSIDE_TACTICS = ("reconnaissance", "initial-access", "credential-access")
 
 
@@ -498,10 +502,6 @@ class Campaign:
             return Preview(False, "The Blue Team has isolated this machine. Nobody can reach it for now.", 0.0, 0.0, self.heat)
         if self.attacker_blocked and attack.tactic in OUTSIDE_TACTICS and self.foothold.is_empty():
             return Preview(False, "Your address is blocked at their firewall. Nothing from it gets through.", 0.0, 0.0, self.heat)
-        if self.active_blue and attack.tactic in ("exfiltration", "impact"):
-            reached = self.reached_on.get(target_id)
-            if reached is not None and reached >= self.day:
-                return Preview(False, "You only reached this machine today. Taking the data needs you to settle in first. Try tomorrow.", 0.0, 0.0, self.heat)
         possible, note = _is_possible(attack, target_id, self.company, self.foothold)
         if not possible:
             return Preview(False, note, 0.0, 0.0, self.heat)
@@ -519,10 +519,25 @@ class Campaign:
             note = "Already an administrator here, nothing to escalate."
         if chance < 1.0:
             chance = clamp(with_edge(chance, self.edge))
-        heat = min(1.0, self.heat + heat_gain(attack, self.defenses, self.used.get(attack.id, 0)))
+        gain = heat_gain(attack, self.defenses, self.used.get(attack.id, 0))
+        if attack.target == "employee":
+            # careful people report what looks odd, so working on them is noisier
+            gain *= REPORT_BASE + self.company.employee(target_id).awareness
+        heat = min(1.0, self.heat + gain)
         spotted = 1 - (1 - detect_chance(attack, self.defenses)) * (1 - heat)
         spotted = clamp(with_edge(spotted, 1 / self.edge))
+        if self.rushed(attack, target_id):
+            heat = min(1.0, heat + RUSH_HEAT)
+            spotted = CEILING
+            note = (f"{note} " if note else "") + RUSH_NOTE
         return Preview(True, note, chance, spotted, heat)
+
+    def rushed(self, attack: Attack, target_id: str) -> bool:
+        """Grabbing data or hitting a machine the same day you reached it: it works, but it is loud."""
+        if not self.active_blue or attack.tactic not in ("exfiltration", "impact"):
+            return False
+        reached = self.reached_on.get(target_id)
+        return reached is not None and reached >= self.day
 
     def move(self, attack_id: str, target_id: str) -> StepResult:
         if self.finished:
@@ -551,8 +566,9 @@ class Campaign:
         self.used[attack.id] = self.used.get(attack.id, 0) + 1
         succeeded = self.rng.random() < preview.success_chance
         if self.active_blue:
-            # a detection tool you own reliably records the attack; the challenge is finding it in the noise
-            detected = any(d.detects.get(attack.id, 0) > 0 for d in self.defenses)
+            # a detection tool you own reliably records the attack; the challenge is finding it in the noise.
+            # A rushed grab on a machine reached today is loud enough to show up even without one.
+            detected = any(d.detects.get(attack.id, 0) > 0 for d in self.defenses) or self.rushed(attack, target_id)
         else:
             detected = self.rng.random() < preview.detect_chance
         note = preview.note
@@ -686,11 +702,13 @@ class Campaign:
             raise PlanError("The campaign is over")
         if kind not in BLUE_ACTIONS:
             raise PlanError(f"Unknown Blue Team action '{kind}'")
-        if self.blue_moves_left <= 0:
+        free = kind in FREE_BLUE_ACTIONS
+        if self.blue_moves_left <= 0 and not free:
             raise PlanError("The Blue Team has no time left today")
         was_inside = not self.foothold.is_empty()
         action = getattr(self, f"_blue_{kind}")(target)
-        self.blue_moves_today += 1
+        if not free:
+            self.blue_moves_today += 1
         self.blue_actions.append(action)
         if was_inside and self.foothold.is_empty():
             self.kicked_out = True

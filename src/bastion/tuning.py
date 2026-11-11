@@ -37,7 +37,7 @@ def player_won(company, catalog, level: str, side: str, edge: float, seed: int, 
     defenses = ai.pick_defenses(rolled, catalog, rng)
     arsenal = ai.pick_arsenal(rolled, catalog, rng, expert=side == "blue" and level == "hard")
     if side == "red":
-        red, blue_ai = ai.RedAI(level), ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[level], random.Random(seed))
+        red, blue_ai = ai.RedAI(level), ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[level], random.Random(seed), ai.OPPONENT_ACTIONS[level])
     else:
         red = ai.RedAI(ai.RED_AI_KNOWLEDGE[level])
         blue_ai = _Passive() if blue == "passive" else ai.BlueAI(level, random.Random(seed))

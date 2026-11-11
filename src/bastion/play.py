@@ -113,7 +113,7 @@ class Game:
             raise ValueError(f"Side must be one of {SIDES}")
         self.rng = rng or random.Random()
         self.random_side = side == "random"
-        self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[difficulty], self.rng)
+        self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[difficulty], self.rng, ai.OPPONENT_ACTIONS.get(difficulty))
         self.side = self.rng.choice(("blue", "red")) if self.random_side else side
         self.company = plant_sealed_file(roll_mistakes(company, self.rng), difficulty)
         self.catalog = catalog

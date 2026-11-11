@@ -15,7 +15,7 @@
     session: null,
     settings: { level: null, side: null, company: null },
     watch: new Set(),
-    peopleFilter: { role: null, server: null, admin: false, starred: false, q: "" },
+    peopleFilter: { role: null, servers: [], admin: false, starred: false, q: "" },
     start: null,
     turn: null,
     attack: null,
@@ -163,27 +163,48 @@
     window.scrollTo({ top: keepScroll ? y : 0 });
   }
 
-  // choose which connections the network map draws
+  // choose which connections the network map draws: none, all, or the nodes matching search terms
   function redrawMaps() {
     app.querySelectorAll(".map-panel").forEach((el) => { el.innerHTML = mapInner(); });
   }
-  function setFocus(value) {
-    if (!S.map || !S.start) return;
-    const v = value.trim().toLowerCase();
-    if (v === "none" || v === "all" || v === "") S.map.focus = v || "none";
-    else {
-      const c = S.start.company;
-      const node = c.people.find((p) => p.name.toLowerCase() === v) || c.servers.find((s) => s.name.toLowerCase() === v || s.id.toLowerCase() === v);
-      S.map.focus = node ? node.id : S.map.focus;
-    }
-    redrawMaps();
+  function resolveTerms(terms) {
+    const c = S.start.company, ids = new Set();
+    terms.forEach((t) => {
+      c.people.forEach((p) => { if ((p.name + " " + p.role).toLowerCase().includes(t)) ids.add(p.id); });
+      c.servers.forEach((sv) => { if ((sv.name + " " + sv.id).toLowerCase().includes(t)) ids.add(sv.id); });
+    });
+    return ids;
   }
+  function addTerms(raw) {
+    const terms = raw.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+    if (!terms.length) return;
+    S.map.terms = [...new Set([...(S.map.terms || []), ...terms])];
+    S.map.focus = "some";
+    redrawMaps();
+    app.querySelector(".map-focus")?.focus();
+  }
+  app.addEventListener("keydown", (e) => {
+    if (!e.target.classList.contains("map-focus")) return;
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTerms(e.target.value); }
+    if (e.key === "Backspace" && !e.target.value && S.map.terms && S.map.terms.length) {
+      S.map.terms = S.map.terms.slice(0, -1);
+      if (!S.map.terms.length) S.map.focus = "none";
+      redrawMaps();
+      app.querySelector(".map-focus")?.focus();
+    }
+  });
   app.addEventListener("change", (e) => {
-    if (e.target.closest(".map-focus")) setFocus(e.target.value);
+    if (e.target.classList.contains("map-focus") && e.target.value) addTerms(e.target.value);
   });
   app.addEventListener("click", (e) => {
     const chip = e.target.closest("[data-focus]");
-    if (chip) setFocus(chip.dataset.focus);
+    if (chip) { S.map.focus = chip.dataset.focus; S.map.terms = []; redrawMaps(); return; }
+    const term = e.target.closest("[data-term]");
+    if (term) {
+      S.map.terms = (S.map.terms || []).filter((t) => t !== term.dataset.term);
+      if (!S.map.terms.length) S.map.focus = "none";
+      redrawMaps();
+    }
   });
 
   // live filter: an <input class="row-filter" data-rows=".selector"> hides rows whose data-search misses the query
@@ -201,7 +222,7 @@
     const count = box.parentElement.querySelector(".row-count");
     if (count) {
       const total = app.querySelectorAll(box.dataset.rows).length;
-      count.textContent = q ? `${shown} shown` : (collapse ? `${total} people — search to list them` : "");
+      count.textContent = q ? `${shown} shown` : (collapse ? `${total} people. Search to list them` : "");
     }
   });
 
@@ -261,33 +282,33 @@
     setGauges(null);
     const menu = api("menu");
     const p = menu.profile;
-    const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
     const knownQuests = menu.quests.filter((q) => q.known);
     const anyQuest = knownQuests.length > 0;
     const notice = S.notice ? `<p class="notice" role="status">${esc(S.notice)}</p>` : "";
     S.notice = "";
-    const saveNote = S.user ? "Progress saved to your GitHub account." : S.accounts ? "Progress saved in this browser — sign in to keep it everywhere." : "";
     const row = (id, num, title, desc, meta, cls = "") => `<button class="nav-row ${cls}" data-nav="${id}">
       <span class="nav-text"><strong>${title}</strong><small>${desc}</small></span>
       <span class="nav-meta">${meta || ""}</span><span class="nav-arrow">→</span></button>`;
     show(`<section class="step home" id="home">
       ${notice}
       <header class="hero">
-        <p class="eyebrow">Purple-team cyber range</p>
         <h1 class="wordmark">BASTION</h1>
-        <p class="hero-sub">Attack a company or defend it. Every move maps to a real technique — nothing here touches a real system.</p>
-        <p class="profile-line">${p.points} points · ${p.games} games · wins: ${esc(wins)}${saveNote ? `<br>${esc(saveNote)}` : ""}</p>
+        <p class="hero-sub">Attack a company or defend it. Every move maps to a real technique.</p>
       </header>
       <nav class="nav-rows">
         ${row("play", "01", "Play", "Choose a side, a target and a difficulty, then go.", "")}
         ${row("tutorial", "02", "Tutorial", "Red, Blue and WAF tracks: techniques, defenses and how to combine them.", "")}
-        ${row("leaderboards", "03", "Leaderboards", "Realism high scores, Red and Blue.", "")}
+        ${menu.realism
+          ? row("leaderboards", "03", "Leaderboard", "The best Red and Blue players, ranked.", "")
+          : `<button class="nav-row nav-classified locked sealed" type="button" aria-disabled="true">
+             <span class="nav-text"><strong>█████████</strong><small>Classified. Opens when you find what is hidden.</small></span><span class="nav-arrow">🔒</span></button>`}
         ${row("achievements", "04", "Achievements", "Ten feats. Few players will see them all.", "")}
         ${anyQuest
           ? row("quests", "", "Classified", `${knownQuests.length} classified objective${knownQuests.length > 1 ? "s" : ""} in play.`, "")
           : `<button class="nav-row nav-classified locked" data-nav="quests">
              <span class="nav-text"><strong>█████████</strong><small>Some files are not on any inventory.</small></span><span class="nav-arrow">→</span></button>`}
       </nav>
+      <p class="disclaimer">Bastion is a simulation for learning. The companies are fictional and no real company, network or system is ever attacked.</p>
     </section>`);
     app.querySelectorAll("[data-nav]").forEach((el) => el.addEventListener("click", () => {
       const to = el.dataset.nav;
@@ -302,18 +323,15 @@
   function renderAchievements() {
     setGauges(null);
     const list = api("achievements");
-    const done = list.filter((a) => a.done).length;
     const cards = list.map((a) => `<div class="feat ${a.done ? "done" : ""} ${a.classified ? "classified" : ""}">
       <span class="feat-mark">${a.done ? "★" : a.classified ? "▓" : "☆"}</span>
       <span class="feat-text"><strong>${esc(a.name)}</strong><small>${esc(a.text)}</small></span>
       <span class="feat-state">${a.done ? "earned" : a.classified ? "classified" : "locked"}</span></div>`).join("");
-    const how = S.user
-      ? "Earned only in signed-in games, where the server rolls the dice. A referee replays every finished game and awards these on its own, usually within the hour."
-      : "Sign in with GitHub to earn these: they count only in games where the server rolls the dice and a referee replays the result.";
+    const how = S.user ? "" : "Sign in with GitHub to earn these.";
     show(`<section class="step">
       ${backBar("Home")}
-      <div><p class="eyebrow">${done} of ${list.length} earned</p><h1>Achievements.</h1>
-      <p class="muted">${esc(how)}</p></div>
+      <div><h1>Achievements.</h1>
+      ${how ? `<p class="muted">${esc(how)}</p>` : ""}</div>
       <div class="feats">${cards}</div>
     </section>`);
     wireBack(renderHome);
@@ -336,7 +354,7 @@
     }).join("");
     show(`<section class="step">
       ${backBar("Home")}
-      <div><p class="eyebrow">Hidden objectives</p><h1>Classified.</h1>
+      <div><h1>Classified.</h1>
       <p class="muted">You will not see a file until something in a game points you to it.</p></div>
       <div class="dossiers">${files}</div>
     </section>`);
@@ -357,15 +375,9 @@
     if (sel.level && sel.company && !levelAvailable(sel.level, sel.company)) sel.level = null;
 
     const step = S.play.step;
-    const crumb = (key, label, active, ok) => `<button class="crumb ${active ? "active" : ""} ${ok ? "ok" : ""}" data-step="${key}" ${ok || active ? "" : "disabled"}>${ok ? "✓ " : ""}${label}</button>`;
-    const crumbs = `<div class="crumbs">
-      ${crumb("side", sel.side ? capital(sel.side) : "Side", step === "side", !!sel.side)}<span class="crumb-sep">▸</span>
-      ${crumb("company", sel.company ? NAMES[menu.companies.find((c) => c.id === sel.company)?.tier] || "Map" : "Map", step === "company", !!sel.company)}<span class="crumb-sep">▸</span>
-      ${crumb("difficulty", sel.level ? capital(sel.level) : "Difficulty", step === "difficulty", !!sel.level)}</div>`;
-
     let body = "";
     if (step === "side") {
-      body = `<div><p class="eyebrow">Step 1 of 3</p><h1>Pick your side.</h1></div>
+      body = `<div><h1>Pick your side.</h1></div>
         <div class="choices play-reveal">${SIDES.map((s, i) => `<button class="choice ${s.cls || ""} ${sel.side === s.id ? "selected" : ""}" style="animation-delay:${i * 60}ms" data-pick="side" data-id="${s.id}">
           <strong>${esc(s.name)}</strong><small>${esc(s.text)}</small></button>`).join("")}</div>`;
     } else if (step === "company") {
@@ -376,7 +388,7 @@
           <span class="tag">${esc(c.tier)} · ${c.people} people</span><strong>${esc(c.name)}</strong>
           <small>${esc(locked ? `Locked: ${locked}` : c.description)}</small></button>`;
       }).join("");
-      body = `<div><p class="eyebrow">Step 2 of 3 · playing ${capital(sel.side)}</p><h1>Choose the target.</h1></div>
+      body = `<div><h1>Choose the target.</h1></div>
         <div class="choices play-reveal">${cards}</div>`;
     } else {
       const levelCard = (l, i) => {
@@ -388,7 +400,7 @@
       };
       const all = [...LEVELS, REALISM];
       const target = menu.companies.find((c) => c.id === sel.company);
-      body = `<div><p class="eyebrow">Step 3 of 3 · ${capital(sel.side)} vs ${esc(target ? target.name : "")}</p><h1>How hard?</h1></div>
+      body = `<div><h1>How hard?</h1></div>
         <div class="choices play-reveal">${all.map(levelCard).join("")}</div>
         ${sel.level ? `<div class="launch side-${esc(sel.side)}">
           <div class="launch-picks">
@@ -401,7 +413,7 @@
     }
     const prev = { side: ["Home", null], company: ["Change side", "side"], difficulty: ["Change the map", "company"] }[step];
     show(`<section class="step play-flow">
-      <div class="back-bar"><button class="back-btn" id="play-prev">← ${esc(prev[0])}</button>${crumbs}</div>
+      <div class="back-bar"><button class="back-btn" id="play-prev">← ${esc(prev[0])}</button></div>
       <div class="play-step">${body}</div>
     </section>`, keepScroll);
     app.querySelectorAll("[data-pick]").forEach((el) => el.addEventListener("click", () => {
@@ -412,7 +424,6 @@
       else if (group === "company") S.play.step = "difficulty";
       renderSetup(group === "level");  // keep scroll when picking a difficulty (same step reveals Start)
     }));
-    app.querySelectorAll("[data-step]").forEach((el) => el.addEventListener("click", () => { S.play.step = el.dataset.step; renderSetup(); }));
     const goPrev = () => { if (prev[1]) { S.play.step = prev[1]; renderSetup(); } else renderHome(); };
     document.getElementById("play-prev").addEventListener("click", goPrev);
     armBack(goPrev);
@@ -449,7 +460,7 @@
       <span class="bar"><span style="width:${total ? Math.round((done / total) * 100) : 0}%"></span></span></button>`;
     show(`<section class="step">
       ${backBar("Home")}
-      <div><p class="eyebrow">Learning mode</p><h1>Learn to play.</h1>
+      <div><h1>Learn to play.</h1>
       <p class="muted">Three tracks. Every lesson is built from the game's own rules and real MITRE ATT&CK techniques, so what you learn here is exactly how the game behaves.</p></div>
       <div class="learn-cats">
         ${cat("red", "red-cat", "Red · attack", `${hub.red.techniques.total} techniques, then ${hub.red.chains.total} combinations: chain them into an attack that gets through.`, red, redAll, "done")}
@@ -476,10 +487,10 @@
       <span class="lesson-mark">${ch.done ? "✓ solved" : "build →"}</span></button>`).join("");
     show(`<section class="step">
       ${backBar("Learning")}
-      <div><p class="eyebrow">Learning · Red</p><h1>Think like the attacker.</h1></div>
+      <div><h1>Think like the attacker.</h1></div>
       ${progressPanel("Techniques", s.done, s.total, "learned", "Spot each technique, then learn what it needs before it can work.")}
       <div class="lesson-list">${lessons}</div>
-      ${progressPanel("Combinations — chain them into an attack", c.done, c.total, "solved", "A technique rarely works alone. Order these into an attack that actually gets through; the engine checks it the way a real one would.")}
+      ${progressPanel("Combinations: chain them into an attack", c.done, c.total, "solved", "A technique rarely works alone. Order these into an attack that actually gets through; the engine checks it the way a real one would.")}
       <div class="lesson-list">${chains}</div>
     </section>`);
     app.querySelectorAll("[data-lesson]").forEach((el) => el.addEventListener("click", () => renderLesson("red", el.dataset.lesson)));
@@ -499,10 +510,10 @@
       <span class="lesson-mark">${ch.done ? "✓ stopped" : "defend →"}</span></button>`).join("");
     show(`<section class="step">
       ${backBar("Learning")}
-      <div><p class="eyebrow">Learning · Blue</p><h1>Think like the defender.</h1></div>
+      <div><h1>Think like the defender.</h1></div>
       ${progressPanel("Defenses", s.done, s.total, "learned", "What each control is for, and whether it stops an attack, spots it, or helps you recover.")}
       <div class="lesson-list">${lessons}</div>
-      ${progressPanel("Combinations — stop an attack chain", g.done, g.total, "stopped", "One control always fails sometimes. Within a budget, stop one step and watch another: defense in depth.")}
+      ${progressPanel("Combinations: stop an attack chain", g.done, g.total, "stopped", "One control always fails sometimes. Within a budget, stop one step and watch another: defense in depth.")}
       <div class="lesson-list">${guards}</div>
     </section>`);
     app.querySelectorAll("[data-lesson]").forEach((el) => el.addEventListener("click", () => renderLesson("blue", el.dataset.lesson)));
@@ -524,7 +535,7 @@
       <strong>${esc(o.name)}</strong><small>${esc(o.category)} · costs ${o.cost}</small></button>`).join("");
     show(`<section class="step">
       ${backBar("Blue lessons")}
-      <div><p class="eyebrow">Blue · combination</p><h1>Stop the attack.</h1></div>
+      <div><h1>Stop the attack.</h1></div>
       <div class="panel coach"><p class="coach-label">The attacker's plan</p><p>${esc(g.goal)}</p></div>
       <div class="panel"><h3>Their steps</h3><div class="chain-slots">${steps}</div>
         ${result ? `<p class="intel-note" style="color:var(${result.passed ? "--green" : "--red"})">${esc(result.note)}</p>` : ""}</div>
@@ -563,7 +574,7 @@
       <strong>${esc(i.title)}</strong><small>${esc(i.explain)}</small></button>`;
     show(`<section class="step waf-lab">
       ${backBar("Learning")}
-      <div><p class="eyebrow">WAF Lab · practice, no points</p><h1>Train the doorman.</h1></div>
+      <div><h1>Train the doorman.</h1></div>
       <details class="panel waf-intro" ${firstTime ? "open" : ""}><summary><strong>What is a WAF? (read this first)</strong></summary>
         <ol class="waf-steps">
           <li><strong>A normal login.</strong> You type a name and a password. The site asks its database:<code>find user maria AND password 1234</code></li>
@@ -635,7 +646,7 @@
       const card = aid ? ch.cards.find((c) => c.id === aid) : null;
       const stepRes = result && result.steps[i];
       const cls = stepRes ? (stepRes.ok ? "ok" : "bad") : (card ? "filled" : "");
-      return `<div class="chain-slot ${cls}"><span class="num">${i + 1}</span>${card ? `<span class="chain-card-name"><strong>${esc(card.name)}</strong><small>${esc(card.mitre)} · ${esc(card.tactic)}</small></span>` : '<span class="chain-empty">—</span>'}</div>`;
+      return `<div class="chain-slot ${cls}"><span class="num">${i + 1}</span>${card ? `<span class="chain-card-name"><strong>${esc(card.name)}</strong><small>${esc(card.mitre)} · ${esc(card.tactic)}</small></span>` : '<span class="chain-empty">empty</span>'}</div>`;
     }).join("");
     const used = new Set(picked);
     const pool = ch.cards.filter((c) => !used.has(c.id)).map((c) =>
@@ -643,7 +654,7 @@
     const failStep = result && result.steps.find((x) => !x.ok);
     show(`<section class="step">
       ${backBar("Red lessons")}
-      <div><p class="eyebrow">Red · combination</p><h1>Build the attack.</h1></div>
+      <div><h1>Build the attack.</h1></div>
       <div class="panel coach"><p class="coach-label">Goal</p><p>${esc(ch.goal)}</p></div>
       <div class="panel"><h3>Your chain</h3><div class="chain-slots">${slots}</div>
         ${failStep ? `<p class="intel-note" style="color:var(--red)">${esc(failStep.reason)}</p>` : ""}
@@ -651,7 +662,7 @@
         <div class="btn-row" style="margin-top:14px">
           <button class="btn" id="chain-check" ${picked.length === ch.length ? "" : "disabled"}>Check the chain</button>
           <button class="btn ghost" id="chain-reset">Clear</button></div></div>
-      ${pool ? `<div class="panel"><h3>Techniques — tap in order</h3><div class="choices">${pool}</div></div>` : ""}
+      ${pool ? `<div class="panel"><h3>Techniques: tap them in order</h3><div class="choices">${pool}</div></div>` : ""}
     </section>`, keepScroll);
     app.querySelectorAll("[data-card]").forEach((el) => el.addEventListener("click", () => {
       S.chain.order.push(el.dataset.card); drawChain(ch, null, true);
@@ -676,7 +687,7 @@
       ${backBar(kind === "blue" ? "Blue lessons" : "Red lessons")}
       <div><p class="eyebrow">${kind === "blue" ? "Blue" : "Red"} · ${esc(l.eyebrow)}</p><h1>${esc(l.name)}</h1></div>
       <div class="panel coach"><p class="coach-label">Coach</p><p>${esc(l.teach)}</p>
-        ${l.intel_only ? '<p class="intel-note">On its own this is just intelligence — it does not break anything. It sets up the steps that do.</p>' : ""}</div>
+        ${l.intel_only ? '<p class="intel-note">On its own this is just intelligence. It does not break anything. It sets up the steps that do.</p>' : ""}</div>
       <div class="panel" id="step-attack"><h3>${esc(l.step1.title)}</h3><p>${esc(l.step1.prompt)}</p>
         <div class="choices">${opts(l.step1.options, "attack")}</div></div>
       <div class="panel" id="step-defense" hidden><h3>${esc(l.step2.title)}</h3><p>${esc(l.step2.prompt)}</p>
@@ -724,7 +735,7 @@
     const { company, level, side } = S.settings;
     S.transcript = [];
     S.watch = new Set();
-    S.peopleFilter = { role: null, server: null, admin: false, starred: false, q: "" };
+    S.peopleFilter = { role: null, servers: [], admin: false, starred: false, q: "" };
     S.rec = true;
     if (!(history.state && history.state.bastion)) history.pushState({ bastion: 1 }, "");
     S.dice = S.user ? { game: null, n: 0 } : null;  // signed in: the server rolls the dice
@@ -734,7 +745,7 @@
     S.startedAt = Date.now();
     S.turn = null;
     S.attack = null;
-    S.map = { owned: new Set(), admin: new Set(), scanned: new Set(), taken: new Set(), targets: new Set(), ping: null, focus: S.start.company.people.length > 14 ? "none" : "all" };
+    S.map = { owned: new Set(), admin: new Set(), scanned: new Set(), taken: new Set(), targets: new Set(), ping: null, terms: [], focus: S.start.company.people.length > 14 ? "none" : "all" };
     S.targetSort = undefined;
     if (S.start.side === "red") renderArsenal();
     else renderDefenses();
@@ -745,51 +756,68 @@
   }
 
   const BIG_ORG = 30;
-  function filterActive(f) { return !!(f.role || f.server || f.admin || f.starred || f.q); }
-  function personVisible(p, company) {
-    const f = S.peopleFilter;
-    if (!filterActive(f)) return company.people.length <= BIG_ORG || S.watch.has(p.id);
+  function filterActive(f) { return !!(f.role || f.servers.length || f.admin || f.starred || f.q); }
+  function matches(p, f) {
     if (f.role && p.role !== f.role) return false;
-    if (f.server && !p.access.includes(f.server)) return false;
+    if (f.servers.some((sv) => !p.access.includes(sv))) return false;
     if (f.admin && p.admin !== "yes") return false;
     if (f.starred && !S.watch.has(p.id)) return false;
     if (f.q && !(p.name + " " + p.role).toLowerCase().includes(f.q)) return false;
     return true;
   }
+  function personVisible(p, company) {
+    const f = S.peopleFilter;
+    if (!filterActive(f)) return company.people.length <= BIG_ORG || S.watch.has(p.id);
+    return matches(p, f);
+  }
+  // each chip shows how many people you would see if you picked it, given the other filters
+  function peopleChipsHtml(company) {
+    const f = S.peopleFilter;
+    const count = (g) => company.people.filter((p) => matches(p, g)).length;
+    const roles = [...new Set(company.people.map((p) => p.role))].sort();
+    const servers = company.servers.map((sv) => sv.id).filter((id) => company.people.some((p) => p.access.includes(id)));
+    const chip = (kind, value, label, n, on, dim) => `<button class="chip pf-chip ${on ? "on" : ""} ${dim ? "dim" : ""}" data-pf="${kind}" data-v="${esc(value)}" aria-pressed="${on}">${esc(label)} <span class="chip-n">${n}</span>${on ? '<span class="chip-x" aria-hidden="true">×</span>' : ""}</button>`;
+    const roleChips = roles.map((r) => {
+      const n = count({ ...f, role: r });
+      return chip("role", r, r, n, f.role === r, (f.role && f.role !== r) || !n);
+    }).join("");
+    const serverChips = servers.map((sv) => {
+      const on = f.servers.includes(sv);
+      const n = count({ ...f, servers: on ? f.servers : [...f.servers, sv] });
+      return chip("server", sv, sv, n, on, !on && !n);
+    }).join("");
+    const admins = count({ ...f, admin: true });
+    const shown = count(f);
+    const summary = filterActive(f)
+      ? `<span><b>${shown}</b> of ${company.people.length} people</span><button class="linkish" data-pf="clear" data-v="1">clear all</button>`
+      : company.people.length > BIG_ORG
+        ? `<span>${company.people.length} people. Pick a role, servers or Admins to list them${S.watch.size ? `. Your ★ future targets are shown below` : ""}.</span>`
+        : `<span>${company.people.length} people</span>`;
+    return `<div class="pf-group"><span class="pf-label">Role <small>pick one</small></span><div class="pf-chips">${roleChips}</div></div>
+      <div class="pf-group"><span class="pf-label">Can log in to <small>pick any</small></span><div class="pf-chips">${serverChips}</div></div>
+      <div class="pf-group"><span class="pf-label">Show</span><div class="pf-chips">
+        ${chip("admin", "1", "Admins", admins, f.admin, !f.admin && !admins)}
+        <button class="chip pf-chip star-chip ${f.starred ? "on" : ""}" data-pf="starred" data-v="1" aria-pressed="${f.starred}">★ Future targets <span class="chip-n">${S.watch.size}</span></button></div></div>
+      <div class="pf-summary">${summary}</div>`;
+  }
   function applyPeopleFilter() {
     const company = S.start && S.start.company;
     if (!company) return;
-    const f = S.peopleFilter;
-    let shown = 0;
     app.querySelectorAll("#people-tbl tbody tr[data-pid]").forEach((row) => {
       const person = company.people.find((x) => x.id === row.dataset.pid);
-      const vis = person ? personVisible(person, company) : true;
-      row.hidden = !vis;
-      if (vis) shown += 1;
+      row.hidden = person ? !personVisible(person, company) : false;
     });
-    app.querySelectorAll("[data-pf]").forEach((b) => {
-      const k = b.dataset.pf;
-      if (k === "clear") return;
-      b.classList.toggle("on", k === "admin" || k === "starred" ? !!f[k] : f[k] === b.dataset.v);
-    });
-    const hint = document.getElementById("pf-hint");
-    if (hint) {
-      hint.textContent = filterActive(f)
-        ? `${shown} of ${company.people.length} shown`
-        : company.people.length > BIG_ORG
-          ? `${company.people.length} people. Pick a role, a server or Admins to list them${S.watch.size ? ` — your ${S.watch.size} future target${S.watch.size > 1 ? "s are" : " is"} shown below` : ""}.`
-          : "";
-    }
-    const n = document.getElementById("watch-n");
-    if (n) n.textContent = S.watch.size;
+    const box = document.getElementById("pf-chips");
+    if (box) box.innerHTML = peopleChipsHtml(company);
   }
   app.addEventListener("click", (e) => {
     const pf = e.target.closest("[data-pf]");
     if (pf) {
       const f = S.peopleFilter, k = pf.dataset.pf, v = pf.dataset.v;
-      if (k === "clear") { Object.assign(f, { role: null, server: null, admin: false, starred: false, q: "" }); const q = app.querySelector(".people-q"); if (q) q.value = ""; }
+      if (k === "clear") { Object.assign(f, { role: null, servers: [], admin: false, starred: false, q: "" }); const q = app.querySelector(".people-q"); if (q) q.value = ""; }
       else if (k === "admin" || k === "starred") f[k] = !f[k];
-      else f[k] = f[k] === v ? null : v;
+      else if (k === "server") f.servers = f.servers.includes(v) ? f.servers.filter((x) => x !== v) : [...f.servers, v];
+      else f.role = f.role === v ? null : v;
       applyPeopleFilter();
       return;
     }
@@ -800,7 +828,7 @@
       if (S.watch.has(id)) S.watch.delete(id); else S.watch.add(id);
       app.querySelectorAll(`[data-star="${CSS.escape(id)}"]`).forEach((b) => { b.classList.toggle("on", S.watch.has(id)); b.textContent = S.watch.has(id) ? "★" : "☆"; });
       applyPeopleFilter();
-      app.querySelectorAll(".map-panel").forEach((el) => { el.innerHTML = mapInner(); });
+      if (S.map) app.querySelectorAll(".map-panel").forEach((el) => { el.innerHTML = mapInner(); });
     }
   });
   app.addEventListener("input", (e) => {
@@ -823,19 +851,9 @@
       ${hasLoyalty ? `<td>${word(p.loyalty)}</td>` : ""}</tr>`).join("");
     let peopleSearch = "";
     if (company.people.length > 12) {
-      const count = (pred) => company.people.filter(pred).length;
-      const roles = [...new Set(company.people.map((p) => p.role))].sort();
-      const servers = company.servers.map((s) => s.id).filter((id) => company.people.some((p) => p.access.includes(id)));
-      const chip = (kind, value, label, n) => `<button class="chip ${f[kind] === value ? "on" : ""}" data-pf="${kind}" data-v="${esc(value)}">${esc(label)}${n !== undefined ? ` <span class="chip-n">${n}</span>` : ""}</button>`;
       peopleSearch = `<div class="people-filters">
-        <div class="pf-row"><span class="pf-label">Role</span>${roles.map((r) => chip("role", r, r, count((p) => p.role === r))).join("")}</div>
-        <div class="pf-row"><span class="pf-label">Can log in to</span>${servers.map((s) => chip("server", s, s, count((p) => p.access.includes(s)))).join("")}</div>
-        <div class="pf-row"><span class="pf-label">Show</span>
-          <button class="chip ${f.admin ? "on" : ""}" data-pf="admin" data-v="1">Admins</button>
-          <button class="chip star-chip ${f.starred ? "on" : ""}" data-pf="starred" data-v="1">★ Future targets <span class="chip-n" id="watch-n">${S.watch.size}</span></button>
-          <input class="people-q" placeholder="or type a name…" value="${esc(f.q)}">
-          <button class="linkish" data-pf="clear" data-v="1">clear filters</button></div>
-        <p class="pf-hint muted" id="pf-hint"></p>
+        <input class="people-q" placeholder="Search a name or role…" value="${esc(f.q)}">
+        <div id="pf-chips">${peopleChipsHtml(company)}</div>
       </div>`;
     }
     const data = company.data.length ? `<div class="panel"><h3>Valuable data</h3><table class="sheet"><tr><th>What</th><th>Where</th><th class="num">Value</th></tr>
@@ -855,9 +873,18 @@
 
   function renderPicker({ eyebrow, title, intro, options, budget, range, doneLabel, needOne, onDone, color }) {
     const chosen = new Set();
+    const ORDER = ["Recon", "Get in", "Passwords", "Escalate", "Move", "Steal & damage",
+      "People & email", "Accounts", "Servers & network", "Monitoring", "Recovery"];
+    const groups = [...new Set(options.map((o) => o.group || "All"))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+    let tab = groups[0];
+    let drawn = false;
     const draw = () => {
       const spent = options.filter((o) => chosen.has(o.id)).reduce((sum, o) => sum + o.cost, 0);
-      const list = options.map((o) => {
+      const picked = (g) => options.filter((o) => (g === "*" || o.group === g) && chosen.has(o.id)).length;
+      const tabs = groups.length > 1 ? `<div class="pick-tabs" role="tablist">
+        ${groups.map((g) => `<button class="pick-tab ${tab === g ? "on" : ""}" role="tab" aria-selected="${tab === g}" data-tab="${esc(g)}">${esc(g)}${picked(g) ? ` <span class="pick-n">${picked(g)}</span>` : ""}</button>`).join("")}
+        <button class="pick-tab ${tab === "*" ? "on" : ""}" role="tab" aria-selected="${tab === "*"}" data-tab="*">All${picked("*") ? ` <span class="pick-n">${picked("*")}</span>` : ""}</button></div>` : "";
+      const list = options.filter((o) => groups.length < 2 || tab === "*" || o.group === tab).map((o) => {
         const on = chosen.has(o.id);
         const meta = [o.category, o.mitre && `${o.mitre} ${o.tactic}`].filter(Boolean).join(" · ");
         return `<button class="option ${on ? "on" : ""}" data-id="${o.id}" aria-pressed="${on}">
@@ -877,9 +904,12 @@
           <button class="btn" id="done">${esc(doneLabel)}</button>
         </div>
         <p class="warn" id="warn" role="alert"></p>
-        <div class="options">${list}</div>
-      </section>`);
+        ${tabs}
+        <div class="options pick-grid">${list}</div>
+      </section>`, drawn);
+      drawn = true;
       wireBack(backToSetup);
+      app.querySelectorAll("[data-tab]").forEach((el) => el.addEventListener("click", () => { tab = el.dataset.tab; draw(); }));
       applyPeopleFilter();
       app.querySelectorAll(".option").forEach((el) => el.addEventListener("click", () => {
         const option = options.find((o) => o.id === el.dataset.id);
@@ -942,66 +972,101 @@
     });
   }
 
+  const BIG_MAP = 20;
+  function wrap(text, max) {
+    const words = String(text).split(" "), lines = [""];
+    words.forEach((w) => {
+      const cur = lines[lines.length - 1];
+      if (cur && (cur + " " + w).length > max) lines.push(w); else lines[lines.length - 1] = cur ? cur + " " + w : w;
+    });
+    return lines.slice(0, 2);
+  }
+  const tspans = (lines, x, y, cls) => `<text class="${cls}" x="${x}" y="${y}" text-anchor="middle">${lines.map((l, i) => `<tspan x="${x}" dy="${i ? 12 : 0}">${esc(l)}</tspan>`).join("")}</text>`;
+
+  function mapPeople() {
+    const c = S.start.company, m = S.map;
+    if (c.people.length <= BIG_MAP) return c.people;
+    const wanted = m.focus === "some" ? resolveTerms(m.terms) : new Set();
+    return c.people.filter((p) => S.watch.has(p.id) || m.owned.has(p.id) || m.admin.has(p.id) || wanted.has(p.id));
+  }
+
   function mapSvg() {
     const c = S.start.company;
     const W = 760;
-    const exposed = c.servers.filter((s) => s.exposed);
-    const inside = c.servers.filter((s) => !s.exposed);
-    const perRow = 10;
-    const peopleRows = [];
-    for (let i = 0; i < c.people.length; i += perRow) peopleRows.push(c.people.slice(i, i + perRow));
-    const pos = {};
-    const spread = (items, y) => items.forEach((item, i) => { pos[item.id] = { x: 70 + ((W - 100) * (i + 0.5)) / items.length, y }; });
-    spread(exposed, 60);
-    spread(inside, 160);
-    peopleRows.forEach((row, r) => spread(row, 275 + r * 82));
-    const H = 275 + peopleRows.length * 82;
     const m = S.map;
-    const focus = m.focus;
-    const edges = c.people.flatMap((p) => p.access.filter((id) => pos[id]).map((id) => {
-      if (focus === "none") return "";
-      if (focus && focus !== "all" && focus !== p.id && focus !== id) return "";
+    const exposed = c.servers.filter((sv) => sv.exposed);
+    const inside = c.servers.filter((sv) => !sv.exposed);
+    const shown = mapPeople();
+    const shownIds = new Set(shown.map((p) => p.id));
+    const perRow = 8;
+    const rows = [];
+    for (let i = 0; i < shown.length; i += perRow) rows.push(shown.slice(i, i + perRow));
+    const pos = {};
+    const spread = (items, y) => items.forEach((item, i) => { pos[item.id] = { x: 80 + ((W - 100) * (i + 0.5)) / items.length, y }; });
+    spread(exposed, 60);
+    spread(inside, 170);
+    rows.forEach((row, r) => spread(row, 300 + r * 96));
+    const H = 300 + Math.max(1, rows.length) * 96;
+    const lit = m.focus === "some" ? resolveTerms(m.terms) : null;
+    const edgeOn = (p, id) => m.focus === "all" || (lit && (lit.has(p.id) || lit.has(id)));
+    const edges = shown.flatMap((p) => p.access.filter((id) => pos[id]).map((id) => {
+      if (!edgeOn(p, id)) return "";
       const a = pos[p.id], b = pos[id];
-      const hot = m.owned.has(p.id);
-      return `<line class="edge ${hot ? "hot" : ""} ${focus && focus !== "all" ? "lit" : ""}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+      return `<line class="edge ${m.owned.has(p.id) ? "hot" : ""} ${lit ? "lit" : ""}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
     })).join("");
-    const state = (id) => [m.admin.has(id) ? "admin" : m.owned.has(id) ? "owned" : "", m.targets.has(id) ? "target" : "", m.isolated && m.isolated.has(id) ? "isolated" : ""].join(" ");
+    const state = (id) => [m.admin.has(id) ? "admin" : m.owned.has(id) ? "owned" : "", m.targets.has(id) ? "target" : "", m.isolated && m.isolated.has(id) ? "isolated" : "", lit && lit.has(id) ? "lit" : ""].join(" ");
     const extras = (id, p) => `${m.scanned.has(id) ? `<circle class="scan-ring" cx="${p.x}" cy="${p.y}" r="19"/>` : ""}
       ${m.taken.has(id) ? `<text class="taken" x="${p.x + 15}" y="${p.y - 12}">TAKEN</text>` : ""}
       ${m.ping === id ? `<circle class="ping" cx="${p.x}" cy="${p.y}" r="14"/>` : ""}`;
-    const servers = c.servers.map((s) => {
-      const p = pos[s.id];
-      return `<g data-id="${s.id}" class="${m.targets.has(s.id) ? "clickable" : ""}">
-        <rect class="node ${state(s.id)}" x="${p.x - 12}" y="${p.y - 12}" width="24" height="24" rx="3"/>${extras(s.id, p)}
-        <text class="label" x="${p.x}" y="${p.y + 28}" text-anchor="middle">${esc(s.name)}</text></g>`;
+    const servers = c.servers.map((sv) => {
+      const p = pos[sv.id];
+      const hidden = lit && lit.has(sv.id) ? c.people.filter((x) => x.access.includes(sv.id) && !shownIds.has(x.id)).length : 0;
+      return `<g data-id="${sv.id}" class="${m.targets.has(sv.id) ? "clickable" : ""}">
+        <rect class="node ${state(sv.id)}" x="${p.x - 12}" y="${p.y - 12}" width="24" height="24" rx="3"/>${extras(sv.id, p)}
+        ${tspans(wrap(sv.name, 14), p.x, p.y + 28, "label")}
+        ${hidden ? `<text class="sub" x="${p.x}" y="${p.y + 54}" text-anchor="middle">+${hidden} can log in</text>` : ""}</g>`;
     }).join("");
-    const people = c.people.map((person) => {
+    const people = shown.map((person) => {
       const p = pos[person.id];
       return `<g data-id="${person.id}" class="${m.targets.has(person.id) ? "clickable" : ""}">
         <circle class="node ${state(person.id)}" cx="${p.x}" cy="${p.y}" r="11"/>${extras(person.id, p)}
         ${S.watch.has(person.id) ? `<text class="watch-star" x="${p.x - 17}" y="${p.y - 9}" text-anchor="middle">★</text>` : ""}
-        <text class="label" x="${p.x}" y="${p.y + 26}" text-anchor="middle">${esc(person.name)}</text>
-        <text class="sub" x="${p.x}" y="${p.y + 39}" text-anchor="middle">${esc(person.role.split(" ").slice(-1)[0])}</text></g>`;
+        ${tspans(wrap(person.name, 12), p.x, p.y + 26, "label")}
+        <text class="sub" x="${p.x}" y="${p.y + (wrap(person.name, 12).length > 1 ? 52 : 40)}" text-anchor="middle">${esc(person.role.split(" ").slice(-1)[0])}</text></g>`;
     }).join("");
+    const left = c.people.length - shown.length;
+    const empty = shown.length ? "" : `<text class="sub" x="${W / 2}" y="300" text-anchor="middle">Star people (☆) in the company file, or search above, to show them here.</text>`;
+    const more = left > 0 && shown.length ? `<text class="sub" x="${W - 10}" y="${H - 14}" text-anchor="end">+${left} more people not shown</text>` : "";
     return `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="Network map of ${esc(c.name)}">
-      <text class="zone" x="6" y="64">Internet</text><text class="zone" x="6" y="164">Inside</text><text class="zone" x="6" y="279">People</text>
-      ${edges}${servers}${people}</svg>`;
+      <text class="zone" x="6" y="64">Internet</text><text class="zone" x="6" y="174">Inside</text><text class="zone" x="6" y="304">People</text>
+      ${edges}${servers}${people}${empty}${more}</svg>`;
   }
 
   function mapInner() {
     const c = S.start.company;
-    const f = S.map.focus;
-    const opt = (v, label) => `<option value="${esc(v)}" ${f === v ? "selected" : ""}>${esc(label)}</option>`;
-    const current = f === "none" || f === "all" ? f
-      : (c.people.find((p) => p.id === f)?.name || c.servers.find((s) => s.id === f)?.name || "");
+    const m = S.map;
+    const terms = m.terms || [];
+    const roles = [...new Set(c.people.map((p) => p.role))];
     const control = c.people.length > 14
-      ? `<div class="filterbar"><label>Connections for: <input class="map-focus" list="focus-list" value="${esc(current)}" placeholder="type a name or machine…" autocomplete="off"></label>
-          <button class="chip ${f === "none" ? "on" : ""}" data-focus="none">none</button>
-          <button class="chip ${f === "all" ? "on" : ""}" data-focus="all">all</button>
-          <datalist id="focus-list">${c.servers.map((s) => `<option value="${esc(s.name)}">`).join("")}${c.people.map((p) => `<option value="${esc(p.name)}">`).join("")}</datalist></div>`
+      ? `<div class="map-search">
+          <div class="map-search-box">
+            ${terms.map((t) => `<button class="term" data-term="${esc(t)}">${esc(t)} <span aria-hidden="true">×</span></button>`).join("")}
+            <input class="map-focus" list="focus-list" placeholder="${terms.length ? "add another…" : "Connections for… a name, role or server, then Enter"}" autocomplete="off">
+          </div>
+          <button class="chip ${m.focus === "none" ? "on" : ""}" data-focus="none">none</button>
+          <button class="chip ${m.focus === "all" ? "on" : ""}" data-focus="all">all</button>
+          <datalist id="focus-list">${c.servers.map((sv) => `<option value="${esc(sv.name)}">`).join("")}${roles.map((r) => `<option value="${esc(r)}">`).join("")}${c.people.map((p) => `<option value="${esc(p.name)}">`).join("")}</datalist></div>`
       : "";
     return `${control}${mapSvg()}
       <div class="legend"><span><i></i>untouched</span><span><i class="owned"></i>attacker inside</span><span><i class="admin"></i>attacker is admin</span><span><i class="scan"></i>scanned</span></div>`;
+  }
+
+  app.addEventListener("toggle", (e) => {
+    if (e.target.classList && e.target.classList.contains("company-file")) S.fileOpen = e.target.open;
+  }, true);
+  function companyFile() {
+    return `<details class="panel company-file" ${S.fileOpen ? "open" : ""}><summary><strong>Company file</strong><span class="muted">people, servers and data · star people to put them on the map</span></summary>
+      ${briefHtml(S.start.company)}</details>`;
   }
 
   function mapPanel() {
@@ -1075,9 +1140,9 @@
         reachable.sort((a, b) => key(a) - key(b));
       }
       const ordered = hasOdds ? reachable.concat(targets.filter((x) => x.disabled)) : targets;
-      const bigList = targets.length > 30;  // too many to show at once — search to list them
+      const bigList = targets.length > 30;  // too many to show at once: search to list them
       const controls = targets.length > 10
-        ? `<div class="filterbar"><input class="row-filter" data-rows="#target-list .option"${bigList ? ' data-collapse="1"' : ""} placeholder="${bigList ? `Search ${targets.length} targets — name or role (e.g. admin)` : `Search ${targets.length} targets…`}"><span class="row-count muted">${bigList ? `${targets.length} targets — search to list them${S.watch.size ? " (★ future targets shown)" : ""}` : ""}</span>
+        ? `<div class="filterbar"><input class="row-filter" data-rows="#target-list .option"${bigList ? ' data-collapse="1"' : ""} placeholder="${bigList ? `Search ${targets.length} targets by name or role (e.g. admin)` : `Search ${targets.length} targets…`}"><span class="row-count muted">${bigList ? `${targets.length} targets. Search to list them${S.watch.size ? " (★ future targets shown)" : ""}` : ""}</span>
             ${hasOdds ? `<span class="sorters">sort: <button class="chip ${S.targetSort === "success" ? "on" : ""}" data-sort="success">best chance</button><button class="chip ${S.targetSort === "spotted" ? "on" : ""}" data-sort="spotted">least spotted</button></span>` : ""}</div>`
         : "";
       side = `<div class="panel"><h3>${esc(attackName)}: pick a target</h3>${controls}<div class="options" id="target-list">
@@ -1103,7 +1168,7 @@
     const current = document.getElementById("log");
     const logHtml = log || (current ? current.innerHTML : "");
     show(`<section class="layout">
-      <div>${mapPanel()}</div>
+      <div>${mapPanel()}${companyFile()}</div>
       <div class="step">${side}
         <div class="panel"><h3>Log</h3><div class="log" id="log" aria-live="polite">${logHtml || '<p class="muted" style="margin:0">Nothing has happened yet. Find a way in.</p>'}</div></div>
       </div></section>`);
@@ -1170,7 +1235,7 @@
   }
 
   const BLUE_ACTIONS = [
-    { id: "logs", name: "See the logs", text: "Read what your tools recorded. Tools that nobody reads catch nobody." },
+    { id: "logs", name: "See the logs", text: "Free: read what your tools recorded. It costs no analyst time, but tools that nobody reads catch nobody." },
     { id: "investigate", name: "Investigate an alert", text: "Find out if an alert is a real attack or a false alarm." },
     { id: "reset", name: "Change a password", text: "If the attacker had this account, they lose it. If not, the employee loses some time." },
     { id: "isolate", name: "Isolate a machine", text: "Cut a machine off the network until the end of tomorrow. Stops the attacker there, but work stops too." },
@@ -1238,9 +1303,9 @@
       }
       if (pending !== "investigate" && pending !== "block") options.filter((o) => !o.disabled).forEach((o) => S.map.targets.add(o.id));
       const action = BLUE_ACTIONS.find((a) => a.id === pending);
-      const bigPick = options.length > 30;  // too many to show at once — search to list them
+      const bigPick = options.length > 30;  // too many to show at once: search to list them
       const pickControls = options.length > 10
-        ? `<div class="filterbar"><input class="row-filter" data-rows="#blue-pick .option"${bigPick ? ' data-collapse="1"' : ""} placeholder="${bigPick ? `Search ${options.length} — name or role (e.g. admin)` : `Search ${options.length}…`}"><span class="row-count muted">${bigPick ? `${options.length} — search to list them` : ""}</span></div>`
+        ? `<div class="filterbar"><input class="row-filter" data-rows="#blue-pick .option"${bigPick ? ' data-collapse="1"' : ""} placeholder="${bigPick ? `Search ${options.length} by name or role (e.g. admin)` : `Search ${options.length}…`}"><span class="row-count muted">${bigPick ? `${options.length}. Search to list them` : ""}</span></div>`
         : "";
       side = `<div class="panel"><h3>${esc(action.name)}: pick one</h3>${pickControls}<div class="options" id="blue-pick">
         ${options.map((o) => { const kept = S.watch.has(o.id); return `<button class="option${kept ? " watched" : ""}" data-blue-target="${esc(o.id)}" data-search="${esc((o.label + " " + (o.sub || "")).toLowerCase())}"${kept ? ' data-keep="1"' : ""} ${bigPick && !kept ? "hidden" : ""} ${o.disabled ? "disabled" : ""}><span></span><span><span class="name">${kept ? '<span class="star-mark">★</span>' : ""}${esc(o.label)}</span><span class="desc">${esc(o.disabled || o.sub)}</span></span><span></span></button>`; }).join("") || '<p class="muted">Nothing to pick yet.</p>'}
@@ -1257,7 +1322,7 @@
         </div><div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="wait">${st.phase === "day_end" ? "End the day" : "Let time pass"}</button></div></div>`;
     }
     show(`<section class="layout">
-      <div class="step">${mapPanel()}<div class="panel"><h3>Logs you have read</h3>${logsTable(st)}</div></div>
+      <div class="step">${mapPanel()}${companyFile()}<div class="panel"><h3>Logs you have read</h3>${logsTable(st)}</div></div>
       <div class="step">${side}
         <div class="panel"><h3>What happened</h3><div class="log" id="log" aria-live="polite">${S.blue.feed || '<p class="muted" style="margin:0">Your tools are recording. The attacker is out there.</p>'}</div></div>
       </div></section>`);
@@ -1519,13 +1584,13 @@
 
   async function renderLeaderboard() {
     setGauges(null);
-    show('<section class="step"><p class="eyebrow">Realism</p><h1>Leaderboard.</h1><p class="muted">Loading…</p></section>');
+    show('<section class="step"><h1>Leaderboard.</h1><p class="muted">Loading…</p></section>');
     let data;
     try {
       const r = await fetch("api/leaderboard.php", { credentials: "same-origin", cache: "no-store" });
       data = await r.json();
     } catch { data = { error: "The leaderboard is not available right now." }; }
-    const fmtTime = (s) => s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "—";
+    const fmtTime = (s) => s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "";
     const table = (side) => {
       const rows = (data.board && data.board[side]) || [];
       const body = rows.length
@@ -1537,7 +1602,7 @@
     };
     show(`<section class="step">
       ${backBar("Home")}
-      <div><p class="eyebrow">Realism · best score per player</p><h1>Leaderboard.</h1>
+      <div><h1>Leaderboard.</h1>
       ${S.user ? "" : '<p class="muted">Sign in with GitHub to appear here.</p>'}</div>
       ${data.error ? `<p class="why">${esc(data.error)}</p>` : `<div class="brief-grid">${table("red")}${table("blue")}</div>`}
     </section>`);

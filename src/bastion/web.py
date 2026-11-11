@@ -40,6 +40,28 @@ def trait_word(value: float) -> str:
     return "poor"
 
 
+ATTACK_GROUPS = {
+    "reconnaissance": "Recon", "initial-access": "Get in", "credential-access": "Passwords",
+    "privilege-escalation": "Escalate", "lateral-movement": "Move", "exfiltration": "Steal & damage",
+    "impact": "Steal & damage",
+}
+DEFENSE_GROUPS = {
+    "security-training": "People & email", "email-filter": "People & email", "macro-policy": "People & email",
+    "usb-control": "People & email", "payment-checks": "People & email",
+    "mfa": "Accounts", "rate-limiting": "Accounts", "banned-passwords": "Accounts", "fido2": "Accounts",
+    "conditional-access": "Accounts", "service-passwords": "Accounts", "laps": "Accounts",
+    "tiered-admin": "Accounts", "least-privilege": "Accounts",
+    "patching": "Servers & network", "waf": "Servers & network", "firewall": "Servers & network",
+    "segmentation": "Servers & network", "vendor-control": "Servers & network",
+    "edr": "Monitoring", "siem": "Monitoring", "soc": "Monitoring", "honeytokens": "Monitoring", "dlp": "Monitoring",
+    "backups": "Recovery",
+}
+
+
+def defense_group(defense) -> str:
+    return DEFENSE_GROUPS.get(defense.id, {"detect": "Monitoring", "recover": "Recovery"}.get(defense.category, "Servers & network"))
+
+
 class Session:
     def __init__(self, profile_json: str = ""):
         self.catalog = load_catalog()
@@ -208,7 +230,7 @@ class Session:
     def defense_options(self) -> str:
         options = []
         for d in self.catalog.defenses_for(self.company.tier):
-            item = {"id": d.id, "name": d.name, "cost": d.cost}
+            item = {"id": d.id, "name": d.name, "cost": d.cost, "group": defense_group(d)}
             if self.explain:
                 countered = sorted(set(d.blocks) | set(d.detects))
                 names = ", ".join(self.catalog.attacks[a].name for a in countered)
@@ -219,7 +241,7 @@ class Session:
     def attack_options(self) -> str:
         options = []
         for a in self.catalog.attacks_for(self.company.tier):
-            item = {"id": a.id, "name": a.name, "cost": a.cost}
+            item = {"id": a.id, "name": a.name, "cost": a.cost, "group": ATTACK_GROUPS.get(a.tactic, "Other")}
             if self.explain:
                 description = f"{a.description} Targets: {a.target}s."
                 if self.easy:
@@ -254,7 +276,7 @@ class Session:
         edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
         self.campaign = Campaign(self.company, self.catalog, self.defense_ids, self.arsenal, rng=self.rng, edge=edge,
                                  active_blue=True, egg_rng=random.Random(self.rng.random()))
-        self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[self.level], self.rng)
+        self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[self.level], self.rng, ai.OPPONENT_ACTIONS[self.level])
         if self.realism:
             self.real = RealismGame(self.campaign, self.rng)
         if self.side == "blue":
@@ -482,7 +504,8 @@ class Session:
         if kind == "investigate":
             self.verdicts[int(target)] = action.text
         outcome = {"kind": action.kind, "target": action.target, "text": action.text, "useful": action.useful}
-        self._after_blue_action()
+        if kind != "logs":
+            self._after_blue_action()
         return json.dumps({"action": outcome, "fresh": fresh, "state": json.loads(self.blue_state())})
 
     def blue_wait(self) -> str:

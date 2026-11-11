@@ -29,11 +29,11 @@ TACTIC_HUMAN = {
 def prereq(attack) -> dict:
     tactic, aid = attack.tactic, attack.id
     if aid == "bec":
-        return {"needs": "nothing technical — it is pure social engineering",
+        return {"needs": "nothing technical: it is pure social engineering",
                 "gives": "a fraudulent payment, if finance does not call back to check", "intel_only": False}
     if aid == "dcsync":
         return {"needs": "administrator rights on the domain controller",
-                "gives": "every account's password hash — the keys to the whole domain", "intel_only": False}
+                "gives": "every account's password hash, the keys to the whole domain", "intel_only": False}
     if aid == "pass-the-hash":
         return {"needs": "admin rights somewhere already, plus an internal target",
                 "gives": "access to another machine without ever knowing the password", "intel_only": False}
@@ -41,12 +41,12 @@ def prereq(attack) -> dict:
         return {"needs": "any logged-in account inside the network",
                 "gives": "a service account's password to crack offline", "intel_only": False}
     table = {
-        "reconnaissance": ("a server reachable from the internet", "a map of what is exposed — intel only, not a break-in", True),
+        "reconnaissance": ("a server reachable from the internet", "a map of what is exposed. Intel only, not a break-in", True),
         "initial-access": ("a reachable server or a person to trick", "your first foothold inside the company", False),
         "credential-access": ("a foothold inside the network", "more credentials and wider reach", False),
         "privilege-escalation": ("a foothold on that same machine", "administrator rights on it", False),
         "lateral-movement": ("a stolen account that can log in there", "a foothold on another machine", False),
-        "exfiltration": ("access to the machine holding the data", "the data out of the company — often the goal", False),
+        "exfiltration": ("access to the machine holding the data", "the data out of the company, often the goal", False),
         "impact": ("administrator rights on the target", "damage: files encrypted or wiped", False),
     }
     needs, gives, intel = table.get(tactic, ("a foothold first", "progress in the attack", False))
@@ -131,7 +131,7 @@ def check(catalog, attack_id: str, attack_choice: str, need_choice: str) -> dict
         "ok1": attack_ok,
         "ok2": need_ok,
         "passed": attack_ok and need_ok,
-        "note1": (f"Right — that is {a.name} ({a.mitre_id})."
+        "note1": (f"Right, that is {a.name} ({a.mitre_id})."
                   if attack_ok else f"Not quite. That was {a.name} ({a.mitre_id}): {a.description}"),
         "note2": (f"Right. {a.name} needs {needs['needs']}, and gives you {needs['gives']}." if need_ok
                   else f"Not that. {a.name} needs {needs['needs']}. It gives you {needs['gives']}.") + counter,
@@ -142,7 +142,7 @@ def check(catalog, attack_id: str, attack_choice: str, need_choice: str) -> dict
 # validated the way the engine would, by tracking a tiny foothold/admin state and
 # refusing a step whose prerequisite is not met yet.
 CHAINS = [
-    {"id": "smash-grab", "goal": "Break into an internet-facing web shop and steal its data — no insider, no email.",
+    {"id": "smash-grab", "goal": "Break into an internet-facing web shop and steal its data, with no insider and no email.",
      "steps": ["port-scan", "exploit-web", "exfiltration"]},
     {"id": "phish-to-ransom", "goal": "Start from a person and end by ransoming the machine you land on.",
      "steps": ["phishing", "privilege-escalation", "ransomware"]},
@@ -191,7 +191,7 @@ def _stage_step(aid, catalog, state):
         return True, ""
     if not state["foothold"] and (tactic in ("privilege-escalation", "lateral-movement", "exfiltration", "impact")
                                   or aid in ("kerberoasting", "dcsync", "pass-the-hash")):
-        return False, "The attacker has no way into the company yet — you need a foothold first."
+        return False, "The attacker has no way into the company yet. You need a foothold first."
     if tactic == "privilege-escalation":
         state["admin"] = True
         return True, ""
@@ -199,11 +199,11 @@ def _stage_step(aid, catalog, state):
         state["foothold"] = True
         return True, ""
     if aid == "dcsync" and not state["admin"]:
-        return False, "DCSync needs administrator rights on the domain controller — escalate first."
+        return False, "DCSync needs administrator rights on the domain controller. Escalate first."
     if aid == "pass-the-hash" and not state["admin"]:
         return False, "Pass-the-Hash needs admin rights somewhere first, to dump hashes from memory."
     if tactic == "impact" and not state["admin"]:
-        return False, "Encrypting a machine needs administrator rights on it — escalate first."
+        return False, "Encrypting a machine needs administrator rights on it. Escalate first."
     return True, ""
 
 
@@ -242,7 +242,7 @@ def check_chain(catalog, chain_id: str, submitted: list[str]) -> dict:
     if passed and len(steps) < len(c["steps"]):
         passed = False
     return {"passed": passed, "steps": steps,
-            "note": ("That chain works — each step sets up the next." if passed
+            "note": ("That chain works: each step sets up the next." if passed
                      else "That order does not work yet. Follow the reason and try again.")}
 
 
@@ -333,7 +333,7 @@ def blue_check(catalog, defense_id: str, attack_choice: str, mode_choice: str) -
     }[mode]
     return {
         "ok1": ok1, "ok2": ok2, "passed": ok1 and ok2,
-        "note1": f"Right — {d.name} is aimed at {best.name}." if ok1 else f"Not that one. {d.name} is aimed at {best.name}: {best.description}",
+        "note1": f"Right, {d.name} is aimed at {best.name}." if ok1 else f"Not that one. {d.name} is aimed at {best.name}: {best.description}",
         "note2": ("Right. " if ok2 else "Not quite. ") + explain,
     }
 
