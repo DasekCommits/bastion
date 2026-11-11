@@ -262,6 +262,7 @@
   function startGame() {
     const { company, level, side } = S.settings;
     S.start = api("start", company, level, side, Math.floor(Math.random() * 1e9));
+    S.startedAt = Date.now();
     S.turn = null;
     S.attack = null;
     S.map = { owned: new Set(), admin: new Set(), scanned: new Set(), taken: new Set(), targets: new Set(), ping: null, focus: S.start.company.people.length > 14 ? "none" : "all" };
@@ -916,9 +917,10 @@
     store.set(PROFILE_KEY, profile);
     saveProgress(profile);
     if (final.realism && final.realism_side && final.score && S.user) {
+      const seconds = S.startedAt ? Math.round((Date.now() - S.startedAt) / 1000) : 0;
       fetch("api/score.php", { method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-Bastion": "1" },
-        body: JSON.stringify({ side: final.realism_side, points: final.score.total }) }).catch(() => {});
+        body: JSON.stringify({ side: final.realism_side, points: final.score.total, seconds }) }).catch(() => {});
     }
     const r = final.result;
     const color = r.defense_score >= 70 ? "var(--green)" : r.defense_score >= 40 ? "var(--amber)" : "var(--red)";
@@ -961,14 +963,15 @@
       const r = await fetch("api/leaderboard.php", { credentials: "same-origin", cache: "no-store" });
       data = await r.json();
     } catch { data = { error: "The leaderboard is not available right now." }; }
+    const fmtTime = (s) => s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "—";
     const table = (side) => {
       const rows = (data.board && data.board[side]) || [];
       const body = rows.length
-        ? rows.map((e, i) => `<tr class="${data.me && data.me.login === e.login ? "mine" : ""}"><td class="num">${i + 1}</td><td>${e.avatar ? `<img src="${esc(e.avatar)}" alt="">` : ""}${esc(e.login)}</td><td class="num">${e.score}</td></tr>`).join("")
-        : '<tr><td colspan="3" class="muted">No scores yet. Be the first.</td></tr>';
-      const mine = data.me && data.me[side] ? `<p class="profile-line">Your best: ${data.me[side]}</p>` : "";
+        ? rows.map((e, i) => `<tr class="${data.me && data.me.login === e.login ? "mine" : ""}"><td class="num">${i + 1}</td><td>${e.avatar ? `<img src="${esc(e.avatar)}" alt="">` : ""}${esc(e.login)}</td><td class="num">${e.score}</td><td class="num">${fmtTime(e.secs)}</td></tr>`).join("")
+        : '<tr><td colspan="4" class="muted">No scores yet. Be the first.</td></tr>';
+      const mine = data.me && data.me[side] ? `<p class="profile-line">Your best: ${data.me[side]} · ${fmtTime(data.me[side + "_secs"])}</p>` : "";
       return `<div class="panel"><h3 class="${side}">${side === "red" ? "Red" : "Blue"} Team</h3>
-        <table class="sheet board-table"><thead><tr><th class="num">#</th><th>Player</th><th class="num">Best score</th></tr></thead><tbody>${body}</tbody></table>${mine}</div>`;
+        <table class="sheet board-table"><thead><tr><th class="num">#</th><th>Player</th><th class="num">Score</th><th class="num">Time</th></tr></thead><tbody>${body}</tbody></table>${mine}</div>`;
     };
     show(`<section class="step">
       <div><p class="eyebrow">Realism · best score per player</p><h1>Leaderboard.</h1>
