@@ -765,3 +765,28 @@ tr[hidden], .option[hidden] { display: none; }
 .play-flow .choice.selected.red-side { background: color-mix(in srgb, var(--red) 10%, var(--card)); border-left-color: var(--ink); }
 .play-flow .choice.selected.blue-side { background: color-mix(in srgb, var(--blue) 10%, var(--card)); border-left-color: var(--ink); }
 .play-flow .choice:disabled::after { opacity: .5; }
+
+/* Everything clickable is a file folder: a tab on top, a soft offset shadow */
+.choice, .option, .lesson-row, .learn-cat, .feat {
+  position: relative; overflow: visible;
+  border: 1px solid var(--ink); border-radius: 4px 12px 12px 12px;
+  box-shadow: 4px 4px 0 var(--paper-2);
+}
+.choice::after, .option::after, .lesson-row::after, .learn-cat::after, .feat::after {
+  content: ""; position: absolute; top: -10px; left: -1px; width: 72px; height: 10px;
+  border: 1px solid var(--ink); border-bottom: 0; border-radius: 6px 6px 0 0; background: inherit;
+}
+.choices, .options, .lesson-list, .feats, .learn-cats { gap: 22px 14px; padding-top: 10px; }
+.lesson-list { gap: 20px; }
+.option:disabled, .option:disabled::after { border-color: var(--line); }
+.option.on, .option.on::after { border-color: var(--ink); }
+.learn-cat { border-left-width: 1px; }
+.learn-cat.red-cat::after { background: var(--red); border-color: var(--red); }
+.learn-cat.blue-cat::after { background: var(--blue); border-color: var(--blue); }
+.learn-cat.waf-cat::after { background: var(--amber); border-color: var(--amber); }
+.lesson-row.done, .lesson-row.done::after { border-color: var(--green); }
+.feat.done::after { background: var(--red); border-color: var(--red); }
+.feat.classified::after { background: var(--paper-2); }
+.option.watched { border-left-width: 1px; }
+.option.watched::after { background: var(--red); border-color: var(--red); }
+.choice.classified::after, .choice:disabled::after { background: var(--paper-2); }
