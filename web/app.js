@@ -248,8 +248,6 @@
     setGauges(null);
     const menu = api("menu");
     const p = menu.profile;
-    const feats = api("achievements");
-    const featsDone = feats.filter((a) => a.done).length;
     const wins = Object.entries(p.wins).map(([k, n]) => { const [t, l] = k.split("/"); return `${NAMES[t] || t} ${l ? l[0].toUpperCase() + l.slice(1) : ""} ${n}`; }).join(", ") || "none yet";
     const knownQuests = menu.quests.filter((q) => q.known);
     const anyQuest = knownQuests.length > 0;
@@ -257,7 +255,6 @@
     S.notice = "";
     const saveNote = S.user ? "Progress saved to your GitHub account." : S.accounts ? "Progress saved in this browser — sign in to keep it everywhere." : "";
     const row = (id, num, title, desc, meta, cls = "") => `<button class="nav-row ${cls}" data-nav="${id}">
-      <span class="nav-num">${num}</span>
       <span class="nav-text"><strong>${title}</strong><small>${desc}</small></span>
       <span class="nav-meta">${meta || ""}</span><span class="nav-arrow">→</span></button>`;
     show(`<section class="step home" id="home">
@@ -272,10 +269,10 @@
         ${row("play", "01", "Play", "Choose a side, a target and a difficulty, then go.", "")}
         ${row("tutorial", "02", "Tutorial", "Red, Blue and WAF tracks: techniques, defenses and how to combine them.", "")}
         ${row("leaderboards", "03", "Leaderboards", "Realism high scores, Red and Blue.", "")}
-        ${row("achievements", "04", "Achievements", "Ten feats. Few players will see them all.", `${featsDone}/${feats.length}`)}
+        ${row("achievements", "04", "Achievements", "Ten feats. Few players will see them all.", "")}
         ${anyQuest
-          ? row("quests", "◆", "Dossiers", `${knownQuests.length} classified objective${knownQuests.length > 1 ? "s" : ""} in play.`, '<span class="pill">classified</span>')
-          : `<button class="nav-row nav-classified locked" data-nav="quests"><span class="nav-num">▓▓</span>
+          ? row("quests", "", "Classified", `${knownQuests.length} classified objective${knownQuests.length > 1 ? "s" : ""} in play.`, "")
+          : `<button class="nav-row nav-classified locked" data-nav="quests">
              <span class="nav-text"><strong>█████████</strong><small>Some files are not on any inventory.</small></span><span class="nav-arrow">→</span></button>`}
       </nav>
     </section>`);
@@ -316,7 +313,7 @@
       <td>${esc(q.title)}</td><td>${esc(q.text)}</td><td class="num">${esc(q.progress)}</td><td>${esc(q.reward)}</td></tr>`).join("");
     show(`<section class="step">
       ${backBar("Home")}
-      <div><p class="eyebrow">Classified</p><h1>Dossiers.</h1>
+      <div><p class="eyebrow">Hidden objectives</p><h1>Classified.</h1>
       <p class="muted">Hidden objectives. You will not see one until something in a game points you to it.</p></div>
       <div class="panel quests"><table class="sheet"><tr><th>Quest</th><th>What to do</th><th class="num">Progress</th><th>Reward</th></tr>${rows}</table></div>
     </section>`);
@@ -442,11 +439,9 @@
     const { hub } = learnTotals();
     const s = hub.red.techniques, c = hub.red.chains;
     const lessons = s.lessons.map((l, i) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
-      <span class="num">${String(i + 1).padStart(2, "0")}</span>
       <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.mitre)} · ${esc(l.tactic)}</small></span>
       <span class="lesson-mark">${l.done ? "✓ learned" : "learn →"}</span></button>`).join("");
     const chains = c.chains.map((ch) => `<button class="lesson-row ${ch.done ? "done" : ""}" data-chain="${ch.id}">
-      <span class="num">⛓</span>
       <span class="lesson-name"><strong>${esc(ch.goal)}</strong><small>${ch.steps} steps to order</small></span>
       <span class="lesson-mark">${ch.done ? "✓ solved" : "build →"}</span></button>`).join("");
     show(`<section class="step">
@@ -467,11 +462,9 @@
     const { hub } = learnTotals();
     const s = hub.blue.defenses, g = hub.blue.guards;
     const lessons = s.lessons.map((l, i) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
-      <span class="num">${String(i + 1).padStart(2, "0")}</span>
       <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.sub)}</small></span>
       <span class="lesson-mark">${l.done ? "✓ learned" : "learn →"}</span></button>`).join("");
     const guards = g.guards.map((ch) => `<button class="lesson-row ${ch.done ? "done" : ""}" data-guard="${ch.id}">
-      <span class="num">🛡</span>
       <span class="lesson-name"><strong>Stop: ${esc(ch.goal)}</strong><small>${ch.steps}-step attack</small></span>
       <span class="lesson-mark">${ch.done ? "✓ stopped" : "defend →"}</span></button>`).join("");
     show(`<section class="step">
