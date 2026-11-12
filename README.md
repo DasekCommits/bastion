@@ -6,7 +6,7 @@
 
 **Play it in your browser: [bastion.dasek.dev](https://bastion.dasek.dev)**
 
-![A Red Team game in Bastion: the network map shows the attacker's path from a phished employee to the web shop and the database](docs/screenshot.webp)
+![A Red Team game in Bastion: the network map after a phishing email to the intern, with the attacker now reaching the web shop and the database](docs/screenshot.webp)
 
 Bastion is a purple-team training game. Defend a fictional company against a computer attacker, or break into a company the computer defends. Every attack and defense is a real technique mapped to [MITRE ATT&CK](https://attack.mitre.org/), and every game ends with a post-mortem: what was blocked, what got through, what was detected, and which gaps were left open.
 
