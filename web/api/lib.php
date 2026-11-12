@@ -70,7 +70,9 @@ function send_json(array $data, int $status = 200): never
 {
     http_response_code($status);
     header('Content-Type: application/json');
-    header('Cache-Control: no-store');
+    header('Cache-Control: no-store, private');
+    header('X-Accel-Expires: 0');
+    header('Set-Cookie: _mcnc=1; Max-Age=31536000; Path=/; Secure; SameSite=Lax', false);
     header('X-Content-Type-Options: nosniff');
     echo json_encode($data);
     exit;
