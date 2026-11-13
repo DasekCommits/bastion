@@ -555,10 +555,10 @@
     const s = hub.red.techniques, c = hub.red.chains;
     const lessons = s.lessons.map((l, i) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
       <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.mitre)} · ${esc(l.tactic)}</small></span>
-      <span class="lesson-mark">${l.done ? "✓ learned" : "learn →"}</span></button>`).join("");
+      <span class="lesson-mark">${l.done ? "✓" : "→"}</span></button>`).join("");
     const chains = c.chains.map((ch) => `<button class="lesson-row ${ch.done ? "done" : ""}" data-chain="${ch.id}">
       <span class="lesson-name"><strong>${esc(ch.goal)}</strong><small>${ch.steps} steps to order</small></span>
-      <span class="lesson-mark">${ch.done ? "✓ solved" : "build →"}</span></button>`).join("");
+      <span class="lesson-mark">${ch.done ? "✓" : "→"}</span></button>`).join("");
     show(`<section class="step">
       ${backBar("Learning")}
       <div><h1>Think like the attacker.</h1></div>
@@ -578,10 +578,10 @@
     const s = hub.blue.defenses, g = hub.blue.guards;
     const lessons = s.lessons.map((l, i) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
       <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.sub)}</small></span>
-      <span class="lesson-mark">${l.done ? "✓ learned" : "learn →"}</span></button>`).join("");
+      <span class="lesson-mark">${l.done ? "✓" : "→"}</span></button>`).join("");
     const guards = g.guards.map((ch) => `<button class="lesson-row ${ch.done ? "done" : ""}" data-guard="${ch.id}">
       <span class="lesson-name"><strong>Stop: ${esc(ch.goal)}</strong><small>${ch.steps}-step attack</small></span>
-      <span class="lesson-mark">${ch.done ? "✓ stopped" : "defend →"}</span></button>`).join("");
+      <span class="lesson-mark">${ch.done ? "✓" : "→"}</span></button>`).join("");
     show(`<section class="step">
       ${backBar("Learning")}
       <div><h1>Think like the defender.</h1></div>

@@ -883,3 +883,12 @@ tr[hidden], .option[hidden] { display: none; }
 .fb-status.bad { color: var(--red); }
 .fb-status.ok { color: var(--green); }
 @media (max-width: 560px) { .foot { flex-direction: column; } }
+
+/* compact lesson lists: a tight grid of small cards, no folder tab */
+.lesson-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; padding-top: 0; }
+.lesson-row { padding: 8px 12px; gap: 10px; border-radius: 8px; box-shadow: 2px 2px 0 var(--paper-2); }
+.lesson-row::after { display: none; }
+.lesson-row:hover { transform: translateY(-1px); }
+.lesson-name strong { font-size: 14px; line-height: 1.25; }
+.lesson-name small { font-size: 11px; }
+.lesson-mark { font-size: 13px; }
