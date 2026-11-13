@@ -894,3 +894,6 @@ tr[hidden], .option[hidden] { display: none; }
 .lesson-mark { font-size: 13px; }
 .lesson-row.done { background: color-mix(in srgb, var(--green) 14%, var(--card)); }
 .lesson-row.done:hover { background: color-mix(in srgb, var(--green) 22%, var(--card)); }
+.lesson-group { display: flex; flex-direction: column; gap: 8px; }
+.lesson-group-title { display: flex; justify-content: space-between; align-items: baseline; margin: 10px 0 0; font-size: 13px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.lesson-group-count { font-size: 12px; letter-spacing: 0; }

@@ -319,7 +319,7 @@ def blue_summary(catalog, learned: list[str]) -> dict:
     rows = []
     for did in _defense_order(catalog):
         d = catalog.defenses[did]
-        rows.append({"id": did, "name": d.name, "sub": f"{d.category} · costs {d.cost}", "done": ("blue:" + did) in done})
+        rows.append({"id": did, "name": d.name, "sub": f"costs {d.cost}", "category": d.category, "done": ("blue:" + did) in done})
     return {"total": len(rows), "done": sum(r["done"] for r in rows), "lessons": rows}
 
 

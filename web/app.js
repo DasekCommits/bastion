@@ -549,13 +549,30 @@
     wireBack(renderHome);
   }
 
+  const RED_GROUPS = [["reconnaissance", "Reconnaissance"], ["initial-access", "Initial access"], ["credential-access", "Credential access"],
+    ["privilege-escalation", "Privilege escalation"], ["lateral-movement", "Lateral movement"], ["exfiltration", "Exfiltration"], ["impact", "Impact"]];
+  const BLUE_GROUPS = [["prevent", "Prevent"], ["detect", "Detect"], ["recover", "Recover"]];
+
+  // lessons split into labelled groups in a fixed order; anything unknown goes last under its own key
+  function lessonGroups(items, keyOf, order, row) {
+    const known = order.map(([k]) => k);
+    const extra = [...new Set(items.map(keyOf))].filter((k) => !known.includes(k)).map((k) => [k, k]);
+    return [...order, ...extra].map(([k, label]) => {
+      const list = items.filter((l) => keyOf(l) === k);
+      if (!list.length) return "";
+      const done = list.filter((l) => l.done).length;
+      return `<div class="lesson-group"><h3 class="lesson-group-title"><span>${esc(label)}</span><span class="lesson-group-count">${done}/${list.length}</span></h3>
+        <div class="lesson-list">${list.map(row).join("")}</div></div>`;
+    }).join("");
+  }
+
   function renderLearnRed() {
     setGauges(null);
     const { hub } = learnTotals();
     const s = hub.red.techniques, c = hub.red.chains;
-    const lessons = s.lessons.map((l, i) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
-      <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.mitre)} · ${esc(l.tactic)}</small></span>
-      <span class="lesson-mark">${l.done ? "✓" : "→"}</span></button>`).join("");
+    const lessons = lessonGroups(s.lessons, (l) => l.tactic, RED_GROUPS, (l) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
+      <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.mitre)}</small></span>
+      <span class="lesson-mark">${l.done ? "✓" : "→"}</span></button>`);
     const chains = c.chains.map((ch) => `<button class="lesson-row ${ch.done ? "done" : ""}" data-chain="${ch.id}">
       <span class="lesson-name"><strong>${esc(ch.goal)}</strong><small>${ch.steps} steps to order</small></span>
       <span class="lesson-mark">${ch.done ? "✓" : "→"}</span></button>`).join("");
@@ -563,7 +580,7 @@
       ${backBar("Learning")}
       <div><h1>Think like the attacker.</h1></div>
       ${progressPanel("Techniques", s.done, s.total, "learned", "Spot each technique, then learn what it needs before it can work.")}
-      <div class="lesson-list">${lessons}</div>
+      ${lessons}
       ${progressPanel("Combinations: chain them into an attack", c.done, c.total, "solved", "A technique rarely works alone. Order these into an attack that actually gets through; the engine checks it the way a real one would.")}
       <div class="lesson-list">${chains}</div>
     </section>`);
@@ -576,9 +593,9 @@
     setGauges(null);
     const { hub } = learnTotals();
     const s = hub.blue.defenses, g = hub.blue.guards;
-    const lessons = s.lessons.map((l, i) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
+    const lessons = lessonGroups(s.lessons, (l) => l.category, BLUE_GROUPS, (l) => `<button class="lesson-row ${l.done ? "done" : ""}" data-lesson="${l.id}">
       <span class="lesson-name"><strong>${esc(l.name)}</strong><small>${esc(l.sub)}</small></span>
-      <span class="lesson-mark">${l.done ? "✓" : "→"}</span></button>`).join("");
+      <span class="lesson-mark">${l.done ? "✓" : "→"}</span></button>`);
     const guards = g.guards.map((ch) => `<button class="lesson-row ${ch.done ? "done" : ""}" data-guard="${ch.id}">
       <span class="lesson-name"><strong>Stop: ${esc(ch.goal)}</strong><small>${ch.steps}-step attack</small></span>
       <span class="lesson-mark">${ch.done ? "✓" : "→"}</span></button>`).join("");
@@ -586,7 +603,7 @@
       ${backBar("Learning")}
       <div><h1>Think like the defender.</h1></div>
       ${progressPanel("Defenses", s.done, s.total, "learned", "What each control is for, and whether it stops an attack, spots it, or helps you recover.")}
-      <div class="lesson-list">${lessons}</div>
+      ${lessons}
       ${progressPanel("Combinations: stop an attack chain", g.done, g.total, "stopped", "One control always fails sometimes. Within a budget, stop one step and watch another: defense in depth.")}
       <div class="lesson-list">${guards}</div>
     </section>`);
