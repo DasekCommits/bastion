@@ -759,7 +759,7 @@
     const opts = (items, group) => items.map((o) => `<button class="choice learn-opt" data-pick="${group}" data-id="${esc(o.id)}">${esc(o.label)}</button>`).join("");
     show(`<section class="step">
       ${backBar(kind === "blue" ? "Blue lessons" : "Red lessons")}
-      <div><p class="eyebrow">${kind === "blue" ? "Blue" : "Red"} · ${esc(l.eyebrow)}</p><h1>${esc(l.name)}</h1></div>
+      <div><h1>${esc(l.name)}</h1></div>
       <div class="panel coach"><p class="coach-label">Coach</p><p>${esc(l.teach)}</p>
         ${l.intel_only ? '<p class="intel-note">On its own this is just intelligence. It does not break anything. It sets up the steps that do.</p>' : ""}</div>
       <div class="panel" id="step-attack"><h3>${esc(l.step1.title)}</h3><p>${esc(l.step1.prompt)}</p>

@@ -296,7 +296,7 @@
   },
   {
     "id": "aitm-phishing",
-    "name": "Adversary-in-the-middle phishing",
+    "name": "Adversary in the middle phishing",
     "mitre_id": "T1557",
     "tactic": "initial-access",
     "target": "employee",
