@@ -181,4 +181,4 @@ Guests can play without an account; their progress stays in the browser (or `~/.
 
 ## License
 
-[MIT](LICENSE)
+© 2026 Filippos Ntasek. All rights reserved. The code is public so it can be read and reviewed; it may not be copied, modified or redistributed without permission.

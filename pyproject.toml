@@ -3,7 +3,7 @@ name = "bastion"
 version = "0.1.0"
 description = "Purple-team training game: build a defense, switch sides, break it."
 requires-python = ">=3.11"
-license = "MIT"
+license = "LicenseRef-Proprietary"
 dependencies = ["questionary>=2.0", "rich>=13"]
 
 [tool.pytest.ini_options]
