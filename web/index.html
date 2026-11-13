@@ -32,8 +32,33 @@
   </main>
   <footer class="foot">
     <span>© 2026 <a href="https://dasek.dev">Filippos Ntasek</a>. All rights reserved.</span>
-    <a href="https://github.com/DasekCommits/bastion">Source on GitHub</a>
+    <span class="foot-links"><button class="linkish" id="fb-open" type="button">Send feedback</button><a href="https://github.com/DasekCommits/bastion">Source on GitHub</a></span>
   </footer>
+  <dialog class="fb" id="fb" aria-labelledby="fb-title">
+    <form id="fb-form" novalidate>
+      <h2 id="fb-title">Send feedback</h2>
+      <p class="fb-sub">Found a bug, have an idea, or think something is too easy? Tell me.</p>
+      <fieldset class="fb-kinds">
+        <legend>What is it about?</legend>
+        <label><input type="radio" name="kind" value="bug" checked><span>Bug</span></label>
+        <label><input type="radio" name="kind" value="idea"><span>Idea</span></label>
+        <label><input type="radio" name="kind" value="balance"><span>Too hard / too easy</span></label>
+        <label><input type="radio" name="kind" value="other"><span>Other</span></label>
+      </fieldset>
+      <label class="fb-field">Your message
+        <textarea name="message" rows="5" maxlength="2000" required></textarea>
+      </label>
+      <label class="fb-field">Email or Reddit name <small>(optional, only if you want a reply)</small>
+        <input name="contact" maxlength="120" autocomplete="email">
+      </label>
+      <label class="fb-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+      <p class="fb-status" id="fb-status" role="status"></p>
+      <div class="btn-row">
+        <button class="btn" id="fb-send" type="submit">Send</button>
+        <button class="btn ghost" id="fb-close" type="button">Close</button>
+      </div>
+    </form>
+  </dialog>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
   <script src="app.js"></script>
 </body>

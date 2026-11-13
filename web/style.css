@@ -859,3 +859,27 @@ tr[hidden], .option[hidden] { display: none; }
 /* a picked card under the pointer is dark like any hovered card, so the light text stays readable */
 .play-flow .choices .choice.selected:not(:disabled):hover,
 .play-flow .choices .choice.selected:not(:disabled):focus-visible { background: var(--ink); color: var(--paper); }
+
+.foot-links { display: flex; gap: 18px; align-items: baseline; }
+.foot-links .linkish { font-size: 13px; }
+.fb { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--ink); padding: 0; width: min(480px, calc(100vw - 32px)); }
+.fb::backdrop { background: rgba(24, 32, 44, 0.45); }
+.fb form { padding: 22px; display: grid; gap: 14px; }
+.fb h2 { margin: 0; font: 700 20px/1.2 var(--display); }
+.fb-sub { margin: -6px 0 0; color: var(--ink-soft); font-size: 14px; }
+.fb-kinds { border: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.fb-kinds legend { font-size: 13px; color: var(--ink-soft); margin-bottom: 6px; padding: 0; }
+.fb-kinds label { position: relative; }
+.fb-kinds input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.fb-kinds span { display: inline-block; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 12px; font-size: 14px; background: var(--paper); }
+.fb-kinds input:checked + span { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.fb-kinds input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
+.fb-field { display: grid; gap: 6px; font-size: 14px; font-weight: 500; }
+.fb-field small { font-weight: 400; color: var(--ink-soft); }
+.fb-field textarea, .fb-field input { font: 15px/1.45 var(--body); color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 9px 11px; width: 100%; resize: vertical; }
+.fb-field textarea:focus, .fb-field input:focus { outline: 2px solid var(--blue); outline-offset: 0; border-color: var(--blue); }
+.fb-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.fb-status { margin: 0; font-size: 14px; min-height: 1em; }
+.fb-status.bad { color: var(--red); }
+.fb-status.ok { color: var(--green); }
+@media (max-width: 560px) { .foot { flex-direction: column; } }

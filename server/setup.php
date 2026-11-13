@@ -89,6 +89,23 @@ foreach (['users' => ['achievements' => 'ALTER TABLE users ADD COLUMN achievemen
     }
 }
 
+db()->exec(
+    'CREATE TABLE IF NOT EXISTS feedback (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        kind VARCHAR(16) NOT NULL,
+        message TEXT NOT NULL,
+        contact VARCHAR(120) NOT NULL DEFAULT \'\',
+        login VARCHAR(64) NULL,
+        screen VARCHAR(40) NOT NULL DEFAULT \'\',
+        agent VARCHAR(255) NOT NULL DEFAULT \'\',
+        ip_hash CHAR(64) NOT NULL,
+        status VARCHAR(10) NOT NULL DEFAULT \'new\',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX (ip_hash, created_at),
+        INDEX (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+);
+
 db()->exec('UPDATE users SET migrated = 1 WHERE games > 0');
 
 echo "Tables ready.\n";

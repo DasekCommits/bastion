@@ -1833,5 +1833,50 @@
   }
 
 
+  function setupFeedback() {
+    const dlg = document.getElementById("fb");
+    const form = document.getElementById("fb-form");
+    const status = document.getElementById("fb-status");
+    const send = document.getElementById("fb-send");
+    if (!dlg || !form) return;
+    const say = (text, cls = "") => { status.textContent = text; status.className = "fb-status " + cls; };
+    document.getElementById("fb-open").addEventListener("click", () => {
+      say("");
+      send.disabled = false;
+      send.hidden = false;
+      form.message.disabled = false;
+      dlg.showModal();
+      form.message.focus();
+    });
+    document.getElementById("fb-close").addEventListener("click", () => dlg.close());
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message = form.message.value.trim();
+      if (message.length < 5) { say("Please write a little more.", "bad"); form.message.focus(); return; }
+      send.disabled = true;
+      say("Sending…");
+      const screen = (app.querySelector("section[id]") || {}).id || "";
+      try {
+        const res = await fetch("api/feedback.php", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json", "X-Bastion": "1" },
+          body: JSON.stringify({ kind: form.kind.value, message, contact: form.contact.value.trim(), website: form.website.value, screen }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || "Could not send it. Please try again.");
+        form.reset();
+        form.message.disabled = true;
+        send.hidden = true;
+        say("Thank you! Your feedback was sent.", "ok");
+      } catch (err) {
+        send.disabled = false;
+        say(err.message || "Could not send it. Please try again.", "bad");
+      }
+    });
+  }
+
+  setupFeedback();
   boot();
 })();
