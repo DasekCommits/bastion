@@ -892,3 +892,5 @@ tr[hidden], .option[hidden] { display: none; }
 .lesson-name strong { font-size: 14px; line-height: 1.25; }
 .lesson-name small { font-size: 11px; }
 .lesson-mark { font-size: 13px; }
+.lesson-row.done { background: color-mix(in srgb, var(--green) 14%, var(--card)); }
+.lesson-row.done:hover { background: color-mix(in srgb, var(--green) 22%, var(--card)); }
