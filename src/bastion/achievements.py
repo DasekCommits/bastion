@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from bastion import scoring, shop
+from bastion import quests, scoring, shop
 from bastion.clearance import SEALED_ID
 
 STREAK_GOAL = 7
@@ -103,7 +103,8 @@ def summary(session) -> dict:
                 earned.append("shoestring")
             if session.realism and c.caught and c.day <= 2 and c.disruption == 0:
                 earned.append("analyst")
-    return {"tier": tier, "level": session.shown_level, "side": side, "won": won, "earned": earned}
+    return {"tier": tier, "level": session.shown_level, "side": side, "won": won, "earned": earned,
+            "quests": quests.marks(session)}
 
 
 def collector(owned, catalog) -> bool:

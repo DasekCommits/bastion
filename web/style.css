@@ -822,6 +822,16 @@ tr[hidden], .option[hidden] { display: none; }
 .shop-buy { padding: 7px 14px; font-size: 13px; white-space: nowrap; }
 .shop-tag { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .shop-tag.owned { color: var(--green); }
+.quest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+.quest-card { border: 1px solid var(--ink); border-radius: 4px 12px 12px 12px; background: var(--card); padding: 12px 14px; display: grid; gap: 6px; }
+.quest-card p { margin: 0; font-size: 14px; color: var(--muted); }
+.quest-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.quest-top .coin { font-size: 15px; white-space: nowrap; }
+.quest-progress { display: flex; align-items: center; gap: 10px; font: 12px var(--mono); }
+.quest-progress .bar { flex: 1; height: 6px; margin: 0; border-radius: 99px; background: var(--paper-2); overflow: hidden; }
+.quest-progress .bar span { display: block; height: 100%; background: var(--ink); }
+.quest-card.done { border-color: var(--green); }
+.quest-card.done .bar span { background: var(--green); }
 .option.locked { opacity: .6; cursor: not-allowed; }
 .option.locked .box { border: 0; font-size: 12px; }
 

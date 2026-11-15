@@ -7,6 +7,7 @@ from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, PlanError
 from bastion import learning, waf
+from bastion import quests as shop_quests
 from bastion.realism.game import RealismGame
 from bastion.realism.spl import QueryError
 from bastion.realism.terminal import VERBS, help_lines, resolve
@@ -107,6 +108,9 @@ class Session:
 
     def shop_items(self) -> str:
         return json.dumps(shop.items(self.catalog, self.profile.owned or []))
+
+    def quest_board(self, counts_json: str = "{}") -> str:
+        return json.dumps(shop_quests.board(json.loads(counts_json or "{}")))
 
     def set_owned(self, owned_json: str) -> str:
         self.profile.owned = [i for i in json.loads(owned_json) if i in self.catalog.attacks or i in self.catalog.defenses]

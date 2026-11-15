@@ -23,6 +23,28 @@ function wallet(PDO $pdo, array $user, array $catalog): array
             $earned[$row['side']] = intdiv((int) $row['total'], (int) $catalog['per_coin']);
         }
     }
+    $counts = [];
+    foreach (array_keys($catalog['quests'] ?? []) as $qid) {
+        $counts[$qid] = 0;
+    }
+    $sums = $pdo->prepare('SELECT summary FROM games WHERE user_id = ? AND verified = 1 AND summary IS NOT NULL');
+    $sums->execute([$user['id']]);
+    foreach ($sums->fetchAll() as $row) {
+        $summary = json_decode((string) $row['summary'], true) ?: [];
+        foreach (array_unique((array) ($summary['quests'] ?? [])) as $qid) {
+            if (is_string($qid) && isset($counts[$qid])) {
+                $counts[$qid]++;
+            }
+        }
+    }
+    $questCoins = ['red' => 0, 'blue' => 0];
+    foreach ($catalog['quests'] ?? [] as $qid => $quest) {
+        if ($counts[$qid] >= (int) $quest['goal'] && isset($questCoins[$quest['side']])) {
+            $questCoins[$quest['side']] += (int) $quest['reward'];
+        }
+    }
+    $earned['red'] += $questCoins['red'];
+    $earned['blue'] += $questCoins['blue'];
     $owned = json_decode((string) ($user['owned'] ?? ''), true) ?: [];
     $gifted = json_decode((string) ($user['gifted'] ?? ''), true) ?: [];
     $spent = ['red' => 0, 'blue' => 0];
@@ -35,6 +57,8 @@ function wallet(PDO $pdo, array $user, array $catalog): array
     return [
         'coins' => ['red' => $earned['red'] - $spent['red'], 'blue' => $earned['blue'] - $spent['blue']],
         'earned' => $earned,
+        'quest_coins' => $questCoins,
+        'quests' => (object) $counts,
         'owned' => array_values($owned),
     ];
 }

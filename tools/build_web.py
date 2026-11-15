@@ -37,13 +37,14 @@ def write_achievements(path: Path) -> None:
 
 
 def write_shop(path: Path) -> None:
-    from bastion import shop
+    from bastion import quests, shop
     from bastion.catalog import load_catalog
 
     catalog = load_catalog()
     data = json.dumps({
         "per_coin": shop.POINTS_PER_COIN,
         "items": {i["id"]: {"side": i["side"], "price": i["price"], "free": i["free"]} for i in shop.items(catalog, [])},
+        "quests": {q.id: {"side": q.side, "goal": q.goal, "reward": q.reward} for q in quests.QUESTS},
     })
     encoded = base64.b64encode(data.encode("utf-8")).decode("ascii")
     path.write_text(f"<?php\nreturn json_decode(base64_decode('{encoded}'), true);\n", encoding="utf-8")

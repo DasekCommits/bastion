@@ -356,13 +356,22 @@
         <span class="desc">${esc(i.description)}</span></span>
         <span class="shop-right">${button}</span></div>`;
     };
+    const board = api("quest_board", JSON.stringify((wallet && wallet.quests) || {})).filter((q) => q.side === side);
+    const quest = (q) => `<div class="quest-card ${q.done ? "done" : ""}">
+        <div class="quest-top"><strong>${esc(q.name)}</strong><span class="coin ${side}">${q.done ? "✓" : "◈"} ${q.reward}</span></div>
+        <p>${esc(q.text)}</p>
+        <div class="quest-progress"><span class="bar"><span style="width:${Math.round(100 * q.count / q.goal)}%"></span></span><span class="muted">${q.count}/${q.goal}</span></div>
+      </div>`;
+    const questBlock = `<h3 class="shop-tier">${side === "red" ? "Red" : "Blue"} quests</h3>
+      <div class="quest-grid">${board.map(quest).join("")}</div>
+      ${S.user ? "" : '<p class="muted">Sign in with GitHub to count your games toward quests.</p>'}`;
     const sections = tiers.map(([tier, label]) => {
       const list = items.filter((i) => i.tier === tier);
       return list.length ? `<h3 class="shop-tier">${label}</h3><div class="options pick-grid">${list.map(card).join("")}</div>` : "";
     }).join("");
     const head = S.user
       ? (wallet && wallet.coins
-        ? `<div class="wallet"><span class="coin red">◈ ${wallet.coins.red} <small>Red coins</small></span><span class="coin blue">◈ ${wallet.coins.blue} <small>Blue coins</small></span><span class="muted">10 points in a game = 1 coin, counted by the referee.</span></div>`
+        ? `<div class="wallet"><span class="coin red">◈ ${wallet.coins.red} <small>Red coins</small></span><span class="coin blue">◈ ${wallet.coins.blue} <small>Blue coins</small></span><span class="muted">10 points in a game = 1 coin, plus quest rewards. The referee counts both.</span></div>`
         : '<p class="why">The shop is not available right now.</p>')
       : '<p class="muted">Sign in with GitHub to earn coins: every 10 points you score is 1 coin. Until then you play with the starter kit.</p>';
     show(`<section class="step shop">
@@ -373,6 +382,7 @@
       <div class="pick-tabs" role="tablist">
         <button class="pick-tab ${side === "red" ? "on" : ""}" data-shop="red">Red · attacks</button>
         <button class="pick-tab ${side === "blue" ? "on" : ""}" data-shop="blue">Blue · defenses</button></div>
+      ${questBlock}
       ${sections}
     </section>`, true);
     app.querySelectorAll("[data-shop]").forEach((el) => el.addEventListener("click", () => { S.shopSide = el.dataset.shop; drawShop(el.dataset.shop, wallet); }));
