@@ -270,6 +270,7 @@
   }
 
   function setGauges(turn) {
+    if (window.Office) window.Office.turn(turn, S.start && S.start.side, S.start && S.start.company && S.start.company.name);
     if (!turn) { gauges.hidden = true; gauges.innerHTML = ""; return; }
     const pips = (on, total, cls = "") => `<span class="pips ${cls}">${Array.from({ length: total }, (_, i) => `<i class="${i < on ? "on" : ""}"></i>`).join("")}</span>`;
     let html = `<span class="gauge">Day <b>${turn.day}/${turn.max_days}</b> ${pips(turn.day, turn.max_days)}</span>`;
@@ -1483,6 +1484,7 @@
   ];
 
   function blueGauges(st) {
+    if (window.Office) window.Office.turn({ day: st.day, max_days: st.max_days, moves_left: st.time_left, moves_per_day: st.time_total, heat: 0, progress: (st.logs || []).length + (st.new_logs || 0) }, S.start && S.start.side, S.start && S.start.company && S.start.company.name);
     const pips = (on, total, cls = "") => `<span class="pips ${cls}">${Array.from({ length: total }, (_, i) => `<i class="${i < on ? "on" : ""}"></i>`).join("")}</span>`;
     gauges.innerHTML = `<span class="gauge">Day <b>${st.day}/${st.max_days}</b> ${pips(st.day, st.max_days)}</span>
       <span class="gauge">Analyst time ${pips(st.time_left, st.time_total, "time")}</span>

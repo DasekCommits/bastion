@@ -1,7 +1,9 @@
 import base64
 import hashlib
 import json
+import re
 import shutil
+import sys
 import zipfile
 from pathlib import Path
 
@@ -51,21 +53,36 @@ def write_shop(path: Path) -> None:
 
 
 def main() -> None:
+    staging = "--staging" in sys.argv
+    global OUT
+    if staging:
+        OUT = ROOT / "build" / "staging"
     OUT.mkdir(parents=True, exist_ok=True)
     for old in OUT.iterdir():
         shutil.rmtree(old) if old.is_dir() else old.unlink()
     package(OUT / "bastion.zip")
     digest = hashlib.sha256()
-    for path in [OUT / "bastion.zip", WEB / "app.js", WEB / "style.css", WEB / "index.html"]:
+    for path in [OUT / "bastion.zip", WEB / "app.js", WEB / "style.css", WEB / "index.html", *sorted((WEB / "office").glob("*"))]:
         digest.update(path.read_bytes())
     version = digest.hexdigest()[:10]
-    (OUT / "app.js").write_text((WEB / "app.js").read_text(encoding="utf-8").replace("__VERSION__", version), encoding="utf-8")
+    script = (WEB / "app.js").read_text(encoding="utf-8").replace("__VERSION__", version)
+    if staging:
+        script = re.sub(r"([\"'`])api/", r"\g<1>../api/", script)
+    (OUT / "app.js").write_text(script, encoding="utf-8")
     shutil.copy(WEB / "style.css", OUT / "style.css")
-    shutil.copytree(WEB / "api", OUT / "api")
-    write_achievements(OUT / "api" / "achievements_data.php")
-    write_shop(OUT / "api" / "shop_data.php")
+    if not staging:
+        shutil.copytree(WEB / "api", OUT / "api")
+        write_achievements(OUT / "api" / "achievements_data.php")
+        write_shop(OUT / "api" / "shop_data.php")
     html = (WEB / "index.html").read_text(encoding="utf-8")
     html = html.replace('href="style.css"', f'href="style.css?v={version}"').replace('src="app.js"', f'src="app.js?v={version}"')
+    if staging:
+        shutil.copytree(WEB / "office", OUT / "office")
+        fonts = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap">'
+        head = f'  <meta name="robots" content="noindex, nofollow">\n  {fonts}\n  <link rel="stylesheet" href="office/office.css?v={version}">\n</head>'
+        html = html.replace("</head>", head)
+        scripts = f'<script>window.OFFICE_V="{version}";</script>\n  <script src="office/office.js?v={version}"></script>\n  <script src="app.js'
+        html = html.replace('<script src="app.js', scripts)
     (OUT / "index.html").write_text(html, encoding="utf-8")
     print(f"Built {OUT} (version {version})")
 
