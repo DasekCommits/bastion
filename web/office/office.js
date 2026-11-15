@@ -113,7 +113,8 @@
     O.mode = mode; document.body.classList.remove("of-menu", "of-room", "of-laptop", "of-home"); if (mode !== "home" && $("#of-home")) $("#of-home").innerHTML = ""; document.body.classList.add("of-" + mode);
   }
   async function openLaptop() {
-    if (O.mode !== "room" || O.night || O.zoomed) return;
+    if (O.night) { O.wantLaptop = true; if (nightSkip) nightSkip(); return; }
+    if (O.mode !== "room" || O.zoomed) return;
     O.zoomed = true; beep(520, .1, "sine"); await animateBox(SCREEN, 1000); setMode("laptop"); beep(780, .12, "sine");
   }
   async function closeLaptop() {
@@ -135,7 +136,7 @@
     O.night = true; O.rain = Math.random() < .5; ambience();
     const wasLaptop = O.mode === "laptop"; if (wasLaptop) await closeLaptop();
     const card = $("#of-night"); card.querySelector("b").textContent = `Night ${nextDay - 1}`; card.classList.add("show");
-    $("#of-skip").hidden = false;
+    $("#of-skip").hidden = false; $("#of-hint").textContent = "Click the laptop to skip the night";
     const start = performance.now(), total = reduce ? 1500 : 60000, from = 18 * 60, to = 33 * 60;
     await new Promise((done) => {
       nightSkip = done;
@@ -146,7 +147,8 @@
     O.night = false; O.day = nextDay; O.minutes = O.target = 9 * 60; paintTime(); ambience();
     const later = O.pending; O.pending = null; if (later && later.day === nextDay) turn(later);
     toast(`Day ${nextDay}`, O.side === "blue" ? "Morning. See what came in overnight." : "A new day. Coffee is ready.");
-    if (wasLaptop) { await sleep(600); openLaptop(); }
+    $("#of-hint").textContent = "Click the laptop";
+    if (wasLaptop || O.wantLaptop) { O.wantLaptop = false; await sleep(600); openLaptop(); }
   }
   function toast(title, text) {
     const t = $("#of-toast"); t.innerHTML = `<b>${title}</b>${text}`; t.classList.add("show"); beep(990, .08, "triangle");
@@ -299,19 +301,29 @@
     const stamp = entry.querySelector(".stamp.land"), det = [...entry.querySelectorAll(".detail")].find((d) => /chance was/.test(d.textContent));
     if (!stamp || !det) return;
     const chance = parseInt(det.textContent.match(/(\d+)%/)?.[1] || "0", 10) / 100, ok = stamp.classList.contains("success");
-    const land = ok ? Math.random() * chance * .98 : chance + Math.random() * (1 - chance) * .98;
+    const land = ok ? Math.random() * chance * .96 + chance * .02 : chance + .01 + Math.random() * (1 - chance - .02);
     stamp.style.visibility = "hidden";
-    const meter = document.createElement("span"); meter.className = "of-roll";
-    meter.innerHTML = `<span class="trk"><span class="zone" style="width:${chance * 100}%"></span><span class="ndl"></span></span><b>…</b>`;
-    stamp.before(meter);
-    const ndl = meter.querySelector(".ndl"), out = meter.querySelector("b"), frames = reduce ? 1 : 12;
+    const C = 2 * Math.PI * 26, wheel = document.createElement("span"); wheel.className = "of-wheel";
+    wheel.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" class="w-bad"/>
+      <circle cx="32" cy="32" r="26" class="w-good" style="stroke-dasharray:${(C * chance).toFixed(1)} ${C.toFixed(1)}"/>
+      <g class="w-ticks">${Array.from({ length: 20 }, (_, i) => `<line x1="32" y1="3" x2="32" y2="7" transform="rotate(${i * 18} 32 32)"/>`).join("")}</g>
+      <g class="w-arm"><line x1="32" y1="32" x2="32" y2="9"/><circle cx="32" cy="9" r="3.2"/></g><circle cx="32" cy="32" r="13" class="w-hub"/></svg>
+      <b class="w-num">…</b><span class="w-need">need under ${Math.round(chance * 100)}</span>`;
+    stamp.before(wheel);
     document.body.classList.add("of-rolling");
-    for (let i = 1; i <= frames; i++) {
-      const v = i === frames ? land : Math.random(); ndl.style.left = `calc(${(v * 100).toFixed(1)}% - 1px)`; out.textContent = Math.round(v * 100) + "%";
-      beep(400 + v * 600, .02, "square", .015); await sleep(22 + i * 3);
-    }
+    const arm = wheel.querySelector(".w-arm"), num = wheel.querySelector(".w-num");
+    const turns = reduce ? 0 : 3, end = (turns + land) * 360, t0 = performance.now(), ms = reduce ? 1 : 1300;
+    let lastTick = -1;
+    await new Promise((done) => (function spin(now) {
+      const t = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - t, 4), deg = end * e;
+      arm.setAttribute("transform", `rotate(${deg.toFixed(1)} 32 32)`);
+      const tick = Math.floor(deg / 18); if (tick !== lastTick) { lastTick = tick; beep(700 + (tick % 5) * 40, .012, "square", .012); }
+      num.textContent = Math.round(((deg / 360) % 1) * 100);
+      t < 1 ? requestAnimationFrame(spin) : done();
+    })(t0));
+    num.textContent = Math.floor(land * 100); wheel.classList.add(ok ? "won" : "lost");
     document.body.classList.remove("of-rolling");
-    await sleep(120); stamp.style.visibility = ""; stamp.classList.remove("land"); void stamp.offsetWidth; stamp.classList.add("land");
+    await sleep(150); stamp.style.visibility = ""; stamp.classList.remove("land"); void stamp.offsetWidth; stamp.classList.add("land");
   }
   async function react(entry) {
     await roll(entry);

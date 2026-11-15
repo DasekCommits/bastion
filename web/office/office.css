@@ -241,3 +241,33 @@ body.of-rolling #app button { pointer-events: none; }
 .hm-wrap.play .hm-card.on::after { top: 8px; right: 10px; width: 18px; height: 18px; font-size: 10px; }
 .hm-wrap.play .hm-start { padding: 12px 52px; font-size: 18px; }
 .hm-wrap.still .hm-card { animation: none; }
+
+/* roulette */
+.of-wheel { display: inline-grid; grid-template-columns: 64px auto; grid-template-rows: auto auto; column-gap: 10px; align-items: center; margin: 6px 10px 6px 0; vertical-align: middle; }
+.of-wheel svg { grid-row: 1 / 3; width: 64px; height: 64px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.35)); }
+.of-wheel .w-bad { fill: none; stroke: color-mix(in srgb, var(--red) 55%, #222); stroke-width: 9; }
+.of-wheel .w-good { fill: none; stroke: var(--green); stroke-width: 9; transform: rotate(-90deg); transform-origin: 32px 32px; }
+.of-wheel .w-ticks line { stroke: rgba(255,255,255,.35); stroke-width: 1.2; }
+.of-wheel .w-arm line { stroke: #fff; stroke-width: 2.6; stroke-linecap: round; }
+.of-wheel .w-arm circle { fill: #fff; }
+.of-wheel .w-hub { fill: #0e1017; stroke: rgba(255,255,255,.25); stroke-width: 1.5; }
+.of-wheel .w-num { font: 700 22px/1 var(--mono); color: var(--ink); min-width: 2.2ch; }
+.of-wheel .w-need { font: 600 11px var(--mono); color: var(--ink-soft); letter-spacing: .04em; text-transform: uppercase; }
+.of-wheel.won .w-num { color: var(--green); } .of-wheel.lost .w-num { color: var(--red); }
+.of-wheel.won svg { animation: of-pop .4s cubic-bezier(.2,1.8,.4,1); }
+@keyframes of-pop { 40% { transform: scale(1.15); } }
+
+/* mac windows */
+body.of-laptop .win-bar { justify-content: flex-start; gap: 12px; }
+body.of-laptop .win-btns { order: -1; display: flex; gap: 8px; align-items: center; }
+body.of-laptop .win-btn { width: 13px; height: 13px; padding: 0; border-radius: 50%; font-size: 0; display: grid; place-items: center; transition: filter .15s; }
+body.of-laptop .win-btn[data-win-close] { order: 1; background: #ff5f57; }
+body.of-laptop .win-btns::after { content: ""; order: 2; width: 13px; height: 13px; border-radius: 50%; background: #febc2e; }
+body.of-laptop .win-btn[data-win-max] { order: 3; background: #28c840; }
+body.of-laptop .win-bar:hover .win-btn { font-size: 9px; color: rgba(0,0,0,.65); }
+body.of-laptop .win-btn:hover { filter: brightness(1.15); background-color: inherit; }
+body.of-laptop .win-btn[data-win-close]:hover { background: #ff5f57; } body.of-laptop .win-btn[data-win-max]:hover { background: #28c840; }
+body.of-laptop .win-title { flex: 1; justify-content: center; margin-right: 70px; }
+
+/* the laptop uses the whole screen */
+body.of-laptop > main#app { max-width: none; padding-left: 14px; padding-right: 14px; }

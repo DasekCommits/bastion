@@ -1339,10 +1339,21 @@
   }
 
   // In-game desktop: every tool is a window you open from the dock. Open windows tile neatly.
+  const DESK_KEY = "bastion-desk";
   function deskState(screen, defaults) {
     S.desk = S.desk || {};
-    if (!S.desk[screen]) S.desk[screen] = { open: [...defaults], max: null, pos: {}, z: [] };
+    if (!S.desk[screen]) {
+      const saved = (store.get(DESK_KEY, {}) || {})[screen] || {};
+      S.desk[screen] = { open: Array.isArray(saved.open) ? saved.open : [...defaults], max: null, pos: saved.pos || {}, z: [] };
+    }
     return S.desk[screen];
+  }
+  function deskSave(screen) {
+    const d = S.desk && S.desk[screen];
+    if (!d) return;
+    const all = store.get(DESK_KEY, {}) || {};
+    all[screen] = { open: d.open, pos: d.pos };
+    store.set(DESK_KEY, all);
   }
   function deskOpen(screen, id) {
     const d = S.desk && S.desk[screen];
@@ -1365,6 +1376,7 @@
         d.pos[id] = { x: col * (w + 14), y: Math.min(row * (h + 14), H - 160), w, h };
       }
       const p = d.pos[id];
+      p.w = Math.min(p.w, W); p.x = Math.max(0, Math.min(p.x, W - 120)); p.y = Math.max(0, Math.min(p.y, H - 44));
       return `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px;`;
     };
     const zOf = (id) => 10 + Math.max(0, d.z.indexOf(id));
@@ -1411,6 +1423,7 @@
     };
     const up = () => {
       win.classList.remove("dragging", "resizing");
+      deskSave(screen);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
@@ -1434,6 +1447,7 @@
     } else if (max) {
       d.max = d.max ? null : max.dataset.winMax;
     } else return;
+    deskSave(screen);
     redraw(true);
   });
 
