@@ -6,8 +6,8 @@ buying more never makes the game easier than it is designed to be; it lets you c
 """
 POINTS_PER_COIN = 10
 STARTER = {
-    "red": ("port-scan", "phishing", "brute-force", "exfiltration"),
-    "blue": ("firewall", "mfa", "email-filter", "siem"),
+    "red": ("port-scan", "phishing", "brute-force", "exploit-web", "privilege-escalation", "exfiltration"),
+    "blue": ("firewall", "mfa", "email-filter", "siem", "patching"),
 }
 TIER_PRICE = {"small": 20, "medium": 50, "large": 90, "huge": 120}
 
