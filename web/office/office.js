@@ -248,7 +248,7 @@
     $("#of-home").querySelector("[data-snd]")?.addEventListener("click", (e) => { $("#of-sound").click(); e.target.textContent = O.sound ? "Sound on" : "Sound off"; e.target.classList.toggle("on", O.sound); });
     $("#of-home").querySelector("[data-mus]")?.addEventListener("click", (e) => { $("#of-music").click(); e.target.textContent = O.music ? "Music on" : "Music off"; e.target.classList.toggle("on", O.music); });
   }
-  function homePlay() {
+  function homePlay(still) {
     const companyOpen = (c) => !c.classified && !M.locks.easy[c.id];
     const levelOpen = (l) => l === "realism" ? (M.realism && pick.company && !M.locks.realism[pick.company]) : (!M.levels[l] && !(pick.company && M.locks[l][pick.company]));
     if (pick.company && !(M.companies.find((c) => c.id === pick.company) && companyOpen(M.companies.find((c) => c.id === pick.company)))) pick.company = null;
@@ -263,7 +263,7 @@
       const open = levelOpen(l.id);
       return card("level", l.id, `<b>${l.id === "realism" && !open ? "████████" : l.name}</b><small>${open ? l.text : (l.id === "realism" ? "Classified" : "Locked")}</small>`, pick.level === l.id, !open);
     }).join("");
-    $("#of-home").innerHTML = `<div class="hm-wrap play">
+    $("#of-home").innerHTML = `<div class="hm-wrap play ${still ? "still" : ""}">
       <div class="hm-top"><button class="hm-back" data-back>‹ Back</button><h2>New game</h2></div>
       <section><h3>Side</h3><div class="hm-grid">${sides}</div></section>
       <section><h3>Target</h3><div class="hm-grid">${maps}</div></section>
@@ -276,7 +276,7 @@
       b.addEventListener("click", () => {
         pick[b.dataset.g] = b.dataset.v; beep(700, .05, "triangle");
         if (b.dataset.g === "side" && b.dataset.v !== "random") { O.side = b.dataset.v; paintSide(); }
-        const y = $("#of-home").scrollTop; homePlay(); $("#of-home").scrollTop = y;
+        const y = $("#of-home").scrollTop; homePlay(true); $("#of-home").scrollTop = y;
       });
     });
     $("#of-home").querySelector("[data-start]").addEventListener("click", () => {
@@ -304,11 +304,13 @@
     const meter = document.createElement("span"); meter.className = "of-roll";
     meter.innerHTML = `<span class="trk"><span class="zone" style="width:${chance * 100}%"></span><span class="ndl"></span></span><b>…</b>`;
     stamp.before(meter);
-    const ndl = meter.querySelector(".ndl"), out = meter.querySelector("b"), frames = reduce ? 1 : 18;
+    const ndl = meter.querySelector(".ndl"), out = meter.querySelector("b"), frames = reduce ? 1 : 12;
+    document.body.classList.add("of-rolling");
     for (let i = 1; i <= frames; i++) {
       const v = i === frames ? land : Math.random(); ndl.style.left = `calc(${(v * 100).toFixed(1)}% - 1px)`; out.textContent = Math.round(v * 100) + "%";
-      beep(400 + v * 600, .02, "square", .015); await sleep(28 + i * 4);
+      beep(400 + v * 600, .02, "square", .015); await sleep(22 + i * 3);
     }
+    document.body.classList.remove("of-rolling");
     await sleep(120); stamp.style.visibility = ""; stamp.classList.remove("land"); void stamp.offsetWidth; stamp.classList.add("land");
   }
   async function react(entry) {
@@ -334,9 +336,13 @@
   function watchGame() {
     const app = $("#app"); if (!app) return;
     new MutationObserver(() => {
-      app.querySelectorAll(".entry").forEach((e) => {
+      const counts = new Map();
+      [...app.querySelectorAll(".entry")].reverse().forEach((e) => {
+        if (e.querySelector(".suspense")) return;
+        const text = [...e.childNodes].filter((n) => !(n.classList && n.classList.contains("of-roll"))).map((n) => n.textContent).join("").trim().slice(0, 200);
+        const n = (counts.get(text) || 0) + 1; counts.set(text, n);
         if (e.dataset.of) return; e.dataset.of = "1";
-        const key = [...e.childNodes].filter((n) => !(n.classList && n.classList.contains("of-roll"))).map((n) => n.textContent).join("").trim().slice(0, 200) + "#" + [...e.parentElement.children].indexOf(e);
+        const key = text + "#" + n;
         if (seen.has(key)) return; seen.add(key);
         if (O.mode === "laptop") { e.classList.add("of-new"); react(e); }
       });

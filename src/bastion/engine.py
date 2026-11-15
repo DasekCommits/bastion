@@ -2,7 +2,7 @@ import copy
 import random
 from dataclasses import dataclass, field
 
-from bastion import soc
+from bastion import pretexts, soc
 from bastion.catalog import Attack, Catalog, Defense
 from bastion.company import Company, Employee
 
@@ -531,7 +531,7 @@ class Campaign:
             return ""
         return "Inside, you notice: " + ", ".join(d.name for d in seen) + "."
 
-    def preview(self, attack_id: str, target_id: str) -> Preview:
+    def preview(self, attack_id: str, target_id: str, pretext: str | None = None) -> Preview:
         attack = self.catalog.attacks[attack_id]
         if (attack_id, target_id) in self.burned:
             return Preview(False, "The Blue Team already blocked this exact attempt.", 0.0, 0.0, self.heat)
@@ -548,6 +548,8 @@ class Campaign:
         chance = success_chance(attack, defenses)
         if attack.target == "employee":
             chance *= person_factor(attack, self.company.employee(target_id))
+            chance *= pretexts.factor(attack_id, self.company.employee(target_id), pretext)
+            chance = min(chance, 0.99)
         if attack.target == "employee" and attack.trait == "password_hygiene" and self._scanned_roles() & set(LOGIN_ROLES):
             chance = min(0.95, chance * SCAN_BONUS)
             note = "Your scan found the login page, so password attacks work better."
@@ -579,7 +581,7 @@ class Campaign:
         reached = self.reached_on.get(target_id)
         return reached is not None and reached >= self.day
 
-    def move(self, attack_id: str, target_id: str) -> StepResult:
+    def move(self, attack_id: str, target_id: str, pretext: str | None = None) -> StepResult:
         if self.finished:
             raise PlanError("The campaign is over")
         if self.moves_left_today <= 0:
@@ -595,7 +597,7 @@ class Campaign:
         helped = [d.id for d in self.defenses if attack.id in d.blocks or attack.id in d.detects]
         missing = [d.id for d in self.catalog.defenses_against(attack.id, self.company.tier) if d.id not in self.defense_ids]
         self.moves_today += 1
-        preview = self.preview(attack_id, target_id)
+        preview = self.preview(attack_id, target_id, pretext)
 
         if not preview.possible:
             result = StepResult(step, attack, False, preview.note, 0, 0, False, False, helped, missing)

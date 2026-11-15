@@ -6,7 +6,7 @@ from bastion.catalog import load_catalog, load_edge
 from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
 from bastion.engine import Campaign, PlanError
-from bastion import learning, waf
+from bastion import learning, pretexts, waf
 from bastion import quests as shop_quests
 from bastion.realism.game import RealismGame
 from bastion.realism.spl import QueryError
@@ -607,9 +607,22 @@ class Session:
             options.append(item)
         return json.dumps(options)
 
-    def move(self, attack_id: str, target_id: str) -> str:
+    def pretexts(self, attack_id: str, target_id: str) -> str:
+        if attack_id not in pretexts.PHISHING:
+            return json.dumps([])
+        person = self.company.employee(target_id)
+        rows = []
+        for key, label in pretexts.PRETEXTS.items():
+            fit = pretexts.factor(attack_id, person, key)
+            row = {"id": key, "label": label, "fit": pretexts.fit_word(fit)}
+            if self.easy:
+                row["success"] = self.campaign.preview(attack_id, target_id, key).success_chance
+            rows.append(row)
+        return json.dumps(rows)
+
+    def move(self, attack_id: str, target_id: str, pretext: str = "") -> str:
         try:
-            result = self.campaign.move(attack_id, target_id)
+            result = self.campaign.move(attack_id, target_id, pretext or None)
         except PlanError as error:
             return json.dumps({"error": str(error)})
         event = self._move_event(result)

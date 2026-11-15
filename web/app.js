@@ -75,7 +75,8 @@
     document.getElementById("dice-home").addEventListener("click", renderHome);
   }
 
-  const DESK_RENDER = {};  // screen name -> its render function, used by the in-game desktop
+  const DESK_RENDER = {};
+  const PHISHING = new Set(["phishing", "aitm-phishing"]);  // screen name -> its render function, used by the in-game desktop
 
   function api(method, ...args) {
     if (S.rec) S.transcript.push([method, args]);
@@ -858,6 +859,7 @@
     S.startedAt = Date.now();
     S.turn = null;
     S.attack = null;
+    S.pretextFor = null;
     S.map = { owned: new Set(), admin: new Set(), scanned: new Set(), taken: new Set(), targets: new Set(), ping: null, terms: [], focus: S.start.company.people.length > 14 ? "none" : "all" };
     S.targetSort = undefined;
     if (S.start.side === "red") renderArsenal();
@@ -1275,7 +1277,14 @@
     setGauges(t);
     S.map.targets = new Set();
     let side;
-    if (S.attack) {
+    if (S.attack && S.pretextFor) {
+      const stories = api("pretexts", S.attack, S.pretextFor);
+      const who = api("targets", S.attack).find((x) => x.id === S.pretextFor);
+      side = `<div class="panel"><h3>What email do you send ${esc(who ? who.label : "")}?</h3><div class="options" id="story-list">
+        ${stories.map((x) => `<button class="option" data-story="${x.id}"><span></span><span><span class="name">${esc(x.label)}</span>
+          <span class="desc">${esc(x.fit)}</span></span><span class="odds">${x.success !== undefined ? `success ${pct(x.success)}` : ""}</span></button>`).join("")}</div>
+        <div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="back">Back</button></div></div>`;
+    } else if (S.attack) {
       const targets = api("targets", S.attack);
       targets.filter((x) => !x.disabled).forEach((x) => S.map.targets.add(x.id));
       const attackName = t.actions.find((a) => a.id === S.attack).name;
@@ -1321,9 +1330,10 @@
     show(deskHtml("red", apps, ["moves", "log"]), log === true);
     app.querySelectorAll("[data-attack]").forEach((el) => el.addEventListener("click", () => { S.attack = el.dataset.attack; renderPlay(); }));
     app.querySelectorAll("[data-target]").forEach((el) => el.addEventListener("click", () => doMove(el.dataset.target)));
+    app.querySelectorAll("[data-story]").forEach((el) => el.addEventListener("click", () => doMove(S.pretextFor, el.dataset.story)));
     app.querySelectorAll("[data-sort]").forEach((el) => el.addEventListener("click", () => { S.targetSort = el.dataset.sort; renderPlay(); }));
     app.querySelectorAll(".map g.clickable").forEach((el) => el.addEventListener("click", () => doMove(el.dataset.id)));
-    document.getElementById("back")?.addEventListener("click", () => { S.attack = null; renderPlay(); });
+    document.getElementById("back")?.addEventListener("click", () => { if (S.pretextFor) S.pretextFor = null; else S.attack = null; renderPlay(); });
     document.getElementById("end-day")?.addEventListener("click", endDay);
     document.getElementById("give-up")?.addEventListener("click", () => renderFinal(api("give_up")));
   }
@@ -1442,11 +1452,13 @@
     log.insertAdjacentHTML("afterbegin", html);
   }
 
-  async function doMove(targetId) {
+  async function doMove(targetId, story) {
     if (S.busy || !S.attack) return;
+    if (!story && PHISHING.has(S.attack) && S.turn.actions.some((a) => a.id === S.attack)) { S.pretextFor = targetId; renderPlay(); return; }
     S.busy = true;
-    const event = api("move", S.attack, targetId);
+    const event = story ? api("move", S.attack, targetId, story) : api("move", S.attack, targetId);
     S.attack = null;
+    S.pretextFor = null;
     S.map.targets = new Set();
     if (!document.getElementById("log")) { deskOpen("red", "log"); renderPlay(true); }
     app.querySelectorAll("button").forEach((b) => { b.disabled = true; });
