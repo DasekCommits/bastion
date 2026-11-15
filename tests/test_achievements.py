@@ -14,8 +14,8 @@ def game(tier="small", level="hard", side="red", won=True, earned=()):
     return {"tier": tier, "level": level, "side": side, "won": won, "earned": list(earned)}
 
 
-def test_there_are_fourteen_and_five_are_classified():
-    assert len(achievements.ACHIEVEMENTS) == 14
+def test_there_are_fifteen_and_five_are_classified():
+    assert len(achievements.ACHIEVEMENTS) == 15
     assert sum(1 for a in achievements.ACHIEVEMENTS if a.secret) == 5
 
 

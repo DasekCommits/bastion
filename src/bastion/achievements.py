@@ -32,6 +32,8 @@ ACHIEVEMENTS = (
                 "As Red on Hard, forge a Golden Ticket without a single move being spotted, and win."),
     Achievement("no-way-back", "No Way Back",
                 "As Red on Hard, delete a machine's backups, then ransom that same machine."),
+    Achievement("heart-rate", "Heart Rate 220",
+                "Drink ten coffees in one game. Your heart did not make it."),
     Achievement("collector", "Collector",
                 "Own everything in the shop."),
     Achievement("purple", "Purple",
@@ -76,6 +78,8 @@ def summary(session) -> dict:
     won = not session.gave_up and (scoring.red_won(c) if side == "red" else not scoring.red_won(c))
     tier = session.company.tier
     earned = []
+    if getattr(session, "died", False):
+        earned.append("heart-rate")
     if won and _hard(session):
         picks = session.arsenal if side == "red" else session.defense_ids
         if picks and all(shop.is_free(i) for i in picks):

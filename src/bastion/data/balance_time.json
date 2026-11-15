@@ -1,0 +1,46 @@
+{
+ "red": {
+  "small": {
+   "easy": 1.1567,
+   "medium": 3.6633,
+   "hard": 4.2311
+  },
+  "medium": {
+   "easy": 0.973,
+   "medium": 8.4496,
+   "hard": 8.2095
+  },
+  "large": {
+   "easy": 1.5882,
+   "medium": 5.1768,
+   "hard": 4.6131
+  },
+  "huge": {
+   "easy": 1.2253,
+   "medium": 25.2607,
+   "hard": 22.5103
+  }
+ },
+ "blue": {
+  "small": {
+   "easy": 2.994,
+   "medium": 3.8806,
+   "hard": 1.7316
+  },
+  "medium": {
+   "easy": 2.5186,
+   "medium": 1.7822,
+   "hard": 1.5882
+  },
+  "large": {
+   "easy": 2.0,
+   "medium": 2.3775,
+   "hard": 1.336
+  },
+  "huge": {
+   "easy": 1.0,
+   "medium": 0.4872,
+   "hard": 0.6885
+  }
+ }
+}

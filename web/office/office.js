@@ -196,11 +196,32 @@
     drinking = true; const wasLaptop = O.mode === "laptop";
     if (wasLaptop) await closeLaptop();
     document.body.classList.add("of-drinking"); await sleep(650); slurp(); await sleep(1300);
-    document.body.classList.remove("of-drinking"); cups++;
-    toast("Coffee", SIPS[Math.min(cups - 1, SIPS.length - 1)]);
+    document.body.classList.remove("of-drinking");
+    const game = window.BastionCoffee ? window.BastionCoffee() : null;
+    cups = game ? game.cups : cups + 1;
+    if (game && game.died) { drinking = false; return die(); }
+    const left = 10 - cups;
+    toast("Coffee", game && left <= 3 ? `${SIPS[Math.min(cups - 1, SIPS.length - 1)]} Your heart is racing (${cups} cups).` : SIPS[Math.min(cups - 1, SIPS.length - 1)]);
     if (cups % 3 === 0) { $("#mug").classList.add("empty"); setTimeout(() => $("#mug").classList.remove("empty"), 45000); }
     drinking = false;
     if (wasLaptop || back) { await sleep(500); openLaptop(); }
+  }
+
+  function flatline() {
+    if (!O.sound) return; const a = audio(), o = a.createOscillator(), g = a.createGain();
+    o.type = "sine"; o.frequency.value = 980; g.gain.value = .05; o.connect(g); g.connect(a.destination);
+    [0, .5, 1].forEach((t) => { g.gain.setValueAtTime(.05, a.currentTime + t); g.gain.setValueAtTime(0, a.currentTime + t + .12); });
+    g.gain.setValueAtTime(.05, a.currentTime + 1.5); g.gain.linearRampToValueAtTime(0, a.currentTime + 4.2); o.start(); o.stop(a.currentTime + 4.3);
+  }
+  async function die() {
+    document.body.classList.add("of-dead"); flatline();
+    await sleep(1600);
+    const card = $("#of-dead");
+    card.innerHTML = `<div><b>You drank ten coffees.</b><small>Your heart gave up at the keyboard.</small>
+      <span class="of-ach">★ Achievement unlocked · Heart Rate 220</span></div>`;
+    card.classList.add("show");
+    await sleep(3000);
+    card.classList.remove("show"); document.body.classList.remove("of-dead"); cups = 0;
   }
 
   /* phone rings now and then while you are in the room */
@@ -218,7 +239,7 @@
       <div class="of-hint" id="of-hint">Click the laptop</div>
       <div class="of-night" id="of-night"><div><b>Night</b><small>the office goes quiet</small></div></div>
       <button class="of-pill of-skip" id="of-skip" hidden>Skip night</button>
-      <div class="of-toast" id="of-toast"></div><div class="of-vignette"></div><div class="of-hm" id="of-home"></div><div class="of-flash" id="of-flash"></div>`);
+      <div class="of-toast" id="of-toast"></div><div class="of-vignette"></div><div class="of-hm" id="of-home"></div><div class="of-dead-card" id="of-dead"></div><div class="of-flash" id="of-flash"></div>`);
     const right = document.querySelector(".topbar-right");
     if (right) right.insertAdjacentHTML("afterbegin", `<span class="clockchip inos of-only"><i>☀</i><small>Day 1</small><b>09:00</b></span><button class="of-close of-only" id="of-coffee" title="Have a coffee">☕</button><button class="of-close of-only" id="of-close">Close laptop</button>`);
     decorate(); paintSide(); paintTime(); fit(); setMode("menu"); watchGame();
@@ -352,7 +373,6 @@
     await sleep(150); stamp.style.visibility = ""; stamp.classList.remove("land"); void stamp.offsetWidth; stamp.classList.add("land");
   }
   async function react(entry) {
-    await roll(entry);
     const st = entry.querySelector(".stamp");
     if (!st) return;
     if (st.classList.contains("success")) { flash("rgba(61,220,132,.25)"); beep(660, .08, "triangle"); setTimeout(() => beep(990, .12, "triangle"), 90); }

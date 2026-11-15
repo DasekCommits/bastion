@@ -48,7 +48,7 @@
 
   // moves whose dice the server rolls when you are signed in; everything else is a read
   const MOVES = new Set(["start", "set_defenses", "set_arsenal", "begin", "move", "end_day", "give_up", "finish",
-    "blue_act", "blue_wait", "terminal", "realism_search", "realism_act", "realism_wait", "wait"]);
+    "blue_act", "blue_wait", "terminal", "realism_search", "realism_act", "realism_wait", "wait", "coffee"]);
 
   function serverRoll(method, args) {
     const xhr = new XMLHttpRequest();
@@ -319,13 +319,20 @@
         ${folder("tutorial", "✎", "Tutorial", "Red, Blue and WAF tracks.")}
         ${menu.realism ? folder("leaderboards", "☰", "Leaderboard", "The best players at every difficulty.") : folder("", "🔒", "Classified", "Opens when you find what is hidden.", "sealed")}
         ${folder("shop", "◈", "Shop", "Spend Red and Blue coins on new attacks and defenses.")}
-        ${folder("achievements", "★", "Achievements", "Fourteen feats. Few will see them all.")}
+        ${folder("achievements", "★", "Achievements", "Fifteen feats. Few will see them all.")}
         ${anyQuest ? folder("quests", "▤", "Classified", `${knownQuests.length} hidden objective${knownQuests.length > 1 ? "s" : ""} in play.`, "secret") : folder("quests", "▤", "Classified", "Some files are not on any inventory.", "sealed")}
       </nav>
       <p class="disclaimer">Bastion is a simulation for learning. The companies are fictional and no real company, network or system is ever attacked.</p>
     </section>`);
     app.querySelectorAll("[data-nav]").forEach((el) => el.addEventListener("click", () => navTo(el.dataset.nav)));
   }
+
+  window.BastionCoffee = () => {
+    if (!S.session || !S.start || !S.rec) return null;
+    const out = api("coffee");
+    if (out.died) setTimeout(() => renderFinal(api("finish")), 4200);
+    return out;
+  };
 
   function navTo(to) {
     if (to === "play") { S.play = { step: "side" }; S.settings = { level: null, side: null, company: null }; renderSetup(); }
@@ -1260,7 +1267,7 @@
     if (!event.possible) stamp = '<span class="stamp wasted">Wasted</span>';
     else if (event.empty) stamp = '<span class="stamp empty">Nothing here</span>';
     else stamp = event.succeeded ? '<span class="stamp success land">Success</span>' : '<span class="stamp blocked land">Failed</span>';
-    const chance = event.chance !== undefined && event.possible ? ` <span class="detail">chance was ${pct(event.chance)}</span>` : "";
+    const chance = "";
     const blockers = event.blockers && event.blockers.length ? `<br><span class="detail">Stopped by: ${esc(event.blockers.join(", "))}</span>` : "";
     const nothing = event.blockers && !event.blockers.length && event.possible && !event.succeeded ? `<br><span class="detail">Nothing blocked it. It just did not work this time.</span>` : "";
     let detection = "";

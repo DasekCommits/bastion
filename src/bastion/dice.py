@@ -6,7 +6,7 @@ from bastion.web import Session
 
 LOGGED = (
     "start", "set_defenses", "set_arsenal", "begin", "move", "end_day", "give_up", "finish",
-    "blue_act", "blue_wait", "terminal", "realism_search", "realism_act", "realism_wait", "wait",
+    "blue_act", "blue_wait", "terminal", "realism_search", "realism_act", "realism_wait", "wait", "coffee",
 )
 FINAL = ("finish", "give_up")
 

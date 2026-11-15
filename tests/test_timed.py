@@ -86,3 +86,23 @@ def test_a_timed_blue_game_reaches_the_end():
             break
         state = json.loads(s.blue_wait())
     assert state["finished"]
+
+
+def test_the_tenth_coffee_ends_the_game_and_earns_heart_rate():
+    from bastion import achievements
+    s = red()
+    for cup in range(1, 10):
+        assert json.loads(s.coffee()) == {"cups": cup, "died": False}
+    assert json.loads(s.coffee())["died"] and s.gave_up
+    final = json.loads(s.finish())
+    assert final["score"]
+    summary = achievements.summary(s)
+    assert "heart-rate" in summary["earned"] and summary["won"] is False
+
+
+def test_time_mode_has_a_balance_for_every_map_level_and_side():
+    from bastion.catalog import TIER_ORDER, load_time_scale
+    for side in ("red", "blue"):
+        for tier in TIER_ORDER:
+            for level in ("easy", "medium", "hard"):
+                assert 0.05 < load_time_scale(tier, level, side) < 80

@@ -67,6 +67,9 @@ def defense_group(defense) -> str:
     return DEFENSE_GROUPS.get(defense.id, {"detect": "Monitoring", "recover": "Recovery"}.get(defense.category, "Servers & network"))
 
 
+COFFEE_LIMIT = 10
+
+
 class Session:
     def __init__(self, profile_json: str = ""):
         self.catalog = load_catalog()
@@ -216,6 +219,8 @@ class Session:
         self.campaign = None
         self.events = []
         self.gave_up = False
+        self.cups = 0
+        self.died = False
         return json.dumps({"side": self.side, "random_side": self.random_side, "company": self._company()})
 
     def _company(self) -> dict:
@@ -705,6 +710,16 @@ class Session:
         night = None if self.campaign.finished else self.campaign.end_day()
         return json.dumps({"night": self._night(night) if night else None, "blue": notices,
                            "kicked_out": self.campaign.kicked_out, "turn": json.loads(self.turn())})
+
+    def coffee(self) -> str:
+        """A cup of coffee. The tenth one is the last thing you ever drink."""
+        if self.campaign is None or self.campaign.finished or self.gave_up:
+            return json.dumps({"cups": self.cups, "died": self.died})
+        self.cups += 1
+        if self.cups >= COFFEE_LIMIT:
+            self.died = True
+            self.gave_up = True
+        return json.dumps({"cups": self.cups, "died": self.died})
 
     def give_up(self) -> str:
         self.gave_up = True
