@@ -88,10 +88,10 @@ def test_a_timed_blue_game_reaches_the_end():
     assert state["finished"]
 
 
-def test_the_tenth_coffee_ends_the_game_and_earns_heart_rate():
+def test_the_twelfth_coffee_ends_the_game_and_earns_heart_rate():
     from bastion import achievements
     s = red()
-    for cup in range(1, 10):
+    for cup in range(1, 12):
         assert json.loads(s.coffee()) == {"cups": cup, "died": False}
     assert json.loads(s.coffee())["died"] and s.gave_up
     final = json.loads(s.finish())

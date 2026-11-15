@@ -67,7 +67,7 @@ def defense_group(defense) -> str:
     return DEFENSE_GROUPS.get(defense.id, {"detect": "Monitoring", "recover": "Recovery"}.get(defense.category, "Servers & network"))
 
 
-COFFEE_LIMIT = 10
+COFFEE_LIMIT = 12
 
 
 class Session:
@@ -712,7 +712,7 @@ class Session:
                            "kicked_out": self.campaign.kicked_out, "turn": json.loads(self.turn())})
 
     def coffee(self) -> str:
-        """A cup of coffee. The tenth one is the last thing you ever drink."""
+        """A cup of coffee. The twelfth one is the last thing you ever drink."""
         if self.campaign is None or self.campaign.finished or self.gave_up:
             return json.dumps({"cups": self.cups, "died": self.died})
         self.cups += 1

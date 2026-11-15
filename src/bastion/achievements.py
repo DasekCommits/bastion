@@ -33,7 +33,7 @@ ACHIEVEMENTS = (
     Achievement("no-way-back", "No Way Back",
                 "As Red on Hard, delete a machine's backups, then ransom that same machine."),
     Achievement("heart-rate", "Heart Rate 220",
-                "Drink ten coffees in one game. Your heart did not make it."),
+                "Drink twelve coffees in one game. Your heart did not make it."),
     Achievement("collector", "Collector",
                 "Own everything in the shop."),
     Achievement("purple", "Purple",

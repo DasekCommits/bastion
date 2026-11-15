@@ -1293,13 +1293,13 @@
       const who = api("targets", S.attack).find((x) => x.id === S.pretextFor);
       side = `<div class="panel"><h3>What email do you send ${esc(who ? who.label : "")}?</h3><div class="options" id="story-list">
         ${stories.map((x) => `<button class="option" data-story="${x.id}"><span></span><span><span class="name">${esc(x.label)}</span>
-          <span class="desc">${esc(x.fit)}</span></span><span class="odds">${x.success !== undefined ? `success ${pct(x.success)}` : ""}</span></button>`).join("")}</div>
+          <span class="desc">${esc(x.fit)}</span></span><span class="odds"></span></button>`).join("")}</div>
         <div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="back">Back</button></div></div>`;
     } else if (S.attack) {
       const targets = api("targets", S.attack);
       targets.filter((x) => !x.disabled).forEach((x) => S.map.targets.add(x.id));
       const attackName = t.actions.find((a) => a.id === S.attack).name;
-      const hasOdds = targets.some((x) => x.success !== undefined);
+      const hasOdds = false;
       if (hasOdds && (S.targetSort === undefined)) S.targetSort = "success";
       const reachable = targets.filter((x) => !x.disabled);
       if (hasOdds && S.targetSort) {
@@ -1314,7 +1314,7 @@
         : "";
       side = `<div class="panel"><h3>${esc(attackName)}: pick a target</h3>${controls}<div class="options" id="target-list">
         ${ordered.map((x) => {
-          const odds = x.success !== undefined ? `success ${pct(x.success)}<br>spotted ${pct(x.spotted)}<br>heat → ${pct(x.heat_after)}` : "";
+          const odds = "";
           const kept = S.watch.has(x.id);
           return `<button class="option${kept ? " watched" : ""}" data-target="${x.id}" data-search="${esc(x.label.toLowerCase())}"${kept ? ' data-keep="1"' : ""} ${bigList && !kept ? "hidden" : ""} ${x.disabled ? "disabled" : ""}>
             <span></span><span><span class="name">${kept ? '<span class="star-mark">★</span>' : ""}${esc(x.label)}</span>

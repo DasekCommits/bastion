@@ -200,7 +200,7 @@
     const game = window.BastionCoffee ? window.BastionCoffee() : null;
     cups = game ? game.cups : cups + 1;
     if (game && game.died) { drinking = false; return die(); }
-    const left = 10 - cups;
+    const left = 12 - cups;
     toast("Coffee", game && left <= 3 ? `${SIPS[Math.min(cups - 1, SIPS.length - 1)]} Your heart is racing (${cups} cups).` : SIPS[Math.min(cups - 1, SIPS.length - 1)]);
     if (cups % 3 === 0) { $("#mug").classList.add("empty"); setTimeout(() => $("#mug").classList.remove("empty"), 45000); }
     drinking = false;
@@ -217,7 +217,7 @@
     document.body.classList.add("of-dead"); flatline();
     await sleep(1600);
     const card = $("#of-dead");
-    card.innerHTML = `<div><b>You drank ten coffees.</b><small>Your heart gave up at the keyboard.</small>
+    card.innerHTML = `<div><b>You drank twelve coffees.</b><small>Your heart gave up at the keyboard.</small>
       <span class="of-ach">★ Achievement unlocked · Heart Rate 220</span></div>`;
     card.classList.add("show");
     await sleep(3000);
