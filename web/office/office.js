@@ -110,7 +110,7 @@
     });
   }
   function setMode(mode) {
-    O.mode = mode; document.body.classList.remove("of-menu", "of-room", "of-laptop"); document.body.classList.add("of-" + mode);
+    O.mode = mode; document.body.classList.remove("of-menu", "of-room", "of-laptop", "of-home"); if (mode !== "home" && $("#of-home")) $("#of-home").innerHTML = ""; document.body.classList.add("of-" + mode);
   }
   async function openLaptop() {
     if (O.mode !== "room" || O.night || O.zoomed) return;
@@ -192,10 +192,11 @@
       <div class="of-hint" id="of-hint">Click the laptop</div>
       <div class="of-night" id="of-night"><div><b>Night</b><small>the office goes quiet</small></div></div>
       <button class="of-pill of-skip" id="of-skip" hidden>Skip night</button>
-      <div class="of-toast" id="of-toast"></div><div class="of-vignette"></div>`);
+      <div class="of-toast" id="of-toast"></div><div class="of-vignette"></div><div class="of-hm" id="of-home"></div><div class="of-flash" id="of-flash"></div>`);
     const right = document.querySelector(".topbar-right");
     if (right) right.insertAdjacentHTML("afterbegin", `<span class="clockchip inos of-only"><i>☀</i><small>Day 1</small><b>09:00</b></span><button class="of-close of-only" id="of-close">Close laptop</button>`);
-    decorate(); paintSide(); paintTime(); fit(); setMode("menu");
+    decorate(); paintSide(); paintTime(); fit(); setMode("menu"); watchGame();
+    if (pendingMenu) { menu(...pendingMenu); pendingMenu = null; }
     addEventListener("resize", fit);
     $("#laptop").addEventListener("click", openLaptop);
     $("#laptop").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") openLaptop(); });
@@ -208,6 +209,145 @@
     setInterval(() => { if (!$("#phone").classList.contains("ring") && Math.random() < .4) ring(); }, 20000);
   }
 
-  window.Office = { turn: (t, side, company) => { if (svg) turn(t, side, company); } };
+
+  /* main menu over the office */
+  const TIER_DAYS = { small: "Small", medium: "Medium", large: "Large", huge: "Huge" };
+  let B = null, M = null, pick = { side: null, company: null, level: null };
+  function menu(data, bridge) {
+    M = data; B = bridge;
+    pick = { side: bridge.settings.side || "red", company: bridge.settings.company || null, level: bridge.settings.level || "easy" };
+    if (pick.side !== "random") { O.side = pick.side; paintSide(); }
+    setMode("home"); homeMain();
+    if (bridge.notice) toast("Welcome", bridge.notice);
+  }
+  function homeMain() {
+    const p = M.profile || {}, anyQuest = (M.quests || []).some((q) => q.known);
+    const item = (id, ico, name, sub, locked) => `<button class="hm-item ${locked ? "locked" : ""}" ${locked ? "disabled" : `data-go="${id}"`}>
+      <span class="hm-ico">${ico}</span><span class="hm-txt"><b>${name}</b><small>${sub}</small></span><span class="hm-arrow">›</span></button>`;
+    $("#of-home").innerHTML = `<div class="hm-wrap">
+      <h1 class="hm-logo">BASTION</h1>
+      <nav class="hm-list">
+        ${item("play", "▶", "Play", "Pick a side, a target and a difficulty")}
+        ${item("tutorial", "✎", "Tutorial", "Red, Blue and WAF tracks")}
+        ${item("shop", "◈", "Shop", "New attacks, defenses and quests")}
+        ${item("achievements", "★", "Achievements", "Few will see them all")}
+        ${M.realism ? item("leaderboards", "☰", "Leaderboard", "The best players") : item("", "🔒", "Classified", "Opens when you find what is hidden", true)}
+        ${item("quests", "▤", "Classified", anyQuest ? "Hidden objectives in play" : "Some files are not on any inventory", false)}
+      </nav>
+      <div class="hm-foot">${B.user ? `<span class="hm-user">Signed in as <b>${B.user.login}</b> · ${p.wins || 0} wins</span>` : `<span class="hm-user">Playing as a guest</span>`}
+        <button class="of-pill" data-snd>${O.sound ? "Sound on" : "Sound off"}</button><button class="of-pill" data-mus>${O.music ? "Music on" : "Music off"}</button></div>
+    </div>`;
+    wireHome();
+    $("#of-home").querySelectorAll("[data-go]").forEach((b, i) => {
+      b.style.animationDelay = `${80 + i * 60}ms`;
+      b.addEventListener("mouseenter", () => beep(500 + i * 40, .03, "triangle", .02));
+      b.addEventListener("click", () => { beep(720, .06, "triangle"); if (b.dataset.go === "play") homePlay(); else { leaveHome(); B.nav(b.dataset.go); } });
+    });
+  }
+  function wireHome() {
+    $("#of-home").querySelector("[data-snd]")?.addEventListener("click", (e) => { $("#of-sound").click(); e.target.textContent = O.sound ? "Sound on" : "Sound off"; e.target.classList.toggle("on", O.sound); });
+    $("#of-home").querySelector("[data-mus]")?.addEventListener("click", (e) => { $("#of-music").click(); e.target.textContent = O.music ? "Music on" : "Music off"; e.target.classList.toggle("on", O.music); });
+  }
+  function homePlay() {
+    const companyOpen = (c) => !c.classified && !M.locks.easy[c.id];
+    const levelOpen = (l) => l === "realism" ? (M.realism && pick.company && !M.locks.realism[pick.company]) : (!M.levels[l] && !(pick.company && M.locks[l][pick.company]));
+    if (pick.company && !(M.companies.find((c) => c.id === pick.company) && companyOpen(M.companies.find((c) => c.id === pick.company)))) pick.company = null;
+    if (!pick.company) pick.company = (M.companies.find(companyOpen) || {}).id || null;
+    if (pick.level && !levelOpen(pick.level)) pick.level = "easy";
+    const card = (group, id, html, on, locked) => `<button class="hm-card ${on ? "on" : ""} ${locked ? "locked" : ""} ${group === "side" ? "side-" + id : ""}" ${locked ? "disabled" : `data-g="${group}" data-v="${id}"`}>${html}</button>`;
+    const sides = B.sides.map((s) => card("side", s.id, `<span class="hm-big">${{ red: "🥷", blue: "🛡️", random: "🎲" }[s.id] || ""}</span><b>${s.name}</b><small>${s.text}</small>`, pick.side === s.id)).join("");
+    const maps = M.companies.map((c) => c.classified
+      ? card("company", c.id, `<b>████████</b><small>Classified</small><em>Locked</em>`, false, true)
+      : card("company", c.id, `<b>${c.name}</b><small>${c.description || ""}</small><em>${TIER_DAYS[c.tier] || c.tier} · ${c.people} people</em>`, pick.company === c.id, !companyOpen(c))).join("");
+    const levels = [...B.levels, B.realism].map((l) => {
+      const open = levelOpen(l.id);
+      return card("level", l.id, `<b>${l.id === "realism" && !open ? "████████" : l.name}</b><small>${open ? l.text : (l.id === "realism" ? "Classified" : "Locked")}</small>`, pick.level === l.id, !open);
+    }).join("");
+    $("#of-home").innerHTML = `<div class="hm-wrap play">
+      <div class="hm-top"><button class="hm-back" data-back>‹ Back</button><h2>New game</h2></div>
+      <section><h3>Side</h3><div class="hm-grid">${sides}</div></section>
+      <section><h3>Target</h3><div class="hm-grid">${maps}</div></section>
+      <section><h3>Difficulty</h3><div class="hm-grid">${levels}</div></section>
+      <div class="hm-go"><button class="hm-start" data-start ${pick.side && pick.company && pick.level ? "" : "disabled"}>Start</button></div>
+    </div>`;
+    $("#of-home").querySelector("[data-back]").addEventListener("click", () => { beep(400, .05, "triangle"); homeMain(); });
+    $("#of-home").querySelectorAll("[data-g]").forEach((b, i) => {
+      b.style.animationDelay = `${i * 40}ms`;
+      b.addEventListener("click", () => {
+        pick[b.dataset.g] = b.dataset.v; beep(700, .05, "triangle");
+        if (b.dataset.g === "side" && b.dataset.v !== "random") { O.side = b.dataset.v; paintSide(); }
+        const y = $("#of-home").scrollTop; homePlay(); $("#of-home").scrollTop = y;
+      });
+    });
+    $("#of-home").querySelector("[data-start]").addEventListener("click", () => {
+      beep(520, .1, "triangle"); setTimeout(() => beep(780, .14, "triangle"), 120);
+      leaveHome(); B.start(pick.side, pick.company, pick.level);
+    });
+  }
+  function leaveHome() { $("#of-home").innerHTML = ""; setMode("menu"); }
+
+  /* the game's own screens come alive */
+  const seen = new Set();
+  function shakeApp() { const a = $("#app"); a.classList.remove("of-shake"); void a.offsetWidth; a.classList.add("of-shake"); }
+  function flash(color) { const f = $("#of-flash"); f.style.background = color; f.classList.remove("go"); void f.offsetWidth; f.classList.add("go"); }
+  function alarm() {
+    if (!O.sound) return; const a = audio(), o = a.createOscillator(), g = a.createGain(); o.type = "square"; g.gain.value = .03;
+    for (let i = 0; i < 6; i++) o.frequency.setValueAtTime(i % 2 ? 620 : 880, a.currentTime + i * .16);
+    g.gain.setValueAtTime(.03, a.currentTime + .9); g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + 1); o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + 1.02);
+  }
+  async function roll(entry) {
+    const stamp = entry.querySelector(".stamp.land"), det = [...entry.querySelectorAll(".detail")].find((d) => /chance was/.test(d.textContent));
+    if (!stamp || !det) return;
+    const chance = parseInt(det.textContent.match(/(\d+)%/)?.[1] || "0", 10) / 100, ok = stamp.classList.contains("success");
+    const land = ok ? Math.random() * chance * .98 : chance + Math.random() * (1 - chance) * .98;
+    stamp.style.visibility = "hidden";
+    const meter = document.createElement("span"); meter.className = "of-roll";
+    meter.innerHTML = `<span class="trk"><span class="zone" style="width:${chance * 100}%"></span><span class="ndl"></span></span><b>…</b>`;
+    stamp.before(meter);
+    const ndl = meter.querySelector(".ndl"), out = meter.querySelector("b"), frames = reduce ? 1 : 18;
+    for (let i = 1; i <= frames; i++) {
+      const v = i === frames ? land : Math.random(); ndl.style.left = `calc(${(v * 100).toFixed(1)}% - 1px)`; out.textContent = Math.round(v * 100) + "%";
+      beep(400 + v * 600, .02, "square", .015); await sleep(28 + i * 4);
+    }
+    await sleep(120); stamp.style.visibility = ""; stamp.classList.remove("land"); void stamp.offsetWidth; stamp.classList.add("land");
+  }
+  async function react(entry) {
+    await roll(entry);
+    const st = entry.querySelector(".stamp");
+    if (!st) return;
+    if (st.classList.contains("success")) { flash("rgba(61,220,132,.25)"); beep(660, .08, "triangle"); setTimeout(() => beep(990, .12, "triangle"), 90); }
+    else if (st.classList.contains("blocked")) { shakeApp(); beep(140, .18, "sawtooth", .05); }
+    if (entry.querySelector(".stamp.spotted, .stamp.caught, .stamp.detected")) { await sleep(250); flash("rgba(255,60,80,.25)"); alarm(); }
+    if (entry.querySelector(".stamp.found")) { shakeApp(); alarm(); }
+  }
+  function confetti() {
+    if (reduce) return; const colors = ["#ff2e63", "#08f7fe", "#ffd27a", "#3ddc84", "#7a3fc0"];
+    for (let i = 0; i < 120; i++) { const p = document.createElement("i"); p.className = "of-conf"; p.style.left = Math.random() * 100 + "vw"; p.style.background = colors[i % 5];
+      p.style.animationDuration = (2 + Math.random() * 2.5) + "s"; p.style.animationDelay = Math.random() * .6 + "s";
+      p.style.setProperty("--dx", (Math.random() * 200 - 100) + "px"); p.style.setProperty("--r", (Math.random() * 720) + "deg"); document.body.appendChild(p); setTimeout(() => p.remove(), 5500); }
+  }
+  function countUp(el) {
+    const to = parseInt(el.textContent.replace(/[^\d-]/g, ""), 10); if (isNaN(to) || to === 0) return;
+    const suffix = el.textContent.replace(/^[\d\s+-]+/, ""), t0 = performance.now(), ms = reduce ? 1 : 900;
+    (function stepC(now) { const t = Math.min(1, (now - t0) / ms); el.textContent = Math.round(to * (1 - Math.pow(1 - t, 3))) + suffix; if (t < 1) requestAnimationFrame(stepC); })(t0);
+  }
+  function watchGame() {
+    const app = $("#app"); if (!app) return;
+    new MutationObserver(() => {
+      app.querySelectorAll(".entry").forEach((e) => {
+        if (e.dataset.of) return; e.dataset.of = "1";
+        const key = [...e.childNodes].filter((n) => !(n.classList && n.classList.contains("of-roll"))).map((n) => n.textContent).join("").trim().slice(0, 200) + "#" + [...e.parentElement.children].indexOf(e);
+        if (seen.has(key)) return; seen.add(key);
+        if (O.mode === "laptop") { e.classList.add("of-new"); react(e); }
+      });
+      const big = app.querySelector(".stamp.big:not(.of-done)");
+      if (big) { big.classList.add("of-done"); app.querySelectorAll(".board strong").forEach(countUp);
+        if (big.classList.contains("success") || /won|victory/i.test(big.textContent)) { confetti(); beep(660, .3, "triangle", .05); } else { shakeApp(); beep(140, .4, "sawtooth", .05); } }
+      if (!app.querySelector(".entry")) seen.clear();
+    }).observe(app, { childList: true, subtree: true });
+  }
+
+  let pendingMenu = null;
+  window.Office = { turn: (t, side, company) => { if (svg) turn(t, side, company); }, menu: (d, b) => { if (svg) menu(d, b); else pendingMenu = [d, b]; } };
   document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", boot) : boot();
 })();

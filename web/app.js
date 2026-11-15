@@ -286,6 +286,14 @@
 
   function renderHome() {
     setGauges(null);
+    if (window.Office && window.Office.menu) {
+      window.Office.menu(api("menu"), {
+        user: S.user, notice: S.notice, settings: S.settings, sides: SIDES, levels: LEVELS, realism: REALISM, nav: navTo,
+        start: (side, company, level) => { S.settings = { side, company, level }; store.set(SETTINGS_KEY, S.settings); startGame(); },
+      });
+      S.notice = ""; app.innerHTML = "";
+      return;
+    }
     const menu = api("menu");
     const p = menu.profile;
     const knownQuests = menu.quests.filter((q) => q.known);
@@ -312,15 +320,16 @@
       </nav>
       <p class="disclaimer">Bastion is a simulation for learning. The companies are fictional and no real company, network or system is ever attacked.</p>
     </section>`);
-    app.querySelectorAll("[data-nav]").forEach((el) => el.addEventListener("click", () => {
-      const to = el.dataset.nav;
-      if (to === "play") { S.play = { step: "side" }; S.settings = { level: null, side: null, company: null }; renderSetup(); }
-      else if (to === "tutorial") renderLearn();
-      else if (to === "leaderboards") renderLeaderboard();
-      else if (to === "quests") renderQuests();
-      else if (to === "achievements") renderAchievements();
-      else if (to === "shop") renderShop();
-    }));
+    app.querySelectorAll("[data-nav]").forEach((el) => el.addEventListener("click", () => navTo(el.dataset.nav)));
+  }
+
+  function navTo(to) {
+    if (to === "play") { S.play = { step: "side" }; S.settings = { level: null, side: null, company: null }; renderSetup(); }
+    else if (to === "tutorial") renderLearn();
+    else if (to === "leaderboards") renderLeaderboard();
+    else if (to === "quests") renderQuests();
+    else if (to === "achievements") renderAchievements();
+    else if (to === "shop") renderShop();
   }
 
   async function renderShop(side) {
