@@ -26,6 +26,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: linear-gradi
 .pill { font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 8px 12px; border-radius: 999px; border: 0; cursor: pointer;
   background: rgba(10,10,14,.72); color: #fff; backdrop-filter: blur(6px); }
 .pill.on { background: var(--accent); }
+.clockchip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 8px; border-radius: 999px; background: rgba(10,10,14,.78); color: #fff; backdrop-filter: blur(6px); }
+.clockchip i { font-style: normal; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: #ffd27a; color: #5a3a00; font-size: 14px; transition: background .6s, color .6s; }
+.clockchip.night i { background: #26305a; color: #e8eefc; }
+.clockchip small { font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+.clockchip b { font: 700 17px var(--mono); letter-spacing: .04em; min-width: 52px; }
+.clockchip.os { background: rgba(255,255,255,.08); padding: 3px 10px 3px 4px; }
+.clockchip.os i { width: 20px; height: 20px; font-size: 12px; }
+.clockchip.os b { font-size: 15px; }
 .pill[hidden], .lid[hidden] { display: none; }
 .hint { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 4; font: 600 13px var(--mono); padding: 10px 16px; border-radius: 999px;
   background: rgba(10,10,14,.75); color: #fff; animation: bob 2s ease-in-out infinite; white-space: nowrap; }
@@ -209,6 +217,27 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 .end-total { margin: 12px 0 18px; font: 700 20px var(--mono); background: rgba(255,255,255,.1); }
 .conf { position: fixed; top: -12px; width: 9px; height: 14px; z-index: 60; pointer-events: none; animation: fall linear forwards; }
 @keyframes fall { to { transform: translate(var(--dx), 105vh) rotate(var(--r)); } }
+.menu { position: fixed; inset: 0; z-index: 55; overflow-y: auto; background: radial-gradient(120% 90% at 50% 0%, rgba(20,16,28,.72), rgba(5,5,10,.94) 70%); backdrop-filter: blur(5px);
+  transition: opacity .5s; }
+.menu.hide { opacity: 0; pointer-events: none; }
+.menu-inner { width: min(1060px, 100%); margin: 0 auto; padding: 40px 16px 60px; display: grid; gap: 26px; }
+.menu-logo { margin: 0; text-align: center; font: 700 clamp(56px, 12vw, 120px)/1 var(--body); letter-spacing: .1em; color: transparent; -webkit-text-stroke: 2px var(--accent);
+  text-shadow: 0 0 30px color-mix(in srgb, var(--accent) 60%, transparent); animation: flicker 7s infinite; }
+.menu h2 { margin: 0 0 10px; font: 700 18px var(--body); letter-spacing: .04em; color: #fff; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.opt { position: relative; display: grid; gap: 4px; text-align: left; padding: 16px 16px 14px; border-radius: 14px; cursor: pointer; color: #fff;
+  background: rgba(255,255,255,.05); border: 1.5px solid rgba(255,255,255,.14); transition: transform .2s cubic-bezier(.2,1.6,.4,1), border-color .2s, background .2s, box-shadow .2s; font-family: var(--body); }
+.opt:hover:not(:disabled) { transform: translateY(-4px); border-color: rgba(255,255,255,.4); }
+.opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: 0 0 0 1px var(--accent), 0 14px 40px color-mix(in srgb, var(--accent) 30%, transparent); }
+.opt.on::after { content: "✓"; position: absolute; top: 12px; right: 14px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); font: 700 12px var(--mono); }
+.opt b { font-size: 19px; } .opt span { font-size: 14px; color: #c9c4cf; } .opt em { font: 600 12px var(--mono); font-style: normal; color: #8f8a96; margin-top: 4px; }
+.opt .ico { font-size: 28px; color: inherit; }
+.opt.locked { opacity: .45; cursor: not-allowed; }
+.menu-go { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; align-items: center; }
+.start { font: 700 20px var(--body); letter-spacing: .12em; text-transform: uppercase; padding: 16px 56px; border-radius: 999px; border: 0; cursor: pointer; color: #fff;
+  background: var(--accent); box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 55%, transparent); transition: transform .2s cubic-bezier(.2,1.6,.4,1); animation: glowpulse 2.4s ease-in-out infinite; }
+.start:hover { transform: scale(1.06); }
+@keyframes glowpulse { 50% { box-shadow: 0 0 50px color-mix(in srgb, var(--accent) 80%, transparent); } }
 @media (max-width: 700px) {
   .win { left: 8px !important; right: 8px !important; width: auto !important; }
   .dock button { width: 50px; height: 50px; font-size: 21px; }
@@ -274,7 +303,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       <ellipse cx="8" cy="8" rx="9" ry="5" fill="#4f9a5f" transform="rotate(-30 8 8)"/><ellipse cx="22" cy="6" rx="9" ry="5" fill="#3f8a4f" transform="rotate(25 22 6)"/><ellipse cx="15" cy="0" rx="5" ry="9" fill="#5aab69"/></g>
   </g>
 
-  <g id="wallclock" transform="translate(1290 70)">
+  <g id="wallclock" transform="translate(1526 236)">
     <circle r="36" fill="#2b2b2b"/><circle r="31" fill="#f4efe6"/>
     <g stroke="#2b2b2b" stroke-width="3"><line x1="0" y1="-27" x2="0" y2="-22"/><line x1="27" y1="0" x2="22" y2="0"/><line x1="0" y1="27" x2="0" y2="22"/><line x1="-27" y1="0" x2="-22" y2="0"/></g>
     <line id="hhand" x1="0" y1="0" x2="0" y2="-15" stroke="#222" stroke-width="5" stroke-linecap="round"/>
@@ -292,7 +321,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       <g fill="#59a8ff"><circle class="tv-node" cx="650" cy="170" r="9"/><circle class="tv-node" cx="860" cy="170" r="9" style="animation-delay:.5s"/>
         <circle class="tv-node" cx="760" cy="220" r="11" style="animation-delay:1s"/><circle class="tv-node" cx="680" cy="280" r="8" style="animation-delay:1.5s"/>
         <circle class="tv-node" cx="840" cy="280" r="8" fill="#ff5d73" style="animation-delay:.2s"/></g>
-      <text x="604" y="148" fill="#8fb4e8" font-family="JetBrains Mono" font-size="13">SOC · OLIVE BYTE</text>
+      <text x="604" y="148" fill="#8fb4e8" font-family="JetBrains Mono" font-size="13" id="tvName">SOC · OLIVE BYTE</text>
       <text x="906" y="148" fill="#3ddc84" font-family="JetBrains Mono" font-size="13" text-anchor="end">● LIVE</text>
       <path d="M590 126 L700 126 L590 230 Z" fill="#fff" opacity=".04"/>
       <g id="ticker" opacity="0"><rect x="590" y="286" width="330" height="30" fill="#c62828"/><rect x="590" y="286" width="74" height="30" fill="#8e1b1b"/>
@@ -445,14 +474,13 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 
 <div class="hud">
   <div style="display:flex;gap:6px">
-    <button class="pill" data-side="red" id="sideRed">Red</button>
-    <button class="pill" data-side="blue" id="sideBlue">Blue</button>
+    <button class="pill" id="menuBtn">☰ Menu</button>
   </div>
   <div style="display:flex;gap:6px">
     <button class="pill" id="sound">Sound off</button>
     <button class="pill" id="music">Music off</button>
     <button class="pill on" id="skip" hidden>Skip night</button>
-    <button class="pill" id="clockPill">Day 1 · 09:00</button>
+    <span class="clockchip" id="clockPill"><i id="clockIcon">☀</i><small id="clockDay">Day 1</small><b id="clockTime">09:00</b></span>
   </div>
 </div>
 <div class="hint" id="hint">Click the laptop</div>
@@ -460,7 +488,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 <div class="os" id="os" aria-hidden="true">
   <div class="bar">
     <span id="osSide">OPERATOR</span>
-    <span id="osClock">Day 1 · 09:00</span>
+    <span class="clockchip os" id="osClock"><i>☀</i><small>Day 1</small><b>09:00</b></span>
     <span class="heat">HEAT <span class="meter"><span id="heatBar"></span></span> <span id="heatTxt">0%</span></span>
     <span class="grow"></span>
     <span id="osCoins">◈ 0</span>
@@ -476,6 +504,31 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 <div class="flash" id="flash"></div>
 <div class="panel" id="panel"></div>
 <div class="end" id="end"></div>
+<div class="menu" id="menu">
+  <div class="menu-inner">
+    <h1 class="menu-logo">BASTION</h1>
+    <section><h2>Side</h2>
+      <div class="opts" data-group="side">
+        <button class="opt" data-v="red"><span class="ico">🥷</span><b>Red</b><span>Break in. Steal the data before they notice.</span></button>
+        <button class="opt" data-v="blue"><span class="ico">🛡️</span><b>Blue</b><span>Watch the logs. Catch them before the data leaves.</span></button>
+      </div></section>
+    <section><h2>Map</h2>
+      <div class="opts" data-group="map">
+        <button class="opt" data-v="olive"><b>Olive Byte</b><span>Small web shop</span><em>5 people · 3 days</em></button>
+        <button class="opt" data-v="clinic"><b>Harbor Clinic</b><span>Medium clinic</span><em>10 people · 4 days</em></button>
+        <button class="opt" data-v="bank"><b>Meridian Bank</b><span>Large bank</span><em>20 people · 5 days</em></button>
+        <button class="opt locked" disabled><b>█████████</b><span>Classified</span><em>Locked</em></button>
+      </div></section>
+    <section><h2>Difficulty</h2>
+      <div class="opts" data-group="level">
+        <button class="opt" data-v="easy"><b>Easy</b><span>More luck on your side</span></button>
+        <button class="opt" data-v="medium"><b>Medium</b><span>A fair fight</span></button>
+        <button class="opt" data-v="hard"><b>Hard</b><span>They are good at this</span></button>
+        <button class="opt locked" disabled><b>Realism</b><span>Classified</span><em>Locked</em></button>
+      </div></section>
+    <div class="menu-go"><button class="start" id="startBtn">Start</button><button class="pill" id="resumeBtn" hidden>Back to the game</button></div>
+  </div>
+</div>
 
 <script>
 (() => {
@@ -484,6 +537,14 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   const svg = $("#scene");
   const S = { night: false, rain: false, side: "red", day: 1, minutes: 9 * 60, heat: 0, coins: 0, inside: false, admin: false, scanned: false, stolen: false, cut: false,
     sound: false, zoomed: false, quests: { scout: 0, inside: 0, climb: 0 }, wins: [] };
+  const MAPS = {
+    olive: { name: "Olive Byte", domain: "olivebyte", web: "web-01", db: "db-01", pc: "office-pc", webName: "web shop", people: 5, machines: 4, days: 3, size: "Small" },
+    clinic: { name: "Harbor Clinic", domain: "harborclinic", web: "site", db: "ehr", pc: "front-desk", webName: "patient portal", people: 10, machines: 7, days: 4, size: "Medium" },
+    bank: { name: "Meridian Bank", domain: "meridianbank", web: "online-banking", db: "core", pc: "branch", webName: "online banking site", people: 20, machines: 12, days: 5, size: "Large" },
+  };
+  const LEVELS = { easy: { p: .12, atk: .8, night: 1, spot: .7 }, medium: { p: 0, atk: 1, night: 2, spot: 1 }, hard: { p: -.08, atk: 1.2, night: 3, spot: 1.25 } };
+  let M = MAPS.olive, L = LEVELS.medium;
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
   const FULL = [0, 0, 1600, 900], SCREEN = [684, 384, 272, 168], PORTRAIT = [300, 60, 1000, 820];
   let vb = FULL.slice();
 
@@ -598,8 +659,9 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     const day = Math.floor(S.minutes) % (24 * 60), mm = Math.floor(day % 60), hh = Math.floor(day / 60);
     $("#mhand").setAttribute("transform", `rotate(${(day % 60) * 6})`);
     $("#hhand").setAttribute("transform", `rotate(${(hh % 12) * 30 + (day % 60) / 2})`);
-    const label = `${S.night ? "Night" : "Day"} ${S.day} · ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-    $("#clockPill").textContent = label; $("#osClock").textContent = label;
+    const time = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`, dark = night > .5;
+    document.querySelectorAll(".clockchip").forEach((c) => { c.classList.toggle("night", dark);
+      c.querySelector("i").textContent = dark ? "☾" : "☀"; c.querySelector("small").textContent = `${S.night ? "Night" : "Day"} ${S.day}`; c.querySelector("b").textContent = time; });
   }
 
   /* little laptop screen in the office view */
@@ -630,12 +692,30 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   /* side switch */
   function setSide(side) {
     S.side = side; document.body.dataset.side = side;
-    $("#sideRed").classList.toggle("on", side === "red"); $("#sideBlue").classList.toggle("on", side === "blue");
     $("#osSide").textContent = side === "red" ? "OPERATOR · RED" : "ANALYST · BLUE";
     paintMini(); paintNotes(); paintTime(); buildDock();
     if (S.zoomed) { $("#deskArea").innerHTML = ""; openApp(side === "red" ? "term" : "logs"); }
   }
-  $("#sideRed").onclick = () => { if (S.side !== "red") resetGame("red"); }; $("#sideBlue").onclick = () => { if (S.side !== "blue") resetGame("blue"); };
+  const CFG = { side: "red", map: "olive", level: "medium" };
+  function paintMenu() {
+    document.querySelectorAll(".opts").forEach((g) => g.querySelectorAll(".opt[data-v]").forEach((o) => o.classList.toggle("on", CFG[g.dataset.group] === o.dataset.v)));
+  }
+  document.querySelectorAll(".opts").forEach((g) => g.addEventListener("click", (e) => {
+    const o = e.target.closest(".opt[data-v]"); if (!o) return;
+    CFG[g.dataset.group] = o.dataset.v; beep(700, .05);
+    if (g.dataset.group === "side") { S.side = o.dataset.v; document.body.dataset.side = o.dataset.v; }
+    paintMenu();
+  }));
+  function openMenu() { S.paused = true; $("#resumeBtn").hidden = !S.started || S.over; $("#menu").classList.remove("hide"); paintMenu(); }
+  function startGame() {
+    M = MAPS[CFG.map]; L = LEVELS[CFG.level]; S.started = true; S.paused = false;
+    $("#tvName").textContent = `SOC · ${M.name.toUpperCase()}`;
+    $("#menu").classList.add("hide"); beep(520, .1, "triangle"); setTimeout(() => beep(780, .14, "triangle"), 120);
+    resetGame(CFG.side); $("#hint").style.display = "";
+  }
+  $("#startBtn").onclick = startGame;
+  $("#resumeBtn").onclick = () => { $("#menu").classList.add("hide"); S.paused = false; };
+  $("#menuBtn").onclick = () => { if (S.zoomed) closeLaptop(); openMenu(); };
 
   /* camera zoom into the laptop */
   function fitPortrait() {
@@ -765,8 +845,8 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     $("#skip").hidden = false; $("#skip2").hidden = false; hooks.forEach((f) => f()); paintTime();
   }
   function endNight() {
-    if (S.day >= 3) { S.night = false; $("#skip").hidden = true; $("#skip2").hidden = true;
-      return S.side === "red" ? endGame(false, "Three days passed and you never got the data out.") : endGame(true, "Three days, and the data never left the company."); }
+    if (S.day >= M.days) { S.night = false; $("#skip").hidden = true; $("#skip2").hidden = true;
+      return S.side === "red" ? endGame(false, `${M.days} days passed and you never got the data out.`) : endGame(true, `${M.days} days, and the data never left the company.`); }
     S.night = false; S.day++; S.minutes = 9 * 60; $("#skip").hidden = true; $("#skip2").hidden = true;
     if (S.cut) { S.cut = false; mapState(); }
     if (S.atk) S.atk.next = S.minutes + 40 + Math.random() * 40;
@@ -806,12 +886,13 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   function stamp(box, cls, text) { box.insertAdjacentHTML("beforeend", `<div><span class="stamp ${cls}">${text}</span></div>`); box.scrollTop = box.scrollHeight; beep(cls === "ok" ? 520 : 160, .18, "sawtooth", .05); }
 
   /* map */
-  const NODES = { you: [40, 120, "you"], web: [150, 60, "web-01"], mail: [150, 180, "mail"], db: [270, 60, "db-01"], pc: [270, 180, "office-pc"] };
+  const NODES = { you: [40, 120], web: [150, 60], mail: [150, 180], db: [270, 60], pc: [270, 180] };
+  const nodeName = (id) => ({ you: S.side === "blue" ? "internet" : "you", web: M.web, mail: "mail", db: M.db, pc: M.pc })[id];
   const LINKS = [["you", "web"], ["you", "mail"], ["web", "db"], ["mail", "pc"], ["pc", "db"]];
   function initMap(w) {
     const b = w.querySelector(".body"); b.style.padding = "0";
     b.innerHTML = `<svg viewBox="0 0 320 240" preserveAspectRatio="xMidYMid meet"><g class="links">${LINKS.map(([a, c]) => `<line class="link" x1="${NODES[a][0]}" y1="${NODES[a][1]}" x2="${NODES[c][0]}" y2="${NODES[c][1]}"/>`).join("")}</g>
-      <g class="fx"></g>${Object.entries(NODES).map(([id, [x, y, n]]) => `<g class="node" data-node="${id}">${id === "you" ? `<circle cx="${x}" cy="${y}" r="16"/>` : `<rect x="${x - 18}" y="${y - 14}" width="36" height="28" rx="5"/>`}<text x="${x}" y="${y + 30}">${id === "you" && S.side === "blue" ? "internet" : n}</text></g>`).join("")}</svg>`;
+      <g class="fx"></g>${Object.entries(NODES).map(([id, [x, y]]) => `<g class="node" data-node="${id}">${id === "you" ? `<circle cx="${x}" cy="${y}" r="16"/>` : `<rect x="${x - 18}" y="${y - 14}" width="36" height="28" rx="5"/>`}<text x="${x}" y="${y + 30}">${nodeName(id)}</text></g>`).join("")}</svg>`;
     mapState();
   }
   function mapState() {
@@ -860,16 +941,16 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 
   /* red terminal */
   const MOVES = [
-    { id: "recon", cmd: "recon web-01", chance: .95, mins: 45, heat: .04, need: () => true },
-    { id: "exploit", cmd: "exploit web-01", chance: .55, mins: 90, heat: .12, need: () => !S.inside && !S.cut },
-    { id: "escalate", cmd: "escalate web-01", chance: .6, mins: 90, heat: .1, need: () => S.inside && !S.admin && !S.cut },
-    { id: "pivot", cmd: "move db-01", chance: .7, mins: 60, heat: .1, need: () => S.admin && !S.pivot && !S.cut },
-    { id: "steal", cmd: "steal db-01", chance: .8, mins: 120, heat: .18, need: () => S.pivot && !S.stolen },
+    { id: "recon", get cmd() { return `recon ${M.web}`; }, chance: .95, mins: 45, heat: .04, need: () => true },
+    { id: "exploit", get cmd() { return `exploit ${M.web}`; }, chance: .55, mins: 90, heat: .12, need: () => !S.inside && !S.cut },
+    { id: "escalate", get cmd() { return `escalate ${M.web}`; }, chance: .6, mins: 90, heat: .1, need: () => S.inside && !S.admin && !S.cut },
+    { id: "pivot", get cmd() { return `move ${M.db}`; }, chance: .7, mins: 60, heat: .1, need: () => S.admin && !S.pivot && !S.cut },
+    { id: "steal", get cmd() { return `steal ${M.db}`; }, chance: .8, mins: 120, heat: .18, need: () => S.pivot && !S.stolen },
     { id: "sleep", cmd: "sleep", chance: 1, mins: 0, heat: 0, need: () => true },
   ];
   function initTerm(w) {
     const b = w.querySelector(".body");
-    b.innerHTML = `<div style="font:700 30px/1 var(--body);letter-spacing:.12em;color:var(--accent);text-shadow:0 0 14px var(--accent);margin:4px 0 10px">BASTION</div><div class="dim">operator shell · target: Olive Byte · 4 machines · 5 people</div><div class="dim">pick a move below. every move costs time and makes noise.</div><br>`;
+    b.innerHTML = `<div style="font:700 30px/1 var(--body);letter-spacing:.12em;color:var(--accent);text-shadow:0 0 14px var(--accent);margin:4px 0 10px">BASTION</div><div class="dim">operator shell · target: ${M.name} · ${M.machines} machines · ${M.people} people</div><div class="dim">pick a move below. every move costs time and makes noise.</div><br>`;
     const cmds = document.createElement("div"); cmds.className = "cmds"; w.appendChild(cmds);
     const paint = () => { if (!document.body.contains(w)) return hooks.delete(paint);
       cmds.innerHTML = MOVES.map((m) => `<button class="cmd" data-m="${m.id}" ${m.need() ? "" : "disabled"}>${m.cmd}</button>`).join("");
@@ -877,7 +958,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     hooks.add(paint); paint();
   }
   let busy = false;
-  const chanceOf = (m) => m.chance >= 1 ? 1 : Math.min(.95, m.chance + (S.boost ? .15 : 0) + (m.id === "exploit" && S.leak ? .25 : 0));
+  const chanceOf = (m) => m.chance >= 1 ? 1 : Math.max(.05, Math.min(.95, m.chance + L.p + (S.boost ? .15 : 0) + (m.id === "exploit" && S.leak ? .25 : 0)));
   async function run(m, b, cmds, paint) {
     if (busy) return; busy = true; cmds.querySelectorAll("button").forEach((x) => x.disabled = true);
     const line = document.createElement("div"); line.innerHTML = `<span class="p">operator@bastion:~$ </span><span class="typed"></span>`; b.appendChild(line);
@@ -894,20 +975,20 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     setHeat(S.heat + m.heat * (S.night ? .5 : 1));
     if (ok) {
       stamp(b, "ok", m.id === "steal" ? "DATA TAKEN" : "SUCCESS");
-      if (m.id === "recon") { S.scanned = true; b.insertAdjacentHTML("beforeend", `<div>open ports 80, 443 · web shop software is out of date</div>`); }
+      if (m.id === "recon") { S.scanned = true; b.insertAdjacentHTML("beforeend", `<div>open ports 80, 443 · ${M.webName} software is out of date</div>`); }
       if (m.id === "exploit") { S.inside = true; S.quests.inside++; if (S.scanned) { S.quests.scout = 1; questDone("Scout First", 3); } flash(); }
-      if (m.id === "escalate") { S.admin = true; S.quests.climb++; flash(); b.insertAdjacentHTML("beforeend", `<div>you are now administrator on web-01 · found the database password</div>`); }
-      if (m.id === "pivot") { S.pivot = true; b.insertAdjacentHTML("beforeend", `<div>the database password works. you are on db-01.</div>`); }
+      if (m.id === "escalate") { S.admin = true; S.quests.climb++; flash(); b.insertAdjacentHTML("beforeend", `<div>you are now administrator on ${M.web} · found the database password</div>`); }
+      if (m.id === "pivot") { S.pivot = true; b.insertAdjacentHTML("beforeend", `<div>the database password works. you are on ${M.db}.</div>`); }
       if (m.id === "steal") { S.stolen = true; flash(); addCoins(4); b.insertAdjacentHTML("beforeend", `<div>copied: customer orders, shop config</div>`); setTimeout(() => endGame(true, "You walked out with the customer database."), 1400); }
     } else {
       stamp(b, "bad", "BLOCKED"); shake();
     }
     mapState(); paintNotes();
-    const spotted = Math.random() < S.heat * .8 * (S.night ? .3 : 1);
+    const spotted = Math.random() < S.heat * .8 * L.spot * (S.night ? .3 : 1);
     if (spotted && m.id !== "recon") {
       await sleep(350); stamp(b, "warn", "SPOTTED"); alarm();
       if (S.inside && Math.random() < .5) { S.cut = true; S.inside = false; S.admin = false; mapState();
-        S.pivot = false; b.insertAdjacentHTML("beforeend", `<div style="color:#8fb4ff">blue team: web-01 was cut off from the network. you lost your foothold.</div>`); shake(); }
+        S.pivot = false; b.insertAdjacentHTML("beforeend", `<div style="color:#8fb4ff">blue team: ${M.web} was cut off from the network. you lost your foothold.</div>`); shake(); }
     }
     await spend(m.mins);
     busy = false; paint(); b.scrollTop = b.scrollHeight;
@@ -915,13 +996,13 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   function questDone(name, coins) { setTimeout(() => { toast("Quest complete", `${name} · ◈ +${coins}`); addCoins(coins); }, 700); }
 
   /* blue: a live attacker works through the company while you watch the logs */
-  const NOISE = ["login ok · emily · office-pc", "dns query · cdn.fonts.example", "backup finished · db-01", "mail in · newsletter@shop.example", "login ok · jacob · vpn", "print job · george", "update installed · office-pc"];
-  const DECOYS = ["admin login at 03:12 · web-01 (it was the backup job)", "FAILED login ×3 · george · mail (forgot his password)", "large upload · emily · cloud (holiday photos)"];
+  const NOISE = () => [`login ok · emily · ${M.pc}`, "dns query · cdn.fonts.example", `backup finished · ${M.db}`, "mail in · newsletter@shop.example", "login ok · jacob · vpn", "print job · george", `update installed · ${M.pc}`];
+  const DECOYS = () => [`admin login at 03:12 · ${M.web} (it was the backup job)`, "FAILED login ×3 · george · mail (forgot his password)", "large upload · emily · cloud (holiday photos)"];
   const STAGES = [
-    { name: "port scan", text: (ip) => `port probe from ${ip} · web-01`, chance: .9, outside: true, path: ["you", "web"] },
-    { name: "web exploit", text: (ip) => `strange requests from ${ip} · web shop`, chance: .5, outside: true, path: ["you", "web"] },
-    { name: "privilege escalation", text: () => `new admin account created · web-01`, chance: .55, outside: false, path: ["you", "web"] },
-    { name: "data theft", text: () => `large transfer out · db-01 → internet`, chance: .7, outside: false, path: ["you", "web", "db"] },
+    { name: "port scan", text: (ip) => `port probe from ${ip} · ${M.web}`, chance: .9, outside: true, path: ["you", "web"] },
+    { name: "web exploit", text: (ip) => `strange requests from ${ip} · ${M.webName}`, chance: .5, outside: true, path: ["you", "web"] },
+    { name: "privilege escalation", text: () => `new admin account created · ${M.web}`, chance: .55, outside: false, path: ["you", "web"] },
+    { name: "data theft", text: () => `large transfer out · ${M.db} → internet`, chance: .7, outside: false, path: ["you", "web", "db"] },
   ];
   const newIp = () => `203.0.113.${Math.floor(10 + Math.random() * 240)}`;
   S.atk = { stage: 0, ip: newIp(), next: 9 * 60 + 40, blockedUntil: 0 };
@@ -944,7 +1025,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   }
   function initLogs(w) {
     const b = w.querySelector(".body");
-    if (!S.logs.length) for (let i = 0; i < 5; i++) addLog({ text: NOISE[Math.floor(Math.random() * NOISE.length)] });
+    if (!S.logs.length) for (let i = 0; i < 5; i++) addLog({ text: pick(NOISE()) });
     b.innerHTML = ""; S.logs.forEach((e) => b.appendChild(logRow(e)));
   }
   async function investigate(e, row) {
@@ -958,7 +1039,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       S.blue.confirmed++; shake(); alarm();
       const tools = [];
       if (STAGES[e.stage].outside) tools.push(["block", `block ${e.ip}`]);
-      if (e.stage >= 1) tools.push(["isolate", "isolate web-01"]);
+      if (e.stage >= 1) tools.push(["isolate", `isolate ${M.web}`]);
       row.insertAdjacentHTML("afterend", `<div class="log" style="grid-template-columns:1fr"><span>${e.ok ? "It worked: " : "It failed, but someone is trying: "}${STAGES[e.stage].name}. ${tools.map(([k, t]) => `<button data-do="${k}">${t}</button>`).join(" ")}</span></div>`);
       row.nextElementSibling.querySelectorAll("button").forEach((x) => x.onclick = () => { blueAct(x.dataset.do, e); x.parentElement.querySelectorAll("button").forEach((y) => y.disabled = true); });
       if (e.ok && e.stage >= 1) markCompromised(true);
@@ -975,8 +1056,8 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       toast("Blocked", `${e.ip} can no longer reach the company. They will be back with a new address.`);
     } else {
       S.cut = true; mapState(); flash();
-      if (S.atk.stage >= 2) { S.atk.stage = 1; S.blue.kicks++; markCompromised(false); toast("Attacker kicked out", "web-01 is offline until tomorrow and the attacker lost their way in."); addCoins(3); }
-      else { S.blue.disruption++; toast("Machine isolated", "web-01 was clean. The web shop is down until tomorrow."); }
+      if (S.atk.stage >= 2) { S.atk.stage = 1; S.blue.kicks++; markCompromised(false); toast("Attacker kicked out", `${M.web} is offline until tomorrow and the attacker lost their way in.`); addCoins(3); }
+      else { S.blue.disruption++; toast("Machine isolated", `${M.web} was clean. The ${M.webName} is down until tomorrow.`); }
     }
     await spend(20);
     if (S.blue.kicks >= 2) endGame(true, "You kicked the attacker out twice. They gave up.");
@@ -984,18 +1065,18 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   function attackerStep() {
     const a = S.atk;
     if (S.night) {
-      if (a.nightSteps >= 2) { a.next = Infinity; return; }
+      if (a.nightSteps >= L.night) { a.next = Infinity; return; }
       a.nightSteps++; a.next = S.minutes + 250 + Math.random() * 150;
     } else a.next = S.minutes + 45 + Math.random() * 60;
     if (a.blockedUntil > S.minutes) return;
     if (S.cut && a.stage >= 1 && a.stage <= 3) { a.stage = 1; }
     const st = STAGES[a.stage];
-    if (S.cut && a.stage === 1) { addLog({ text: `${st.text(a.ip)} (no answer, web-01 is offline)` }); return; }
+    if (S.cut && a.stage === 1) { addLog({ text: `${st.text(a.ip)} (no answer, ${M.web} is offline)` }); return; }
     if (a.free && a.stage <= 1) {
       a.free = false; addLog({ text: `login from an unusual country · maria · mail`, sus: true, real: true, stage: 1, ok: true, ip: a.ip });
       packet(["you", "mail"], "#ff4d6d", true); a.stage = 2; return;
     }
-    const chance = a.stage === 1 && S.patched ? .15 : st.chance * (S.night ? 1.2 : 1);
+    const chance = Math.min(.95, a.stage === 1 && S.patched ? .15 : st.chance * L.atk * (S.night ? 1.2 : 1));
     const ok = Math.random() < chance;
     addLog({ text: st.text(a.ip), sus: true, real: true, stage: a.stage, ok, ip: a.ip });
     packet(st.path, "#ff4d6d", ok);
@@ -1004,8 +1085,8 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   }
   function blueTick() {
     if (S.side !== "blue" || S.over) return;
-    if (Math.random() < (S.night ? .003 : .012)) addLog({ text: NOISE[Math.floor(Math.random() * NOISE.length)] });
-    if (Math.random() < .0016) addLog({ text: DECOYS[Math.floor(Math.random() * DECOYS.length)], sus: true, real: false });
+    if (Math.random() < (S.night ? .003 : .012)) addLog({ text: pick(NOISE()) });
+    if (Math.random() < .0016) addLog({ text: pick(DECOYS()), sus: true, real: false });
     if (S.minutes >= S.atk.next) attackerStep();
   }
 
@@ -1023,7 +1104,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       <div class="end-rows">${rows.map(([k, v]) => `<div><span>${k}</span><b data-v="${v}">0</b></div>`).join("")}</div>
       <div class="end-total"><span>Score</span><b id="endTotal">0</b></div>
       <button class="pill on" id="again">Play again</button></div>`;
-    $("#again").onclick = () => resetGame(S.side);
+    $("#again").onclick = () => { $("#end").className = "end"; openMenu(); };
     beep(won ? 660 : 140, .5, won ? "triangle" : "sawtooth", .06);
     if (won) confetti(); else shake();
     const cells = [...end.querySelectorAll(".end-rows b")]; let i = 0;
@@ -1053,7 +1134,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     const b = w.querySelector(".body");
     if (S.side === "blue") {
       const mails = [["Invoice #2231 overdue", "billing@b-packaging.example", "Please pay today or your account will be closed. Password for the zip: 1234.", true],
-        ["Lunch on Friday?", "jacob@olivebyte.example", "Pizza place again? Reply by Thursday.", false],
+        ["Lunch on Friday?", `jacob@${M.domain}.example`, "Pizza place again? Reply by Thursday.", false],
         ["Your mailbox is almost full", "it-support@0livebyte.example", "Click here and sign in to keep your emails.", true]];
       const list = () => { b.innerHTML = mails.map((m, i) => `<div class="item" data-i="${i}"><b>${m[0]}</b><span>${m[1]}</span></div>`).join("");
         b.querySelectorAll(".item").forEach((x) => x.onclick = () => open(+x.dataset.i)); };
@@ -1067,7 +1148,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
         }); };
       list();
     } else {
-      b.innerHTML = `<div class="msg"><div class="from">draft · to maria@olivebyte.example</div><h3>Pick a story</h3><p>Which email would Maria (finance) open?</p>
+      b.innerHTML = `<div class="msg"><div class="from">draft · to maria@${M.domain}.example</div><h3>Pick a story</h3><p>Which email would Maria (finance) open?</p>
         <div class="btns"><button data-c=".5">Unpaid invoice</button><button data-c=".2">You won a prize</button><button data-c=".35">IT: reset your password</button></div><div class="res"></div></div>`;
       b.querySelectorAll("button").forEach((x) => x.onclick = async () => {
         b.querySelectorAll("button").forEach((y) => y.disabled = true);
@@ -1082,10 +1163,10 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   }
 
   /* office events: someone knocks, the news, the boss */
-  const EVENTS = {
+  const EVENTS = () => ({
     blue: [
-      { kind: "news", who: "SOC TV", title: "Breaking news", ticker: "BREAKING: serious flaw found in popular web shop software · patch now ·",
-        text: "A serious flaw in the web shop software you run is all over the news.",
+      { kind: "news", who: "SOC TV", title: "Breaking news", ticker: `BREAKING: serious flaw found in popular ${M.webName} software · patch now ·`,
+        text: `A serious flaw in the ${M.webName} software you run is all over the news.`,
         options: [["Patch now (shop offline 1 hour)", async () => { S.patched = true; S.bonus = (S.bonus || 0) + 2; await spend(60); toast("Patched", "Web exploits against the shop will mostly fail now."); }],
                   ["Patch next week", () => toast("Noted", "The flaw stays open for now.")]] },
       { kind: "door", who: "Maria · Finance", look: ["#7a4b8c", "#5a3a2a", null], title: "Knock knock",
@@ -1099,19 +1180,19 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     ],
     red: [
       { kind: "news", who: "Second screen", title: "New intel",
-        text: "Olive Byte just posted that their only IT admin is on holiday this week.",
+        text: `${M.name} just posted that their only IT admin is on holiday this week.`,
         options: [["Strike today (+15% to every move)", () => { S.boost = true; toast("Go", "Nobody is minding the shop today."); }],
                   ["Wait", () => toast("Patience", "Maybe a better chance will come.")]] },
       { kind: "door", who: "Your partner", look: ["#1f1f26", "#111", null], title: "Knock knock",
-        text: "“Found leaked passwords for Olive Byte on a forum. Three coins and they're yours.”",
+        text: `“Found leaked passwords for ${M.name} on a forum. Three coins and they're yours.”`,
         options: [["Buy them (◈ 3)", () => { if (S.coins < 3) { toast("No money", "You don't have three coins yet."); return; } S.coins -= 3; $("#osCoins").textContent = "◈ " + S.coins; S.leak = true; toast("Bought", "Web exploits got easier."); }],
                   ["No thanks", () => toast("Suit yourself", "Your partner shrugs and leaves.")]] },
     ],
-  };
+  });
   function scheduleEvent() { S.nextEvent = S.minutes + 70 + Math.random() * 90; }
   let eventOpen = false;
   async function officeEvent() {
-    const pool = EVENTS[S.side].filter((e) => !S.seen?.includes(e.title)); if (!pool.length) return;
+    const pool = EVENTS()[S.side].filter((e) => !S.seen?.includes(e.title)); if (!pool.length) return;
     const ev = pool[Math.floor(Math.random() * pool.length)]; S.seen = [...(S.seen || []), ev.title];
     eventOpen = true; S.paused = true;
     if (ev.kind === "door") {
@@ -1143,7 +1224,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     scheduleEvent(); hidePanel(); eventOpen = false;
     $("#end").className = "end"; $("#skip").hidden = true; $("#skip2").hidden = true; setHeat(0);
     $("#deskArea").innerHTML = ""; hooks.clear();
-    history.replaceState(null, "", side === "blue" ? "?side=blue" : location.pathname);
+    history.replaceState(null, "", location.pathname);
     setSide(side); mapState(); ambience();
   }
 
@@ -1162,6 +1243,9 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   scheduleEvent(); requestAnimationFrame((t) => { last = t; tick(t); });
   const q = new URLSearchParams(location.search);
   setSide(q.get("side") === "blue" ? "blue" : "red"); setHeat(0); fitPortrait();
+  CFG.side = S.side;
+  if (q.has("side") || q.has("open") || q.has("t") || q.has("event") || q.has("play")) { $("#menu").classList.add("hide"); S.started = true; }
+  else { $("#hint").style.display = "none"; openMenu(); }
   if (q.has("open")) openLaptop(q.get("open") === "now");
   if (q.has("event")) { S.nextEvent = S.minutes + 1; }
   if (q.has("t")) { S.minutes = +q.get("t") * 60; if (S.minutes >= 18 * 60 || S.minutes < 9 * 60) { S.night = true; S.rain = q.has("rain"); if (S.minutes < 9 * 60) S.minutes += 24 * 60; $("#skip").hidden = false; } paintTime(); }
