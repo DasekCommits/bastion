@@ -31,9 +31,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: linear-gradi
 .clockchip.night i { background: #26305a; color: #e8eefc; }
 .clockchip small { font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
 .clockchip b { font: 700 17px var(--mono); letter-spacing: .04em; min-width: 52px; }
-.clockchip.os { background: rgba(255,255,255,.08); padding: 3px 10px 3px 4px; }
-.clockchip.os i { width: 20px; height: 20px; font-size: 12px; }
-.clockchip.os b { font-size: 15px; }
+.clockchip.inos { background: rgba(255,255,255,.08); padding: 3px 10px 3px 4px; }
+.clockchip.inos i { width: 20px; height: 20px; font-size: 12px; }
+.clockchip.inos b { font-size: 15px; }
 .pill[hidden], .lid[hidden] { display: none; }
 .hint { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 4; font: 600 13px var(--mono); padding: 10px 16px; border-radius: 999px;
   background: rgba(10,10,14,.75); color: #fff; animation: bob 2s ease-in-out infinite; white-space: nowrap; }
@@ -181,6 +181,9 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 .mail { background: #f4f1ec; color: #1b1a1e; font-family: var(--body); }
 .mail .item { padding: 10px 12px; border-bottom: 1px solid #ddd6cc; cursor: pointer; }
 .mail .item:hover { background: #ebe5dc; }
+.mail .item.intel { border-left: 4px solid #c62828; }
+.mail .item.unread b::before { content: "● "; color: #c62828; }
+.dock button .badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #ff2e63; color: #fff; font: 700 11px/18px var(--mono); }
 .mail .item b { display: block; }
 .mail .item span { color: #6b6460; font-size: 13px; }
 .mail .msg { padding: 4px 2px; }
@@ -502,7 +505,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 <div class="os" id="os" aria-hidden="true">
   <div class="bar">
     <span id="osSide">OPERATOR</span>
-    <span class="clockchip os" id="osClock"><i>☀</i><small>Day 1</small><b>09:00</b></span>
+    <span class="clockchip inos" id="osClock"><i>☀</i><small>Day 1</small><b>09:00</b></span>
     <span class="heat">HEAT <span class="meter"><span id="heatBar"></span></span> <span id="heatTxt">0%</span></span>
     <span class="grow"></span>
     <span id="osCoins">◈ 0</span>
@@ -812,7 +815,14 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     $("#dock").querySelectorAll("button").forEach((b) => b.onclick = () => openApp(b.dataset.app));
     markDock();
   }
-  function markDock() { $("#dock").querySelectorAll("button").forEach((b) => b.classList.toggle("active", !!$(`.win[data-app="${b.dataset.app}"]`))); }
+  function markDock() {
+    const unread = (S.inbox || []).filter((m) => !m.read).length;
+    $("#dock").querySelectorAll("button").forEach((b) => {
+      b.classList.toggle("active", !!$(`.win[data-app="${b.dataset.app}"]`));
+      b.querySelector(".badge")?.remove();
+      if (b.dataset.app === "mail" && unread) b.insertAdjacentHTML("beforeend", `<span class="badge">${unread}</span>`);
+    });
+  }
   let z = 1;
   function openApp(id) {
     const ex = $(`.win[data-app="${id}"]`); if (ex) { ex.style.zIndex = ++z; ex.classList.remove("shake"); void ex.offsetWidth; return; }
@@ -1150,6 +1160,25 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   /* mail */
   function initMail(w) {
     const b = w.querySelector(".body");
+    const box = S.inbox || [];
+    if (box.length && !w.dataset.compose) {
+      b.innerHTML = box.map((m, i) => `<div class="item intel ${m.read ? "" : "unread"}" data-k="${i}"><b>${m.ev.subject}</b><span>${m.ev.from}</span></div>`).join("")
+        + `<div class="item" data-k="rest"><b>${S.side === "red" ? "Write a phishing email" : "Other mail"}</b><span>${S.side === "red" ? "drafts" : "inbox"}</span></div>`;
+      b.querySelectorAll("[data-k]").forEach((x) => x.onclick = () => {
+        if (x.dataset.k === "rest") { w.dataset.compose = "1"; initMail(w); delete w.dataset.compose; return; }
+        const m = box[+x.dataset.k]; m.read = true; markDock();
+        b.innerHTML = `<div class="msg"><div class="from">from ${m.ev.from}</div><h3>${m.ev.subject}</h3><p>${m.ev.text}</p>
+          <div class="btns">${m.done ? "" : m.ev.options.map(([label], i) => `<button data-o="${i}">${label}</button>`).join("")}<button data-o="back">Back</button></div><div class="res"></div></div>`;
+        b.querySelectorAll("[data-o]").forEach((y) => y.onclick = async () => {
+          if (y.dataset.o === "back") return initMail(w);
+          m.done = true; b.querySelectorAll("[data-o]").forEach((z) => { if (z.dataset.o !== "back") z.remove(); });
+          b.querySelector(".res").innerHTML = `<span class="stamp ok">REPLIED</span><p>${y.textContent}</p>`;
+          await m.ev.options[+y.dataset.o][1]();
+          $("#ticker").setAttribute("opacity", 0);
+        });
+      });
+      return;
+    }
     if (S.side === "blue") {
       const mails = [["Invoice #2231 overdue", "billing@b-packaging.example", "Please pay today or your account will be closed. Password for the zip: 1234.", true],
         ["Lunch on Friday?", `jacob@${M.domain}.example`, "Pizza place again? Reply by Thursday.", false],
@@ -1183,7 +1212,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   /* office events: someone knocks, the news, the boss */
   const EVENTS = () => ({
     blue: [
-      { kind: "news", who: "SOC TV", title: "Breaking news", ticker: `BREAKING: serious flaw found in popular ${M.webName} software · patch now ·`,
+      { kind: "news", who: "SOC TV", title: "Breaking news", from: "advisories@cert.example", subject: `Critical flaw in ${M.webName} software`, ticker: `BREAKING: serious flaw found in popular ${M.webName} software · patch now ·`,
         text: `A serious flaw in the ${M.webName} software you run is all over the news.`,
         options: [["Patch now (shop offline 1 hour)", async () => { S.patched = true; S.bonus = (S.bonus || 0) + 2; await spend(60); toast("Patched", "Web exploits against the shop will mostly fail now."); }],
                   ["Patch next week", () => toast("Noted", "The flaw stays open for now.")]] },
@@ -1197,7 +1226,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
                   ["Not now, I'm busy", () => { S.bonus = (S.bonus || 0) - 3; toast("Ouch", "The CEO leaves. Not happy."); }]] },
     ],
     red: [
-      { kind: "news", who: "Second screen", title: "New intel",
+      { kind: "news", who: "Second screen", title: "New intel", from: "contact@mailbox.example", subject: "Something you should know",
         text: `${M.name} just posted that their only IT admin is on holiday this week.`,
         options: [["Strike today (+15% to every move)", () => { S.boost = true; toast("Go", "Nobody is minding the shop today."); }],
                   ["Wait", () => toast("Patience", "Maybe a better chance will come.")]] },
@@ -1211,7 +1240,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   let eventOpen = false;
   async function officeEvent() {
     const force = new URLSearchParams(location.search).get("event");
-    const pool = EVENTS()[S.side].filter((e) => !S.seen?.includes(e.title) && (force !== "door" || e.kind === "door")); if (!pool.length) return;
+    const pool = EVENTS()[S.side].filter((e) => !S.seen?.includes(e.title) && (!force || force === "1" || e.kind === force)); if (!pool.length) return;
     const ev = pool[Math.floor(Math.random() * pool.length)]; S.seen = [...(S.seen || []), ev.title];
     eventOpen = true; S.paused = true;
     if (ev.kind === "door") {
@@ -1223,9 +1252,12 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       door.classList.add("open"); beep(240, .25, "sine", .03); await sleep(350); door.classList.add("in"); await sleep(900);
       return talk(ev);
     } else {
-      $(S.side === "blue" ? "#ticker" : "#redNews").setAttribute("opacity", 1);
-      if (ev.ticker) $("#tickerText").textContent = ev.ticker + " " + ev.ticker;
+      if (ev.ticker) { $("#ticker").setAttribute("opacity", 1); $("#tickerText").textContent = ev.ticker + " " + ev.ticker; }
+      S.inbox = [{ ev, read: false, done: false }, ...(S.inbox || [])];
       beep(1046, .12, "triangle"); setTimeout(() => beep(1318, .16, "triangle"), 140);
+      eventOpen = false; S.paused = false; markDock();
+      const mailWin = document.querySelector(".win[data-app=mail]"); if (mailWin) initMail(mailWin);
+      return;
     }
     showPanel(`<h3>${ev.title}</h3><p style="margin:0 0 6px;color:#666;font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.06em">${ev.who}</p><p>${ev.text}</p>
       <div class="choices">${ev.options.map(([label], i) => `<button data-o="${i}">${label}</button>`).join("")}</div>`, true);
@@ -1291,6 +1323,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       quests: { scout: 0, inside: 0, climb: 0 }, logs: [], over: false, suspect: false, bonus: 0, patched: false, leak: false, boost: false, seen: [], paused: false, nightAlerts: 0 });
     S.atk = { stage: 0, ip: newIp(), next: 9 * 60 + 40, blockedUntil: 0 };
     S.blue = { blocks: 0, kicks: 0, disruption: 0, confirmed: 0 };
+    S.inbox = []; $("#ticker").setAttribute("opacity", 0);
     scheduleEvent(); hidePanel(); eventOpen = false;
     $("#end").className = "end"; $("#skip").hidden = true; $("#skip2").hidden = true; setHeat(0);
     $("#deskArea").innerHTML = ""; hooks.clear();
