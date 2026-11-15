@@ -271,3 +271,17 @@ body.of-laptop .win-title { flex: 1; justify-content: center; margin-right: 70px
 
 /* the laptop uses the whole screen */
 body.of-laptop > main#app { max-width: none; padding-left: 14px; padding-right: 14px; }
+
+/* coffee */
+#mug { cursor: pointer; transition: opacity .25s; }
+#mug:hover { filter: brightness(1.12); }
+#mug.empty .steam { display: none; }
+#handmug, .arm-drink { opacity: 0; pointer-events: none; }
+body.of-drinking #mug { opacity: 0; }
+body.of-drinking .arm.r { opacity: 0; }
+body.of-drinking .arm-drink { opacity: 1; }
+body.of-drinking #handmug { opacity: 1; }
+body.of-drinking #handmug .cup { animation: of-sip 1.9s ease-in-out; transform-box: fill-box; transform-origin: 30% 80%; }
+@keyframes of-sip { 0% { transform: translate(40px, 60px) rotate(0); } 30% { transform: translate(0, 0) rotate(-18deg); } 75% { transform: translate(-4px, -6px) rotate(-38deg); } 100% { transform: translate(40px, 60px) rotate(0); } }
+body.of-drinking .head { animation: of-tilt 1.9s ease-in-out; }
+@keyframes of-tilt { 30%, 75% { transform: rotate(-6deg) translateY(-3px); } }

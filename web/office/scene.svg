@@ -175,6 +175,7 @@
       <path d="M548 612 C 570 598, 634 598, 656 612 L 650 626 C 630 614, 574 614, 554 626 Z" fill="#f4f1ea"/>
       <path d="M520 640 C 540 700, 548 780, 546 880 M680 640 C 660 700, 652 780, 654 880" stroke="rgba(255,255,255,.07)" stroke-width="3" fill="none"/>
     </g>
+    <path class="arm-drink" d="M712 690 Q 742 620, 716 560 L 690 528" stroke="var(--hood2)" stroke-width="34" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
     <g class="head">
       <g class="bare">
         <rect x="582" y="580" width="40" height="36" rx="8" class="skin"/>
@@ -194,6 +195,9 @@
     </g>
   </g>
 
+  <g id="handmug" transform="translate(662 478)"><g class="cup">
+    <rect x="0" y="0" width="34" height="40" rx="6" fill="#f2efe9"/><path d="M34 9 q15 0 15 13 q0 11 -15 11" stroke="#f2efe9" stroke-width="6" fill="none"/>
+    <circle cx="17" cy="19" r="6.5" fill="var(--accent)" opacity=".85"/></g></g>
   <g id="door">
     <rect x="1458" y="296" width="136" height="424" fill="#3a2f2a"/>
     <rect x="1468" y="306" width="116" height="414" fill="#15131a"/>

@@ -179,6 +179,29 @@
     runClock();
   }
 
+  /* coffee */
+  const SIPS = ["That's better.", "Hot. Very hot.", "Coffee number three. Focus is up.", "Your hands are shaking a little.", "Maybe switch to water."];
+  let cups = 0, drinking = false;
+  function slurp() {
+    if (!O.sound) return; const a = audio(), src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = noise(); f.type = "bandpass"; f.Q.value = 3; f.frequency.setValueAtTime(500, a.currentTime); f.frequency.exponentialRampToValueAtTime(1800, a.currentTime + .5);
+    g.gain.setValueAtTime(0, a.currentTime); g.gain.linearRampToValueAtTime(.18, a.currentTime + .08); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .6);
+    src.connect(f); f.connect(g); g.connect(a.destination); src.start(); src.stop(a.currentTime + .65);
+    setTimeout(() => beep(220, .08, "sine", .05), 750);
+  }
+  async function drink(back) {
+    if (drinking) return;
+    if ($("#mug").classList.contains("empty")) { toast("Coffee", "The mug is empty. Give the machine a minute."); return; }
+    drinking = true; const wasLaptop = O.mode === "laptop";
+    if (wasLaptop) await closeLaptop();
+    document.body.classList.add("of-drinking"); await sleep(650); slurp(); await sleep(1300);
+    document.body.classList.remove("of-drinking"); cups++;
+    toast("Coffee", SIPS[Math.min(cups - 1, SIPS.length - 1)]);
+    if (cups % 3 === 0) { $("#mug").classList.add("empty"); setTimeout(() => $("#mug").classList.remove("empty"), 45000); }
+    drinking = false;
+    if (wasLaptop || back) { await sleep(500); openLaptop(); }
+  }
+
   /* phone rings now and then while you are in the room */
   const CALLS = { red: ["Your contact: “Their IT guy is on holiday this week. Move fast.”", "Unknown number: “We know what you are doing.” Click."],
     blue: ["CEO: “Are we safe? I need a short report by 17:00.”", "Maria from finance: “I got a strange invoice email. Should I open it?”"] };
@@ -196,11 +219,13 @@
       <button class="of-pill of-skip" id="of-skip" hidden>Skip night</button>
       <div class="of-toast" id="of-toast"></div><div class="of-vignette"></div><div class="of-hm" id="of-home"></div><div class="of-flash" id="of-flash"></div>`);
     const right = document.querySelector(".topbar-right");
-    if (right) right.insertAdjacentHTML("afterbegin", `<span class="clockchip inos of-only"><i>☀</i><small>Day 1</small><b>09:00</b></span><button class="of-close of-only" id="of-close">Close laptop</button>`);
+    if (right) right.insertAdjacentHTML("afterbegin", `<span class="clockchip inos of-only"><i>☀</i><small>Day 1</small><b>09:00</b></span><button class="of-close of-only" id="of-coffee" title="Have a coffee">☕</button><button class="of-close of-only" id="of-close">Close laptop</button>`);
     decorate(); paintSide(); paintTime(); fit(); setMode("menu"); watchGame();
     if (pendingMenu) { menu(...pendingMenu); pendingMenu = null; }
     addEventListener("resize", fit);
     $("#laptop").addEventListener("click", openLaptop);
+    $("#mug").addEventListener("click", () => drink());
+    $("#of-coffee").addEventListener("click", () => drink(true));
     $("#laptop").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") openLaptop(); });
     $("#of-close").addEventListener("click", closeLaptop);
     $("#of-skip").addEventListener("click", () => nightSkip && nightSkip());
