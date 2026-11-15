@@ -12,7 +12,7 @@
 :root { --mono: "JetBrains Mono", ui-monospace, Consolas, monospace; --body: "Space Grotesk", system-ui, sans-serif; }
 body[data-side="blue"] {
   --wall: #cfd8e3; --wall2: #b9c5d3; --floor: #8a97aa; --desk: #7a5a42; --desk2: #5d4331; --accent: #2f6fde;
-  --hood: #2d4f8a; --hood2: #223d6b; --skin: #e7b48f; --glow: #9cc8ff; --chair: #303846;
+  --hood: #262f44; --hood2: #1c2335; --skin: #e7b48f; --glow: #9cc8ff; --chair: #303846;
 }
 body[data-side="red"] {
   --wall: #1b1622; --wall2: #141019; --floor: #0f0c14; --desk: #2a2532; --desk2: #1d1923; --accent: #ff2e63;
@@ -36,7 +36,12 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: linear-gradi
 .wall2 { fill: var(--wall2); transition: fill .8s; }
 .floor { fill: var(--floor); transition: fill .8s; }
 .desk { fill: var(--desk); } .desk2 { fill: var(--desk2); }
-.hood { fill: var(--hood); } .hood2 { fill: var(--hood2); } .skin { fill: var(--skin); } .chair { fill: var(--chair); }
+.hood { fill: var(--hood); transition: fill 1s; } .hood2 { fill: var(--hood2); transition: fill 1s; }
+.arm { transition: stroke 1s; }
+.hoodup { transition: transform .9s cubic-bezier(.5,0,.2,1), opacity .5s .35s; transform-box: fill-box; transform-origin: 50% 100%; }
+body[data-side="blue"] .hoodup { transform: translateY(70px) scaleY(.25); opacity: 0; }
+.bare, .suitbits { opacity: 0; transition: opacity .6s .45s; }
+body[data-side="blue"] .bare, body[data-side="blue"] .suitbits { opacity: 1; } .skin { fill: var(--skin); } .chair { fill: var(--chair); }
 .lit { fill: #ffd27a; transition: opacity 1.2s; }
 #laptop { cursor: pointer; }
 #laptop:hover .screen-glow, #laptop:focus .screen-glow { opacity: .95; }
@@ -65,6 +70,15 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: linear-gradi
 @keyframes flicker { 0%, 19%, 21%, 60%, 62%, 100% { opacity: 1; } 20%, 61% { opacity: .35; } }
 .code-line { animation: scroll 3s linear infinite; }
 @keyframes scroll { from { transform: translateY(0); } to { transform: translateY(-60px); } }
+#doorPanel, #doorBits { transition: transform .6s cubic-bezier(.5,0,.2,1); transform-box: view-box; transform-origin: 1584px 0; }
+#door.open #doorPanel, #door.open #doorBits { transform: scaleX(.14); }
+#visitor { transition: opacity .5s, transform .9s cubic-bezier(.3,0,.2,1); transform: translateX(50px); }
+#door.in #visitor { opacity: 1; transform: translateX(-70px); }
+#door.knock #doorPanel { animation: knock .12s 4; }
+@keyframes knock { 50% { transform: translateX(2px); } }
+#ticker, #redNews { transition: opacity .4s; }
+#tickerText { animation: tick 9s linear infinite; }
+@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-720px); } }
 .board { cursor: pointer; }
 .board:hover { filter: brightness(1.08); }
 .only-red, .only-blue { display: none; }
@@ -177,6 +191,10 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 .panel h3 { margin: 0 0 12px; }
 .panel .q { display: grid; gap: 4px; padding: 10px 0; border-top: 1px dashed #ccc; font-size: 14px; }
 .panel .q .m { height: 6px; border-radius: 99px; background: #eee; overflow: hidden; } .panel .q .m span { display: block; height: 100%; background: #222; }
+.panel { z-index: 45; }
+.panel .choices { display: grid; gap: 8px; margin-top: 14px; }
+.panel .choices button { font: 600 14px var(--body); padding: 11px 14px; border-radius: 10px; border: 2px solid #222; background: #fff; cursor: pointer; text-align: left; transition: transform .15s, background .15s; }
+.panel .choices button:hover { background: #222; color: #fff; transform: translateX(4px); }
 .panel .close { margin-top: 12px; font: 600 13px var(--body); padding: 8px 14px; border-radius: 8px; border: 2px solid #222; background: #fff; cursor: pointer; }
 .end { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; background: rgba(5,5,10,.82); backdrop-filter: blur(4px); }
 .end.show { display: grid; animation: fadein .4s; }
@@ -277,6 +295,9 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       <text x="604" y="148" fill="#8fb4e8" font-family="JetBrains Mono" font-size="13">SOC · OLIVE BYTE</text>
       <text x="906" y="148" fill="#3ddc84" font-family="JetBrains Mono" font-size="13" text-anchor="end">● LIVE</text>
       <path d="M590 126 L700 126 L590 230 Z" fill="#fff" opacity=".04"/>
+      <g id="ticker" opacity="0"><rect x="590" y="286" width="330" height="30" fill="#c62828"/><rect x="590" y="286" width="74" height="30" fill="#8e1b1b"/>
+        <text x="600" y="306" fill="#fff" font-family="JetBrains Mono" font-size="12" font-weight="700">NEWS</text>
+        <svg x="664" y="286" width="256" height="30"><text id="tickerText" x="260" y="20" fill="#fff" font-family="JetBrains Mono" font-size="13">BREAKING</text></svg></g>
     </g>
     <rect x="745" y="332" width="20" height="40" fill="#151a22"/>
   </g>
@@ -334,6 +355,8 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       <text class="code-line" x="1072" y="556">&gt; sleep</text><text class="code-line" x="1072" y="572">...</text>
       <text class="code-line" x="1072" y="588">&gt; recon web-01</text><text class="code-line" x="1072" y="604">open: 80 443</text>
       <text class="code-line" x="1072" y="620">&gt; foothold ok</text><text class="code-line" x="1072" y="636">heat 12%</text></g></g>
+    <g id="redNews" opacity="0"><rect x="1064" y="474" width="182" height="40" fill="#ff2e63"/>
+      <text x="1155" y="499" text-anchor="middle" fill="#fff" font-family="JetBrains Mono" font-size="12" font-weight="700">NEW INTEL</text></g>
     <rect x="1145" y="588" width="20" height="4" fill="#2a2a33"/>
     <rect x="1260" y="560" width="60" height="30" rx="4" fill="#1a1a22"/><circle cx="1270" cy="575" r="3" fill="#08f7fe"/></g>
 
@@ -372,18 +395,46 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     <path class="hood" d="M470 880 C 462 720, 486 640, 530 616 C 560 600, 640 600, 670 616 C 714 640, 738 720, 730 880 Z"/>
     <path d="M600 610 V 880" stroke="rgba(0,0,0,.18)" stroke-width="3"/>
     <path d="M700 640 C 722 680, 732 760, 730 880" stroke="var(--glow)" stroke-width="5" fill="none" opacity=".35"/>
+    <g class="suitbits">
+      <path d="M548 612 C 570 598, 634 598, 656 612 L 650 626 C 630 614, 574 614, 554 626 Z" fill="#f4f1ea"/>
+      <path d="M520 640 C 540 700, 548 780, 546 880 M680 640 C 660 700, 652 780, 654 880" stroke="rgba(255,255,255,.07)" stroke-width="3" fill="none"/>
+    </g>
     <g class="head">
+      <g class="bare">
+        <rect x="582" y="580" width="40" height="36" rx="8" class="skin"/>
+        <ellipse cx="552" cy="530" rx="9" ry="14" class="skin"/><ellipse cx="652" cy="530" rx="9" ry="14" class="skin"/>
+        <path d="M554 540 C 548 488, 572 462, 602 460 C 632 462, 656 488, 650 540 C 646 572, 628 594, 602 596 C 576 594, 558 572, 554 540 Z" fill="#3a2a22"/>
+        <path d="M570 498 C 586 478, 620 476, 636 496" stroke="#4d382e" stroke-width="5" fill="none" stroke-linecap="round"/>
+      </g>
+      <g class="hoodup">
       <path class="hood2" d="M546 612 C 532 530, 556 456, 602 450 C 648 456, 672 530, 658 612 Z"/>
       <path class="hood" d="M556 606 C 548 536, 568 474, 602 470 C 638 474, 656 536, 648 606 Z"/>
       <path d="M602 470 V 606" stroke="rgba(0,0,0,.2)" stroke-width="3"/>
       <path d="M640 490 C 656 520, 660 560, 652 600" stroke="var(--glow)" stroke-width="4" fill="none" opacity=".45"/>
+      </g>
       <path d="M548 520 C 548 470, 656 470, 656 520" stroke="#1a1a20" stroke-width="10" fill="none" stroke-linecap="round"/>
       <rect x="538" y="512" width="20" height="40" rx="8" fill="#1a1a20"/><rect x="646" y="512" width="20" height="40" rx="8" fill="#1a1a20"/>
       <rect x="544" y="520" width="8" height="24" rx="4" fill="var(--accent)" opacity=".9"/><rect x="652" y="520" width="8" height="24" rx="4" fill="var(--accent)" opacity=".9"/>
     </g>
   </g>
 
-  <g id="plant" transform="translate(1440 640)">
+  <g id="door">
+    <rect x="1458" y="296" width="136" height="424" fill="#3a2f2a"/>
+    <rect x="1468" y="306" width="116" height="414" fill="#15131a"/>
+    <g id="visitor" opacity="0">
+      <rect x="1494" y="476" width="64" height="200" rx="22" id="vBody" fill="#5b6270"/>
+      <rect x="1500" y="660" width="20" height="60" fill="#22252c"/><rect x="1532" y="660" width="20" height="60" fill="#22252c"/>
+      <circle cx="1526" cy="446" r="28" fill="#e2b08c"/>
+      <path d="M1498 440 C 1500 410, 1552 410, 1554 440 C 1546 428, 1506 428, 1498 440 Z" id="vHair" fill="#2b2b2b"/>
+      <path d="M1520 480 L1526 540 L1532 480 Z" id="vTie" fill="#c62828"/>
+    </g>
+    <rect id="doorPanel" x="1468" y="306" width="116" height="414" fill="#6b4f3a"/>
+    <g id="doorBits"><rect x="1482" y="326" width="88" height="150" rx="3" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="4"/>
+      <rect x="1482" y="500" width="88" height="190" rx="3" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="4"/>
+      <circle cx="1484" cy="520" r="7" fill="#d9b44a"/></g>
+  </g>
+
+  <g id="plant" transform="translate(1340 640)">
     <path d="M4 40 H66 L60 120 H10 Z" fill="#b4573c"/><rect x="0" y="34" width="70" height="12" rx="3" fill="#c56a4c"/>
     <ellipse cx="10" cy="0" rx="12" ry="40" fill="#3f8a4f" transform="rotate(-40 10 0)"/><ellipse cx="60" cy="-10" rx="12" ry="44" fill="#3f8a4f" transform="rotate(35 60 -10)"/>
     <ellipse cx="34" cy="-30" rx="13" ry="50" fill="#4f9a5f"/><ellipse cx="0" cy="-40" rx="10" ry="34" transform="rotate(-20 0 -40)" fill="#5aab69"/>
@@ -399,6 +450,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   </div>
   <div style="display:flex;gap:6px">
     <button class="pill" id="sound">Sound off</button>
+    <button class="pill" id="music">Music off</button>
     <button class="pill on" id="skip" hidden>Skip night</button>
     <button class="pill" id="clockPill">Day 1 · 09:00</button>
   </div>
@@ -444,7 +496,57 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     o.type = type; o.frequency.value = f; g.gain.value = vol; o.connect(g); g.connect(ac.destination);
     g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d); o.start(); o.stop(ac.currentTime + d);
   }
-  $("#sound").onclick = () => { S.sound = !S.sound; $("#sound").textContent = S.sound ? "Sound on" : "Sound off"; $("#sound").classList.toggle("on", S.sound); beep(880); };
+  $("#sound").onclick = () => { S.sound = !S.sound; $("#sound").textContent = S.sound ? "Sound on" : "Sound off"; $("#sound").classList.toggle("on", S.sound); beep(880); ambience(); };
+  $("#music").onclick = () => { S.music = !S.music; $("#music").textContent = S.music ? "Music on" : "Music off"; $("#music").classList.toggle("on", S.music); music(); };
+  function audio() { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  let noiseBuf = null;
+  function noise() {
+    const a = audio(); if (noiseBuf) return noiseBuf;
+    noiseBuf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate); const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return noiseBuf;
+  }
+  function click() {
+    if (!S.sound) return; const a = audio(), src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = noise(); f.type = "highpass"; f.frequency.value = 2500 + Math.random() * 1500; g.gain.value = .12;
+    g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + .03); src.connect(f); f.connect(g); g.connect(a.destination); src.start(); src.stop(a.currentTime + .04);
+  }
+  function alarm() {
+    if (!S.sound) return; const a = audio(), o = a.createOscillator(), g = a.createGain(); o.type = "square"; g.gain.value = .035;
+    for (let i = 0; i < 6; i++) o.frequency.setValueAtTime(i % 2 ? 620 : 880, a.currentTime + i * .18);
+    g.gain.setValueAtTime(.035, a.currentTime + 1.0); g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + 1.1);
+    o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + 1.12);
+  }
+  let rainNode = null;
+  function ambience() {
+    const want = S.sound && S.night && S.rain;
+    if (want && !rainNode) {
+      const a = audio(), src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+      src.buffer = noise(); src.loop = true; f.type = "lowpass"; f.frequency.value = 1100; g.gain.value = 0; g.gain.linearRampToValueAtTime(.06, a.currentTime + 2);
+      src.connect(f); f.connect(g); g.connect(a.destination); src.start(); rainNode = { src, g };
+    } else if (!want && rainNode) {
+      const a = audio(), n = rainNode; rainNode = null; n.g.gain.linearRampToValueAtTime(0, a.currentTime + 1.5); setTimeout(() => n.src.stop(), 1600);
+    }
+  }
+  let musicTimer = null, step = 0;
+  function music() {
+    clearInterval(musicTimer); musicTimer = null; if (!S.music) return;
+    const a = audio(), out = a.createGain(); out.gain.value = .05; out.connect(a.destination);
+    const lp = a.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 900; lp.connect(out);
+    const note = (f, t, len, type, vol = 1) => { const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .04); g.gain.exponentialRampToValueAtTime(.0001, t + len); o.connect(g); g.connect(lp); o.start(t); o.stop(t + len + .05); };
+    musicTimer = setInterval(() => {
+      if (!S.music) return; const t = a.currentTime + .05;
+      if (S.side === "red") {
+        const seq = S.night ? [110, 130.8, 164.8, 196, 164.8, 130.8] : [110, 130.8, 164.8, 220, 196, 164.8, 130.8, 146.8];
+        note(seq[step % seq.length] * 2, t, .35, "sawtooth", .5); if (step % 8 === 0) note(55, t, 2.2, "triangle", .9);
+      } else {
+        const chords = [[261.6, 329.6, 392, 493.9], [220, 261.6, 329.6, 392], [174.6, 220, 261.6, 329.6], [196, 246.9, 293.7, 349.2]];
+        if (step % 8 === 0) chords[(step / 8) % 4].forEach((f) => note(f, t, 3.6, "sine", .35));
+        if (step % 2 === 0) note(chords[Math.floor(step / 8) % 4][(step / 2) % 4] * 2, t, .5, "triangle", .2);
+      }
+      step++;
+    }, 280);
+  }
 
   /* window, lights, rain, time of day */
   const lights = $("#lights");
@@ -533,8 +635,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     paintMini(); paintNotes(); paintTime(); buildDock();
     if (S.zoomed) { $("#deskArea").innerHTML = ""; openApp(side === "red" ? "term" : "logs"); }
   }
-  const restart = (side) => { const u = new URL(location.href); u.search = side === "blue" ? "?side=blue" : ""; location.href = u.toString(); };
-  $("#sideRed").onclick = () => { if (S.side !== "red") restart("red"); }; $("#sideBlue").onclick = () => { if (S.side !== "blue") restart("blue"); };
+  $("#sideRed").onclick = () => { if (S.side !== "red") resetGame("red"); }; $("#sideBlue").onclick = () => { if (S.side !== "blue") resetGame("blue"); };
 
   /* camera zoom into the laptop */
   function fitPortrait() {
@@ -573,7 +674,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   $("#laptop").addEventListener("click", openLaptop);
   $("#laptop").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") openLaptop(); });
   $("#lid").onclick = closeLaptop;
-  addEventListener("keydown", (e) => { if (e.key === "Escape") { if ($("#panel").classList.contains("show")) hidePanel(); else if (S.zoomed) closeLaptop(); } });
+  addEventListener("keydown", (e) => { if (e.key === "Escape") { if ($("#panel").classList.contains("show")) { if (!eventOpen) hidePanel(); } else if (S.zoomed) closeLaptop(); } });
 
   /* office props */
   function toast(title, text, ms = 3200) {
@@ -595,7 +696,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   setInterval(() => { if (!$("#phone").classList.contains("ring") && Math.random() < .5) ringPhone(); }, 14000);
   setTimeout(ringPhone, 5000);
 
-  function showPanel(html) { const p = $("#panel"); p.innerHTML = html + `<button class="close" id="pclose">Close</button>`; p.classList.add("show"); $("#pclose").onclick = hidePanel; }
+  function showPanel(html, decision) { const p = $("#panel"); p.innerHTML = html + (decision ? "" : `<button class="close" id="pclose">Close</button>`); p.classList.add("show"); if (!decision) $("#pclose").onclick = hidePanel; }
   function hidePanel() { $("#panel").classList.remove("show"); }
   $("#board").addEventListener("click", () => {
     const rows = S.side === "red"
@@ -650,11 +751,15 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     const from = S.coins, to = S.coins + n; S.coins = to; let i = 0;
     const t = setInterval(() => { i++; $("#osCoins").textContent = "◈ " + Math.round(from + (to - from) * i / 12); beep(1400 + i * 40, .03, "sine"); if (i >= 12) clearInterval(t); }, 60);
   }
-  const DAY_SPEED = 2, NIGHT_SPEED = 24, SPEEDUP = Math.min(20, +new URLSearchParams(location.search).get("speed") || 1);
+  const DAY_SPEED = 2, NIGHT_SPEED = 15, SPEEDUP = Math.min(20, +new URLSearchParams(location.search).get("speed") || 1);
   const hooks = new Set();
   function startNight() {
     if (S.night) return;
-    S.night = true; S.minutes = 18 * 60; S.rain = Math.random() < .5; setHeat(S.heat * .7);
+    S.night = true; S.minutes = 18 * 60; S.rain = Math.random() < .5; setHeat(S.heat * .7); S.boost = false; S.nightAlerts = 0;
+    if (S.atk) { S.atk.nightSteps = 0; S.atk.next = S.minutes + 60 + Math.random() * 120; }
+    const tb = document.querySelector(".win[data-app=term] .body");
+    if (tb) { tb.insertAdjacentHTML("beforeend", `<div class="dim">night: the analysts went home. your moves are quieter now, but nobody reads email.</div>`); tb.scrollTop = tb.scrollHeight; }
+    ambience();
     const card = $("#daycard"); $("#dayText").innerHTML = `NIGHT ${S.day}<small>the office goes quiet · heat cools down</small>`;
     card.classList.remove("go"); void card.offsetWidth; card.classList.add("go"); beep(220, .4, "sine");
     $("#skip").hidden = false; $("#skip2").hidden = false; hooks.forEach((f) => f()); paintTime();
@@ -664,24 +769,27 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       return S.side === "red" ? endGame(false, "Three days passed and you never got the data out.") : endGame(true, "Three days, and the data never left the company."); }
     S.night = false; S.day++; S.minutes = 9 * 60; $("#skip").hidden = true; $("#skip2").hidden = true;
     if (S.cut) { S.cut = false; mapState(); }
-    toast(`Day ${S.day}`, "A new day. Coffee is ready."); hooks.forEach((f) => f()); paintTime();
+    if (S.atk) S.atk.next = S.minutes + 40 + Math.random() * 40;
+    toast(`Day ${S.day}`, S.side === "blue" && S.nightAlerts ? `${S.nightAlerts} new alert${S.nightAlerts > 1 ? "s" : ""} came in overnight. Check the logs.` : "A new day. Coffee is ready.");
+    S.nightAlerts = 0; hooks.forEach((f) => f()); paintTime(); ambience();
   }
   async function spend(minutes) {
     S.minutes += minutes; paintTime();
     if (!S.night && S.minutes >= 18 * 60) startNight();
   }
   let last = performance.now();
-  (function tick(now) {
+  function tick(now) {
     const dt = Math.min(1, (now - last) / 1000); last = now;
-    if (!document.hidden && !S.over) {
+    if (!document.hidden && !S.over && !S.paused) {
       S.minutes += dt * (S.night ? NIGHT_SPEED : DAY_SPEED) * SPEEDUP;
       if (!S.night && S.minutes >= 18 * 60) startNight();
       if (S.night && S.minutes >= 33 * 60) { S.minutes -= 24 * 60; endNight(); }
       if (!S.over) blueTick();
+      if (!S.over && !S.night && !eventOpen && S.nextEvent && S.minutes >= S.nextEvent) { scheduleEvent(); officeEvent(); }
       paintTime();
     }
     requestAnimationFrame(tick);
-  })(last);
+  }
   $("#skip").onclick = $("#skip2").onclick = () => { if (S.night) { S.minutes = 32.5 * 60; } };
 
   async function dice(box, chance) {
@@ -764,25 +872,26 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     b.innerHTML = `<div style="font:700 30px/1 var(--body);letter-spacing:.12em;color:var(--accent);text-shadow:0 0 14px var(--accent);margin:4px 0 10px">BASTION</div><div class="dim">operator shell · target: Olive Byte · 4 machines · 5 people</div><div class="dim">pick a move below. every move costs time and makes noise.</div><br>`;
     const cmds = document.createElement("div"); cmds.className = "cmds"; w.appendChild(cmds);
     const paint = () => { if (!document.body.contains(w)) return hooks.delete(paint);
-      cmds.innerHTML = S.night ? `<span class="dim" style="padding:6px 2px">night: nobody at their desks. wait for the morning or skip the night.</span>`
-      : MOVES.map((m) => `<button class="cmd" data-m="${m.id}" ${m.need() ? "" : "disabled"}>${m.cmd}</button>`).join("");
+      cmds.innerHTML = MOVES.map((m) => `<button class="cmd" data-m="${m.id}" ${m.need() ? "" : "disabled"}>${m.cmd}</button>`).join("");
       cmds.querySelectorAll("button").forEach((x) => x.onclick = () => run(MOVES.find((m) => m.id === x.dataset.m), b, cmds, paint)); };
     hooks.add(paint); paint();
   }
   let busy = false;
+  const chanceOf = (m) => m.chance >= 1 ? 1 : Math.min(.95, m.chance + (S.boost ? .15 : 0) + (m.id === "exploit" && S.leak ? .25 : 0));
   async function run(m, b, cmds, paint) {
     if (busy) return; busy = true; cmds.querySelectorAll("button").forEach((x) => x.disabled = true);
     const line = document.createElement("div"); line.innerHTML = `<span class="p">operator@bastion:~$ </span><span class="typed"></span>`; b.appendChild(line);
     const typed = line.querySelector(".typed");
-    for (const ch of m.cmd) { typed.textContent += ch; beep(1800 + Math.random() * 300, .015, "square", .015); await sleep(38); }
+    for (const ch of m.cmd) { typed.textContent += ch; click(); await sleep(38); }
     b.scrollTop = b.scrollHeight;
     if (m.id === "sleep") { b.insertAdjacentHTML("beforeend", `<div class="dim">ending the day…</div>`); startNight(); busy = false; paint(); return; }
     if (m.id === "recon") ripple("web");
-    b.insertAdjacentHTML("beforeend", `<div class="dim">chance ${Math.round(m.chance * 100)}% · heat +${Math.round(m.heat * 100)}%</div>`);
-    const ok = await dice(b, m.chance);
+    const ch = chanceOf(m);
+    b.insertAdjacentHTML("beforeend", `<div class="dim">chance ${Math.round(ch * 100)}% · heat +${Math.round(m.heat * (S.night ? 50 : 100))}%${S.night ? " · night" : ""}</div>`);
+    const ok = await dice(b, ch);
     const path = { recon: ["you", "web"], exploit: ["you", "web"], escalate: ["you", "web"], pivot: ["you", "web", "db"], steal: ["you", "web", "db"] }[m.id];
     await packet(path, "#ff4d6d", ok);
-    setHeat(S.heat + m.heat);
+    setHeat(S.heat + m.heat * (S.night ? .5 : 1));
     if (ok) {
       stamp(b, "ok", m.id === "steal" ? "DATA TAKEN" : "SUCCESS");
       if (m.id === "recon") { S.scanned = true; b.insertAdjacentHTML("beforeend", `<div>open ports 80, 443 · web shop software is out of date</div>`); }
@@ -794,9 +903,9 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       stamp(b, "bad", "BLOCKED"); shake();
     }
     mapState(); paintNotes();
-    const spotted = Math.random() < S.heat * .8;
+    const spotted = Math.random() < S.heat * .8 * (S.night ? .3 : 1);
     if (spotted && m.id !== "recon") {
-      await sleep(350); stamp(b, "warn", "SPOTTED");
+      await sleep(350); stamp(b, "warn", "SPOTTED"); alarm();
       if (S.inside && Math.random() < .5) { S.cut = true; S.inside = false; S.admin = false; mapState();
         S.pivot = false; b.insertAdjacentHTML("beforeend", `<div style="color:#8fb4ff">blue team: web-01 was cut off from the network. you lost your foothold.</div>`); shake(); }
     }
@@ -823,7 +932,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     entry.id = S.logs.length + 1; entry.time = clock(S.minutes); S.logs.unshift(entry);
     if (S.logs.length > 60) S.logs.pop();
     const box = document.querySelector(".win[data-app=logs] .body"); if (box) { box.prepend(logRow(entry)); if (box.children.length > 60) box.lastElementChild.remove(); }
-    if (entry.sus) beep(300, .08, "square", .03);
+    if (entry.sus) { beep(300, .08, "square", .03); if (S.night) S.nightAlerts = (S.nightAlerts || 0) + 1; }
   }
   function logRow(e) {
     const row = document.createElement("div"); row.className = "log" + (e.sus && !e.done ? " sus" : "");
@@ -839,13 +948,14 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     b.innerHTML = ""; S.logs.forEach((e) => b.appendChild(logRow(e)));
   }
   async function investigate(e, row) {
-    if (S.night || S.over) return;
+    if (S.over) return;
+    if (S.night) { toast("Off shift", "You went home. The alerts will wait until the morning."); return; }
     const btn = row.querySelector(".acts button"); btn.disabled = true; btn.textContent = "checking…";
     await sleep(900); e.done = true;
     const acts = row.querySelector(".acts"); row.classList.remove("sus");
     acts.innerHTML = `<span class="stamp ${e.real ? "bad" : "ok"}" style="font-size:12px;margin:0">${e.real ? "REAL" : "FALSE ALARM"}</span>`;
     if (e.real) {
-      S.blue.confirmed++; shake();
+      S.blue.confirmed++; shake(); alarm();
       const tools = [];
       if (STAGES[e.stage].outside) tools.push(["block", `block ${e.ip}`]);
       if (e.stage >= 1) tools.push(["isolate", "isolate web-01"]);
@@ -857,6 +967,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   }
   function markCompromised(on) { S.suspect = on; mapState(); }
   async function blueAct(kind, e) {
+    if (S.night) { toast("Off shift", "Nobody is here to act on it until the morning."); return; }
     if (kind === "block") {
       S.blue.blocks++; S.atk.blockedUntil = S.minutes + 180; S.atk.ip = newIp();
       if (S.atk.stage <= 1) S.atk.stage = 0;
@@ -872,20 +983,28 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   }
   function attackerStep() {
     const a = S.atk;
-    a.next = S.minutes + 45 + Math.random() * 60;
+    if (S.night) {
+      if (a.nightSteps >= 2) { a.next = Infinity; return; }
+      a.nightSteps++; a.next = S.minutes + 250 + Math.random() * 150;
+    } else a.next = S.minutes + 45 + Math.random() * 60;
     if (a.blockedUntil > S.minutes) return;
     if (S.cut && a.stage >= 1 && a.stage <= 3) { a.stage = 1; }
     const st = STAGES[a.stage];
     if (S.cut && a.stage === 1) { addLog({ text: `${st.text(a.ip)} (no answer, web-01 is offline)` }); return; }
-    const ok = Math.random() < st.chance;
+    if (a.free && a.stage <= 1) {
+      a.free = false; addLog({ text: `login from an unusual country · maria · mail`, sus: true, real: true, stage: 1, ok: true, ip: a.ip });
+      packet(["you", "mail"], "#ff4d6d", true); a.stage = 2; return;
+    }
+    const chance = a.stage === 1 && S.patched ? .15 : st.chance * (S.night ? 1.2 : 1);
+    const ok = Math.random() < chance;
     addLog({ text: st.text(a.ip), sus: true, real: true, stage: a.stage, ok, ip: a.ip });
     packet(st.path, "#ff4d6d", ok);
     if (ok) a.stage++;
     if (a.stage >= 4) endGame(false, "The attacker copied the customer database and left.");
   }
   function blueTick() {
-    if (S.side !== "blue" || S.night || S.over) return;
-    if (Math.random() < .012) addLog({ text: NOISE[Math.floor(Math.random() * NOISE.length)] });
+    if (S.side !== "blue" || S.over) return;
+    if (Math.random() < (S.night ? .003 : .012)) addLog({ text: NOISE[Math.floor(Math.random() * NOISE.length)] });
     if (Math.random() < .0016) addLog({ text: DECOYS[Math.floor(Math.random() * DECOYS.length)], sus: true, real: false });
     if (S.minutes >= S.atk.next) attackerStep();
   }
@@ -895,8 +1014,8 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     if (S.over) return; S.over = true;
     const red = S.side === "red";
     const rows = red
-      ? [["Got inside", S.quests.inside ? 5 : 0], ["Became admin", S.admin || S.stolen ? 5 : 0], ["Data taken", S.stolen ? 25 : 0], ["Heat left", Math.round((1 - S.heat) * 10)]]
-      : [["Attacks confirmed", S.blue.confirmed * 2], ["Addresses blocked", S.blue.blocks * 2], ["Kicked out", S.blue.kicks * 8], ["Data safe", won ? 20 : 0], ["Clean machines hit", -S.blue.disruption * 3]];
+      ? [["Got inside", S.quests.inside ? 5 : 0], ["Became admin", S.admin || S.stolen ? 5 : 0], ["Data taken", S.stolen ? 25 : 0], ["Heat left", Math.round((1 - S.heat) * 10)], ["Office decisions", S.bonus || 0]]
+      : [["Attacks confirmed", S.blue.confirmed * 2], ["Addresses blocked", S.blue.blocks * 2], ["Kicked out", S.blue.kicks * 8], ["Data safe", won ? 20 : 0], ["Clean machines hit", -S.blue.disruption * 3], ["Office decisions", S.bonus || 0]];
     const total = rows.reduce((t, r) => t + r[1], 0);
     const end = $("#end");
     end.className = "end show " + (won ? "won" : "lost");
@@ -904,7 +1023,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
       <div class="end-rows">${rows.map(([k, v]) => `<div><span>${k}</span><b data-v="${v}">0</b></div>`).join("")}</div>
       <div class="end-total"><span>Score</span><b id="endTotal">0</b></div>
       <button class="pill on" id="again">Play again</button></div>`;
-    $("#again").onclick = () => { const u = new URL(location.href); u.search = S.side === "blue" ? "?side=blue" : ""; location.href = u.toString(); };
+    $("#again").onclick = () => resetGame(S.side);
     beep(won ? 660 : 140, .5, won ? "triangle" : "sawtooth", .06);
     if (won) confetti(); else shake();
     const cells = [...end.querySelectorAll(".end-rows b")]; let i = 0;
@@ -952,14 +1071,80 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
         <div class="btns"><button data-c=".5">Unpaid invoice</button><button data-c=".2">You won a prize</button><button data-c=".35">IT: reset your password</button></div><div class="res"></div></div>`;
       b.querySelectorAll("button").forEach((x) => x.onclick = async () => {
         b.querySelectorAll("button").forEach((y) => y.disabled = true);
-        const res = b.querySelector(".res"); res.innerHTML = `<p>sending… chance ${Math.round(+x.dataset.c * 100)}%</p>`;
+        const res = b.querySelector(".res"); res.innerHTML = `<p>sending… chance ${Math.round(+x.dataset.c * (S.night ? 40 : 100))}%${S.night ? " (night: nobody reads email)" : ""}</p>`;
         await packet(["you", "mail"], "#ff4d6d", true);
-        const ok = Math.random() < +x.dataset.c; setHeat(S.heat + .06);
+        const ok = Math.random() < +x.dataset.c * (S.night ? .4 : 1); setHeat(S.heat + .06);
         res.innerHTML += `<span class="stamp ${ok ? "ok" : "bad"}">${ok ? "CLICKED" : "IGNORED"}</span><p>${ok ? "Maria opened it. You have her account." : "She deleted it. Maybe a story that fits her job?"}</p>`;
         if (!ok) shake(); else { flash(); S.quests.inside++; paintNotes(); }
         await spend(60); setTimeout(() => initMail(w), 2600);
       });
     }
+  }
+
+  /* office events: someone knocks, the news, the boss */
+  const EVENTS = {
+    blue: [
+      { kind: "news", who: "SOC TV", title: "Breaking news", ticker: "BREAKING: serious flaw found in popular web shop software · patch now ·",
+        text: "A serious flaw in the web shop software you run is all over the news.",
+        options: [["Patch now (shop offline 1 hour)", async () => { S.patched = true; S.bonus = (S.bonus || 0) + 2; await spend(60); toast("Patched", "Web exploits against the shop will mostly fail now."); }],
+                  ["Patch next week", () => toast("Noted", "The flaw stays open for now.")]] },
+      { kind: "door", who: "Maria · Finance", look: ["#7a4b8c", "#5a3a2a", null], title: "Knock knock",
+        text: "“I typed my password into a page from an email. Is that bad?”",
+        options: [["Reset her password now (20 min)", async () => { S.bonus = (S.bonus || 0) + 3; await spend(20); toast("Good call", "Her old password is useless now."); }],
+                  ["Don't worry about it", () => { S.atk.free = true; toast("Hmm", "Maria goes back to her desk, relieved."); }]] },
+      { kind: "door", who: "The CEO", look: ["#4b5563", "#2b2b2b", "#c62828"], title: "The boss walks in",
+        text: "“I need a short status report. Now.”",
+        options: [["Write the report (45 min)", async () => { S.bonus = (S.bonus || 0) + 4; await spend(45); toast("Report sent", "The CEO trusts the SOC a bit more."); }],
+                  ["Not now, I'm busy", () => { S.bonus = (S.bonus || 0) - 3; toast("Ouch", "The CEO leaves. Not happy."); }]] },
+    ],
+    red: [
+      { kind: "news", who: "Second screen", title: "New intel",
+        text: "Olive Byte just posted that their only IT admin is on holiday this week.",
+        options: [["Strike today (+15% to every move)", () => { S.boost = true; toast("Go", "Nobody is minding the shop today."); }],
+                  ["Wait", () => toast("Patience", "Maybe a better chance will come.")]] },
+      { kind: "door", who: "Your partner", look: ["#1f1f26", "#111", null], title: "Knock knock",
+        text: "“Found leaked passwords for Olive Byte on a forum. Three coins and they're yours.”",
+        options: [["Buy them (◈ 3)", () => { if (S.coins < 3) { toast("No money", "You don't have three coins yet."); return; } S.coins -= 3; $("#osCoins").textContent = "◈ " + S.coins; S.leak = true; toast("Bought", "Web exploits got easier."); }],
+                  ["No thanks", () => toast("Suit yourself", "Your partner shrugs and leaves.")]] },
+    ],
+  };
+  function scheduleEvent() { S.nextEvent = S.minutes + 70 + Math.random() * 90; }
+  let eventOpen = false;
+  async function officeEvent() {
+    const pool = EVENTS[S.side].filter((e) => !S.seen?.includes(e.title)); if (!pool.length) return;
+    const ev = pool[Math.floor(Math.random() * pool.length)]; S.seen = [...(S.seen || []), ev.title];
+    eventOpen = true; S.paused = true;
+    if (ev.kind === "door") {
+      const [body, hair, tie] = ev.look; $("#vBody").setAttribute("fill", body); $("#vHair").setAttribute("fill", hair);
+      $("#vTie").style.display = tie ? "" : "none"; if (tie) $("#vTie").setAttribute("fill", tie);
+      const door = $("#door"); door.classList.add("knock"); [0, 160, 320].forEach((d) => setTimeout(() => beep(180, .07, "square", .06), d));
+      if (S.zoomed) toast("Someone is at the door", ev.who);
+      await sleep(700); door.classList.remove("knock"); door.classList.add("open"); await sleep(350); door.classList.add("in"); await sleep(700);
+    } else {
+      $(S.side === "blue" ? "#ticker" : "#redNews").setAttribute("opacity", 1);
+      if (ev.ticker) $("#tickerText").textContent = ev.ticker + " " + ev.ticker;
+      beep(1046, .12, "triangle"); setTimeout(() => beep(1318, .16, "triangle"), 140);
+    }
+    showPanel(`<h3>${ev.title}</h3><p style="margin:0 0 6px;color:#666;font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.06em">${ev.who}</p><p>${ev.text}</p>
+      <div class="choices">${ev.options.map(([label], i) => `<button data-o="${i}">${label}</button>`).join("")}</div>`, true);
+    $("#panel").querySelectorAll("[data-o]").forEach((btn) => btn.onclick = async () => {
+      hidePanel(); S.paused = false; eventOpen = false;
+      await ev.options[+btn.dataset.o][1]();
+      const door = $("#door"); door.classList.remove("in"); await sleep(500); door.classList.remove("open");
+      $("#ticker").setAttribute("opacity", 0); $("#redNews").setAttribute("opacity", 0);
+    });
+  }
+
+  function resetGame(side) {
+    Object.assign(S, { night: false, rain: false, day: 1, minutes: 9 * 60, inside: false, admin: false, scanned: false, stolen: false, cut: false, pivot: false,
+      quests: { scout: 0, inside: 0, climb: 0 }, logs: [], over: false, suspect: false, bonus: 0, patched: false, leak: false, boost: false, seen: [], paused: false, nightAlerts: 0 });
+    S.atk = { stage: 0, ip: newIp(), next: 9 * 60 + 40, blockedUntil: 0 };
+    S.blue = { blocks: 0, kicks: 0, disruption: 0, confirmed: 0 };
+    scheduleEvent(); hidePanel(); eventOpen = false;
+    $("#end").className = "end"; $("#skip").hidden = true; $("#skip2").hidden = true; setHeat(0);
+    $("#deskArea").innerHTML = ""; hooks.clear();
+    history.replaceState(null, "", side === "blue" ? "?side=blue" : location.pathname);
+    setSide(side); mapState(); ambience();
   }
 
   /* server rack LEDs (red room) */
@@ -974,9 +1159,11 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   }
 
   /* start */
+  scheduleEvent(); requestAnimationFrame((t) => { last = t; tick(t); });
   const q = new URLSearchParams(location.search);
   setSide(q.get("side") === "blue" ? "blue" : "red"); setHeat(0); fitPortrait();
   if (q.has("open")) openLaptop(q.get("open") === "now");
+  if (q.has("event")) { S.nextEvent = S.minutes + 1; }
   if (q.has("t")) { S.minutes = +q.get("t") * 60; if (S.minutes >= 18 * 60 || S.minutes < 9 * 60) { S.night = true; S.rain = q.has("rain"); if (S.minutes < 9 * 60) S.minutes += 24 * 60; $("#skip").hidden = false; } paintTime(); }
 })();
 </script>
