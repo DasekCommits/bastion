@@ -6,7 +6,7 @@ from bastion.web import Session
 
 LOGGED = (
     "start", "set_defenses", "set_arsenal", "begin", "move", "end_day", "give_up", "finish",
-    "blue_act", "blue_wait", "terminal", "realism_search", "realism_act", "realism_wait",
+    "blue_act", "blue_wait", "terminal", "realism_search", "realism_act", "realism_wait", "wait",
 )
 FINAL = ("finish", "give_up")
 
@@ -24,7 +24,7 @@ def roll(secret_hex: str, game_id: int, n: int) -> int:
 
 def play(session: Session, method: str, args: list, value: int):
     if method == "start":
-        return getattr(session, method)(*args[:3], value)
+        return getattr(session, method)(*args[:3], value, *args[3:4])
     session.reseed(value)
     return getattr(session, method)(*args)
 

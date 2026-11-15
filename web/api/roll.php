@@ -4,7 +4,7 @@ declare(strict_types=1);
 require __DIR__ . '/lib.php';
 
 const MOVES = ['start', 'set_defenses', 'set_arsenal', 'begin', 'move', 'end_day', 'give_up', 'finish',
-               'blue_act', 'blue_wait', 'terminal', 'realism_search', 'realism_act', 'realism_wait'];
+               'blue_act', 'blue_wait', 'terminal', 'realism_search', 'realism_act', 'realism_wait', 'wait'];
 const LAST_MOVES = ['finish', 'give_up'];
 const MAX_MOVES = 5000;
 

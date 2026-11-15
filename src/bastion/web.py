@@ -2,10 +2,10 @@ import json
 import random
 
 from bastion import achievements, advice, ai, scoring, shop
-from bastion.catalog import load_catalog, load_edge
+from bastion.catalog import load_catalog, load_edge, load_time_scale
 from bastion.clearance import plant_sealed_file, quests, record_secrets
 from bastion.company import list_scenarios, load_scenario, roll_mistakes
-from bastion.engine import Campaign, PlanError
+from bastion.engine import BLUE_MINUTES, Campaign, PlanError, minutes_for
 from bastion import learning, pretexts, waf
 from bastion import quests as shop_quests
 from bastion.realism.game import RealismGame
@@ -198,7 +198,8 @@ class Session:
     def reseed(self, roll: int) -> None:
         self.rng.seed(roll)
 
-    def start(self, company_id: str, level: str, side: str, seed: int | None = None) -> str:
+    def start(self, company_id: str, level: str, side: str, seed: int | None = None, mode: str = "") -> str:
+        self.mode = mode
         self.rng = random.Random(seed)
         self.realism = level == "realism"
         self.shown_level = level
@@ -302,8 +303,11 @@ class Session:
         if self.side == "blue":
             self.arsenal = ai.pick_arsenal(self.company, self.catalog, self.rng, expert=self.level == "hard")
         edge = load_edge(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
+        timed = getattr(self, "mode", "") == "time" and not self.realism
+        if timed:
+            edge *= load_time_scale(self.company.tier, self.level, "blue" if self.side == "blue" else "red")
         self.campaign = Campaign(self.company, self.catalog, self.defense_ids, self.arsenal, rng=self.rng, edge=edge,
-                                 active_blue=True, egg_rng=random.Random(self.rng.random()))
+                                 active_blue=True, egg_rng=random.Random(self.rng.random()), timed=timed)
         self.blue_ai = ai.BlueAI(ai.BLUE_AI_KNOWLEDGE[self.level], self.rng, ai.OPPONENT_ACTIONS[self.level])
         if self.realism:
             self.real = RealismGame(self.campaign, self.rng)
@@ -513,6 +517,8 @@ class Session:
             "phase": self.phase, "finished": c.finished or self.gave_up,
             "day": c.day, "max_days": self.company.max_days,
             "time_left": c.blue_moves_left, "time_total": c.blue_moves_per_day,
+            "timed": c.timed, "clock": c.minute if c.timed else None, "night": c.night,
+            "analyst_clock": max(c.minute, c.blue_minute) if c.timed else None, "costs": BLUE_MINUTES if c.timed else None,
             "new_logs": len(c.unseen_logs()),
             "logs": [self._entry_view(e) for e in reversed(c.seen_logs())],
             "events": events, "isolated": sorted(c.foothold.isolated), "confirmed": confirmed,
@@ -559,6 +565,8 @@ class Session:
         for attack_id in c.arsenal:
             attack = self.catalog.attacks[attack_id]
             item = {"id": attack_id, "name": attack.name}
+            if c.timed:
+                item["minutes"] = minutes_for(attack)
             if self.explain:
                 used = c.used.get(attack_id, 0)
                 item["tag"] = f"used {used}x, more heat" if used and self.easy else ""
@@ -577,6 +585,7 @@ class Session:
             "day": c.day, "max_days": self.company.max_days,
             "moves_left": c.moves_left_today, "moves_per_day": self.company.moves_per_day,
             "heat": c.heat if self.easy else None,
+            "timed": c.timed, "clock": c.minute if c.timed else None, "night": c.night, "watched": c.watched_at_night if c.night else None,
             "foothold": foothold, "intel": intel, "actions": actions,
             "finished": c.finished or self.gave_up,
         })
@@ -630,9 +639,18 @@ class Session:
         event["kicked_out"] = self.campaign.kicked_out
         return json.dumps(event)
 
+    def wait(self, minute: int) -> str:
+        try:
+            self.campaign.wait_until(int(minute))
+        except PlanError as error:
+            return json.dumps({"error": str(error)})
+        return self.turn()
+
     def _blue_reacts(self, until_done: bool) -> list[str]:
         notices = []
         c = self.campaign
+        if c.night and not c.watched_at_night and not until_done:
+            return notices
         while not c.finished:
             step = self.blue_ai.next_action(c)
             if step is None:

@@ -137,7 +137,7 @@
     const wasLaptop = O.mode === "laptop"; if (wasLaptop) await closeLaptop();
     const card = $("#of-night"); card.querySelector("b").textContent = `Night ${nextDay - 1}`; card.classList.add("show");
     $("#of-skip").hidden = false; $("#of-hint").textContent = "Click the laptop to skip the night";
-    const start = performance.now(), total = reduce ? 1500 : 60000, from = 18 * 60, to = 33 * 60;
+    const start = performance.now(), total = reduce ? 1500 : 60000, from = Math.max(18 * 60, O.minutes), to = 33 * 60;
     await new Promise((done) => {
       nightSkip = done;
       (function nf(now) { if (!nightSkip) return; const t = Math.min(1, (now - start) / total); O.minutes = from + (to - from) * t; paintTime();
@@ -171,7 +171,8 @@
     }
     if (t.day > O.day && O.day > 0) { O.progStart = t.progress; return playNight(t.day); }
     O.day = t.day;
-    if (t.progress !== undefined) {
+    if (t.clock !== undefined && t.clock !== null) O.target = 9 * 60 + t.clock;
+    else if (t.progress !== undefined) {
       if (O.progStart == null) O.progStart = t.progress;
       O.target = Math.max(O.target, 9 * 60 + Math.min(510, (t.moves_per_day - t.moves_left) * 50 + (t.progress - O.progStart) * 25));
     } else if (t.moves_per_day && t.moves_left !== undefined) O.target = 9 * 60 + (t.moves_per_day - t.moves_left) * (510 / t.moves_per_day);

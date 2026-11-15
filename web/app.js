@@ -48,7 +48,7 @@
 
   // moves whose dice the server rolls when you are signed in; everything else is a read
   const MOVES = new Set(["start", "set_defenses", "set_arsenal", "begin", "move", "end_day", "give_up", "finish",
-    "blue_act", "blue_wait", "terminal", "realism_search", "realism_act", "realism_wait"]);
+    "blue_act", "blue_wait", "terminal", "realism_search", "realism_act", "realism_wait", "wait"]);
 
   function serverRoll(method, args) {
     const xhr = new XMLHttpRequest();
@@ -83,12 +83,12 @@
     if (S.dice && MOVES.has(method)) {
       let value;
       try {
-        value = serverRoll(method, method === "start" ? args.slice(0, 3) : args);
+        value = serverRoll(method, method === "start" ? [...args.slice(0, 3), ...args.slice(4, 5)] : args);
       } catch (error) {
         diceFailed(error);
         throw error;
       }
-      if (method === "start") args = [args[0], args[1], args[2], value];
+      if (method === "start") args = [args[0], args[1], args[2], value, ...args.slice(4, 5)];
       else S.session.reseed(value);
     }
     const out = S.session[method](...args);
@@ -275,12 +275,15 @@
     if (!turn) { gauges.hidden = true; gauges.innerHTML = ""; return; }
     const pips = (on, total, cls = "") => `<span class="pips ${cls}">${Array.from({ length: total }, (_, i) => `<i class="${i < on ? "on" : ""}"></i>`).join("")}</span>`;
     let html = `<span class="gauge">Day <b>${turn.day}/${turn.max_days}</b> ${pips(turn.day, turn.max_days)}</span>`;
-    if (turn.moves_left !== undefined) html += `<span class="gauge">Moves ${pips(turn.moves_left, turn.moves_per_day, "moves")}</span>`;
+    if (turn.timed) html += `<span class="gauge">${turn.night ? "Night" : "Day"} <b>${clockText(turn.clock)}</b></span>`;
+    else if (turn.moves_left !== undefined) html += `<span class="gauge">Moves ${pips(turn.moves_left, turn.moves_per_day, "moves")}</span>`;
     if (turn.heat !== null && turn.heat !== undefined) html += `<span class="gauge">Heat <span class="heat"><span style="width:${pct(turn.heat)}"></span></span> <b>${pct(turn.heat)}</b></span>`;
     gauges.innerHTML = html;
     gauges.hidden = false;
   }
 
+  const clockText = (m) => { const d = (540 + (m || 0)) % 1440; return `${String(Math.floor(d / 60)).padStart(2, "0")}:${String(d % 60).padStart(2, "0")}`; };
+  const minText = (m) => m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${m} min`;
   const NAMES = { small: "Olive Byte", medium: "Harbor Clinic", large: "Meridian Bank" };
 
   function renderMenu() { renderHome(); }
@@ -854,7 +857,8 @@
     if (!(history.state && history.state.bastion)) history.pushState({ bastion: 1 }, "");
     S.dice = S.user ? { game: null, n: 0 } : null;  // signed in: the server rolls the dice
     try {
-      S.start = api("start", company, level, side, Math.floor(Math.random() * 1e9));
+      S.start = window.Office ? api("start", company, level, side, Math.floor(Math.random() * 1e9), "time")
+        : api("start", company, level, side, Math.floor(Math.random() * 1e9));
     } catch { return; }
     S.startedAt = Date.now();
     S.turn = null;
@@ -1315,11 +1319,13 @@
       side = `<div class="panel">
         ${t.foothold ? footholdHtml(t.foothold) : ""}
         ${t.intel.length ? `<p class="detail" style="font:12px var(--mono);margin:0 0 10px"><b>Intel:</b> ${esc(t.intel.join(", "))}</p>` : ""}
-        <div class="options">${t.actions.map((a) => `<button class="option" data-attack="${a.id}" ${a.disabled ? "disabled" : ""}>
+        ${t.timed && t.night ? `<p class="detail night-note">Night. ${t.watched ? "Their 24/7 SOC is still watching." : "The analysts went home: you are harder to spot."} Nobody reads email now.</p>` : ""}
+        ${t.timed && !t.moves_left ? `<p class="detail night-note">It is almost morning. Sleep and start again at 09:00.</p>` : ""}
+        <div class="options">${t.actions.map((a) => `<button class="option" data-attack="${a.id}" ${a.disabled || (t.timed && !t.moves_left) ? "disabled" : ""}>
           <span></span><span><span class="name">${esc(a.name)}</span>
           ${a.disabled ? `<span class="why">${esc(a.disabled)}</span>` : a.hint ? `<span class="desc">${esc(a.hint)}</span>` : ""}</span>
-          <span class="odds">${esc(a.tag || "")}</span></button>`).join("")}</div>
-        <div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="end-day">End the day</button><button class="btn ghost" id="give-up">Flee</button></div></div>`;
+          <span class="odds">${esc([a.minutes ? minText(a.minutes) : "", a.tag || ""].filter(Boolean).join(" · "))}</span></button>`).join("")}</div>
+        <div class="btn-row" style="margin-top:12px">${t.timed && t.clock < 540 ? '<button class="btn ghost" id="wait-evening">Wait until evening</button>' : ""}<button class="btn ghost" id="end-day">${t.timed ? "Sleep until morning" : "End the day"}</button><button class="btn ghost" id="give-up">Flee</button></div></div>`;
     }
     const apps = [
       { id: "moves", icon: "⚔", title: "Your move", html: side.replace('<div class="panel">', '<div>') },
@@ -1335,6 +1341,7 @@
     app.querySelectorAll(".map g.clickable").forEach((el) => el.addEventListener("click", () => doMove(el.dataset.id)));
     document.getElementById("back")?.addEventListener("click", () => { if (S.pretextFor) S.pretextFor = null; else S.attack = null; renderPlay(); });
     document.getElementById("end-day")?.addEventListener("click", endDay);
+    document.getElementById("wait-evening")?.addEventListener("click", () => { S.turn = api("wait", 540); renderPlay(true); });
     document.getElementById("give-up")?.addEventListener("click", () => renderFinal(api("give_up")));
   }
 
@@ -1519,10 +1526,10 @@
   ];
 
   function blueGauges(st) {
-    if (window.Office) window.Office.turn({ day: st.day, max_days: st.max_days, moves_left: st.time_left, moves_per_day: st.time_total, heat: 0, progress: (st.logs || []).length + (st.new_logs || 0) }, S.start && S.start.side, S.start && S.start.company && S.start.company.name);
+    if (window.Office) window.Office.turn({ day: st.day, max_days: st.max_days, moves_left: st.time_left, moves_per_day: st.time_total, heat: 0, clock: st.timed ? st.clock : null, progress: (st.logs || []).length + (st.new_logs || 0) }, S.start && S.start.side, S.start && S.start.company && S.start.company.name);
     const pips = (on, total, cls = "") => `<span class="pips ${cls}">${Array.from({ length: total }, (_, i) => `<i class="${i < on ? "on" : ""}"></i>`).join("")}</span>`;
     gauges.innerHTML = `<span class="gauge">Day <b>${st.day}/${st.max_days}</b> ${pips(st.day, st.max_days)}</span>
-      <span class="gauge">Analyst time ${pips(st.time_left, st.time_total, "time")}</span>
+      ${st.timed ? `<span class="gauge">${st.night ? "Night" : "Day"} <b>${clockText(st.clock)}</b></span>` : `<span class="gauge">Analyst time ${pips(st.time_left, st.time_total, "time")}</span>`}
       <span class="gauge">New logs <b>${st.new_logs}</b></span>`;
     gauges.hidden = false;
   }
@@ -1592,7 +1599,12 @@
       const explain = S.settings.level !== "hard";
       const disabled = { investigate: open ? "" : "read the logs first", block: st.logs.length ? "" : "read the logs first" };
       const tag = { logs: st.new_logs ? `${st.new_logs} new` : "", investigate: open ? `${open} open` : "" };
-      const note = st.phase === "day_end" ? "The attacker has stopped for today. Use the rest of your time, or let the night come." : "Each time the attacker moves, you get one move.";
+      if (st.timed && st.costs) Object.keys(st.costs).forEach((k) => { tag[k] = [minText(st.costs[k]), tag[k]].filter(Boolean).join(" · "); });
+      const offShift = st.timed && !st.time_left;
+      if (offShift) Object.keys(st.costs || {}).forEach((k) => { disabled[k] = disabled[k] || "you are off shift"; });
+      const note = st.timed
+        ? (offShift ? "Your shift is over. The attacker keeps going at night; the logs will be waiting in the morning." : `Your shift ends at 18:00. You are free from ${clockText(st.analyst_clock)}.`)
+        : st.phase === "day_end" ? "The attacker has stopped for today. Use the rest of your time, or let the night come." : "Each time the attacker moves, you get one move.";
       side = `<div class="panel"><p class="muted" style="margin:0 0 10px;font-size:13px">${note}</p><div class="options">
         ${BLUE_ACTIONS.map((a) => `<button class="option" data-blue="${a.id}" ${disabled[a.id] ? "disabled" : ""}><span></span><span><span class="name">${esc(a.name)}</span>
           ${disabled[a.id] ? `<span class="why">${esc(disabled[a.id])}</span>` : explain ? `<span class="desc">${esc(a.text)}</span>` : ""}</span><span class="odds">${esc(tag[a.id] || "")}</span></button>`).join("")}

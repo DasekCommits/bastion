@@ -422,6 +422,24 @@ class Preview:
     heat_after: float
 
 
+# time mode: every move costs time instead of one of a few moves per day.
+# Minute 0 is 09:00; the evening starts at 540 (18:00) and the office is empty until 1320 (07:00).
+MINUTES = {"reconnaissance": 30, "initial-access": 90, "credential-access": 120, "privilege-escalation": 90,
+           "lateral-movement": 60, "exfiltration": 150, "impact": 120}
+MINUTES_BY_ATTACK = {"phishing": 60, "aitm-phishing": 75, "port-scan": 30, "brute-force": 120, "password-spray": 90}
+EVENING, MORNING, LAST_START = 540, 1320, 1290
+NIGHT_PEOPLE = 0.4
+NIGHT_SERVERS = 1.1
+NIGHT_SPOTTED = 0.5
+WORK_LIMIT = 600
+REPEAT_DECAY = 0.85
+BLUE_MINUTES = {"investigate": 45, "reset": 20, "isolate": 30, "hunt": 120, "block": 15}
+
+
+def minutes_for(attack: Attack) -> int:
+    return MINUTES_BY_ATTACK.get(attack.id, MINUTES.get(attack.tactic, 60))
+
+
 class Campaign:
     def __init__(
         self,
@@ -434,7 +452,14 @@ class Campaign:
         edge: float = 1.0,
         active_blue: bool = False,
         egg_rng: random.Random | None = None,
+        timed: bool = False,
     ):
+        self.timed = timed
+        self.minute = 0
+        self.blue_minute = 0
+        self.red_work = 0
+        self.red_work = 0
+        self.tries: dict[tuple[str, str], int] = {}
         self.edge = edge
         self.active_blue = active_blue
         self.company = company
@@ -482,7 +507,24 @@ class Campaign:
 
     @property
     def moves_left_today(self) -> int:
+        if self.timed:
+            return 1 if self.minute < LAST_START and self.red_work < WORK_LIMIT else 0
         return self.company.moves_per_day - self.moves_today
+
+    @property
+    def night(self) -> bool:
+        return self.timed and EVENING <= self.minute < MORNING
+
+    @property
+    def watched_at_night(self) -> bool:
+        return "soc" in self.defense_ids
+
+    def wait_until(self, minute: int) -> None:
+        if not self.timed:
+            raise PlanError("Waiting only exists in time mode")
+        if self.finished:
+            raise PlanError("The campaign is over")
+        self.minute = max(self.minute, min(minute, LAST_START))
 
     def targets_for(self, attack_id: str) -> list[str]:
         attack = self.catalog.attacks[attack_id]
@@ -559,6 +601,14 @@ class Campaign:
         if attack.tactic == "privilege-escalation" and target_id in self.foothold.admin_on:
             chance = 1.0
             note = "Already an administrator here, nothing to escalate."
+        if self.timed and chance < 1.0:
+            chance *= REPEAT_DECAY ** self.tries.get((attack_id, target_id), 0)
+        if self.night and chance < 1.0:
+            if attack.target == "employee" and attack.trait == "awareness":
+                chance *= NIGHT_PEOPLE
+                note = (f"{note} " if note else "") + "Night: nobody reads email now."
+            elif attack.target == "server":
+                chance = min(0.99, chance * NIGHT_SERVERS)
         if chance < 1.0:
             chance = clamp(with_edge(chance, self.edge))
         gain = heat_gain(attack, self.defenses, self.used.get(attack.id, 0))
@@ -567,6 +617,8 @@ class Campaign:
             gain *= REPORT_BASE + self.company.employee(target_id).awareness
         heat = min(1.0, self.heat + gain)
         spotted = 1 - (1 - detect_chance(attack, self.defenses)) * (1 - heat)
+        if self.night and not self.watched_at_night:
+            spotted *= NIGHT_SPOTTED
         spotted = clamp(with_edge(spotted, 1 / self.edge))
         if self.rushed(attack, target_id):
             heat = min(1.0, heat + RUSH_HEAT)
@@ -598,6 +650,10 @@ class Campaign:
         missing = [d.id for d in self.catalog.defenses_against(attack.id, self.company.tier) if d.id not in self.defense_ids]
         self.moves_today += 1
         preview = self.preview(attack_id, target_id, pretext)
+        if self.timed:
+            self.minute += minutes_for(attack)
+            self.red_work += minutes_for(attack)
+            self.tries[(attack_id, target_id)] = self.tries.get((attack_id, target_id), 0) + 1
 
         if not preview.possible:
             result = StepResult(step, attack, False, preview.note, 0, 0, False, False, helped, missing)
@@ -690,6 +746,8 @@ class Campaign:
         self.caught = night.found
         self.day += 1
         self.moves_today = 0
+        self.minute = 0
+        self.blue_minute = 0
         if self.active_blue:
             self.blue_moves_today = 0
             self.foothold.isolated = {s: until for s, until in self.foothold.isolated.items() if until >= self.day}
@@ -702,6 +760,8 @@ class Campaign:
 
     @property
     def blue_moves_left(self) -> int:
+        if self.timed:
+            return 1 if max(self.minute, self.blue_minute) < EVENING else 0
         return self.blue_moves_per_day - self.blue_moves_today
 
     def _label(self, target_id: str) -> str:
@@ -751,6 +811,8 @@ class Campaign:
         action = getattr(self, f"_blue_{kind}")(target)
         if not free:
             self.blue_moves_today += 1
+            if self.timed:
+                self.blue_minute = max(self.blue_minute, self.minute) + BLUE_MINUTES.get(kind, 30)
         self.blue_actions.append(action)
         if was_inside and self.foothold.is_empty():
             self.kicked_out = True

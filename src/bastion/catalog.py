@@ -134,6 +134,15 @@ def load_edge(tier: str, difficulty: str, side: str = "red", data_dir: Path = DA
     return table[side][tier][difficulty]
 
 
+def load_time_scale(tier: str, difficulty: str, side: str = "red", data_dir: Path = DATA_DIR) -> float:
+    """How much harder the time mode is than the move mode, tuned so both feel the same."""
+    path = data_dir / "balance_time.json"
+    if not path.exists():
+        return 1.0
+    table = json.loads(path.read_text(encoding="utf-8"))
+    return table.get(side, {}).get(tier, {}).get(difficulty, 1.0)
+
+
 def load_catalog(data_dir: Path = DATA_DIR) -> Catalog:
     catalog = Catalog(
         attacks=_load_unique(Path(data_dir) / "attacks.json", Attack),
