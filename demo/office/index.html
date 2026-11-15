@@ -217,6 +217,20 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 .end-total { margin: 12px 0 18px; font: 700 20px var(--mono); background: rgba(255,255,255,.1); }
 .conf { position: fixed; top: -12px; width: 9px; height: 14px; z-index: 60; pointer-events: none; animation: fall linear forwards; }
 @keyframes fall { to { transform: translate(var(--dx), 105vh) rotate(var(--r)); } }
+.bubble { position: fixed; z-index: 46; width: min(360px, calc(100vw - 24px)); padding: 16px 18px; border-radius: 18px; background: #fffdf5; color: #1b1a1e;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45); font: 16px/1.45 var(--body); opacity: 0; transform: scale(.7) translateY(10px); transform-origin: right center; pointer-events: none;
+  transition: opacity .25s, transform .35s cubic-bezier(.2,1.6,.4,1); }
+.bubble.show { opacity: 1; transform: none; pointer-events: auto; }
+.bubble::after { content: ""; position: absolute; right: -12px; top: 50%; margin-top: -10px; border: 10px solid transparent; border-left: 14px solid #fffdf5; border-right: 0; }
+.bubble.below::after { display: none; }
+.bubble b { display: block; font: 700 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #8a8290; margin-bottom: 4px; }
+.bubble .said { margin: 0; min-height: 1.4em; font-size: 17px; }
+.bubble .choices { display: grid; gap: 8px; margin-top: 12px; }
+.bubble .choices:empty { display: none; }
+.bubble .choices button { font: 600 14px var(--body); padding: 10px 14px; border-radius: 12px; border: 2px solid #1b1a1e; background: #fff; cursor: pointer; text-align: left;
+  animation: pop .3s cubic-bezier(.2,1.4,.4,1) backwards; transition: background .15s, color .15s, transform .15s; }
+.bubble .choices button:nth-child(2) { animation-delay: .08s; }
+.bubble .choices button:hover { background: #1b1a1e; color: #fff; transform: translateX(-4px); }
 .menu { position: fixed; inset: 0; z-index: 55; overflow-y: auto; background: radial-gradient(120% 90% at 50% 0%, rgba(20,16,28,.72), rgba(5,5,10,.94) 70%); backdrop-filter: blur(5px);
   transition: opacity .5s; }
 .menu.hide { opacity: 0; pointer-events: none; }
@@ -504,6 +518,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
 <div class="flash" id="flash"></div>
 <div class="panel" id="panel"></div>
 <div class="end" id="end"></div>
+<div class="bubble" id="bubble" role="dialog" aria-live="polite"></div>
 <div class="menu" id="menu">
   <div class="menu-inner">
     <h1 class="menu-logo">BASTION</h1>
@@ -557,7 +572,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     o.type = type; o.frequency.value = f; g.gain.value = vol; o.connect(g); g.connect(ac.destination);
     g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d); o.start(); o.stop(ac.currentTime + d);
   }
-  $("#sound").onclick = () => { S.sound = !S.sound; $("#sound").textContent = S.sound ? "Sound on" : "Sound off"; $("#sound").classList.toggle("on", S.sound); beep(880); ambience(); };
+  $("#sound").onclick = () => { S.soundChosen = true; S.sound = !S.sound; if (!S.sound) window.speechSynthesis?.cancel(); $("#sound").textContent = S.sound ? "Sound on" : "Sound off"; $("#sound").classList.toggle("on", S.sound); beep(880); ambience(); };
   $("#music").onclick = () => { S.music = !S.music; $("#music").textContent = S.music ? "Music on" : "Music off"; $("#music").classList.toggle("on", S.music); music(); };
   function audio() { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); return ac; }
   let noiseBuf = null;
@@ -709,6 +724,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   function openMenu() { S.paused = true; $("#resumeBtn").hidden = !S.started || S.over; $("#menu").classList.remove("hide"); paintMenu(); }
   function startGame() {
     M = MAPS[CFG.map]; L = LEVELS[CFG.level]; S.started = true; S.paused = false;
+    if (!S.soundChosen) { S.sound = true; $("#sound").textContent = "Sound on"; $("#sound").classList.add("on"); audio(); }
     $("#tvName").textContent = `SOC · ${M.name.toUpperCase()}`;
     $("#menu").classList.add("hide"); beep(520, .1, "triangle"); setTimeout(() => beep(780, .14, "triangle"), 120);
     resetGame(CFG.side); $("#hint").style.display = "";
@@ -1085,8 +1101,10 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   }
   function blueTick() {
     if (S.side !== "blue" || S.over) return;
-    if (Math.random() < (S.night ? .003 : .012)) addLog({ text: pick(NOISE()) });
-    if (Math.random() < .0016) addLog({ text: pick(DECOYS()), sus: true, real: false });
+    if (S.nextNoise == null || S.nextNoise > S.minutes + 400) S.nextNoise = S.minutes + 10;
+    if (S.nextDecoy == null || S.nextDecoy > S.minutes + 600) S.nextDecoy = S.minutes + 120 + Math.random() * 80;
+    if (S.minutes >= S.nextNoise) { addLog({ text: pick(NOISE()) }); S.nextNoise = S.minutes + (S.night ? 120 + Math.random() * 120 : 15 + Math.random() * 15); }
+    if (!S.night && S.minutes >= S.nextDecoy) { addLog({ text: pick(DECOYS()), sus: true, real: false }); S.nextDecoy = S.minutes + 120 + Math.random() * 80; }
     if (S.minutes >= S.atk.next) attackerStep();
   }
 
@@ -1169,11 +1187,11 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
         text: `A serious flaw in the ${M.webName} software you run is all over the news.`,
         options: [["Patch now (shop offline 1 hour)", async () => { S.patched = true; S.bonus = (S.bonus || 0) + 2; await spend(60); toast("Patched", "Web exploits against the shop will mostly fail now."); }],
                   ["Patch next week", () => toast("Noted", "The flaw stays open for now.")]] },
-      { kind: "door", who: "Maria · Finance", look: ["#7a4b8c", "#5a3a2a", null], title: "Knock knock",
+      { kind: "door", who: "Maria · Finance", voice: { pitch: 1.35, rate: 1.05, female: true }, look: ["#7a4b8c", "#5a3a2a", null], title: "Knock knock",
         text: "“I typed my password into a page from an email. Is that bad?”",
         options: [["Reset her password now (20 min)", async () => { S.bonus = (S.bonus || 0) + 3; await spend(20); toast("Good call", "Her old password is useless now."); }],
                   ["Don't worry about it", () => { S.atk.free = true; toast("Hmm", "Maria goes back to her desk, relieved."); }]] },
-      { kind: "door", who: "The CEO", look: ["#4b5563", "#2b2b2b", "#c62828"], title: "The boss walks in",
+      { kind: "door", who: "The CEO", voice: { pitch: .75, rate: .95 }, look: ["#4b5563", "#2b2b2b", "#c62828"], title: "The boss walks in",
         text: "“I need a short status report. Now.”",
         options: [["Write the report (45 min)", async () => { S.bonus = (S.bonus || 0) + 4; await spend(45); toast("Report sent", "The CEO trusts the SOC a bit more."); }],
                   ["Not now, I'm busy", () => { S.bonus = (S.bonus || 0) - 3; toast("Ouch", "The CEO leaves. Not happy."); }]] },
@@ -1183,7 +1201,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
         text: `${M.name} just posted that their only IT admin is on holiday this week.`,
         options: [["Strike today (+15% to every move)", () => { S.boost = true; toast("Go", "Nobody is minding the shop today."); }],
                   ["Wait", () => toast("Patience", "Maybe a better chance will come.")]] },
-      { kind: "door", who: "Your partner", look: ["#1f1f26", "#111", null], title: "Knock knock",
+      { kind: "door", who: "Your partner", voice: { pitch: .9, rate: 1.1 }, look: ["#1f1f26", "#111", null], title: "Knock knock",
         text: `“Found leaked passwords for ${M.name} on a forum. Three coins and they're yours.”`,
         options: [["Buy them (◈ 3)", () => { if (S.coins < 3) { toast("No money", "You don't have three coins yet."); return; } S.coins -= 3; $("#osCoins").textContent = "◈ " + S.coins; S.leak = true; toast("Bought", "Web exploits got easier."); }],
                   ["No thanks", () => toast("Suit yourself", "Your partner shrugs and leaves.")]] },
@@ -1192,15 +1210,18 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   function scheduleEvent() { S.nextEvent = S.minutes + 70 + Math.random() * 90; }
   let eventOpen = false;
   async function officeEvent() {
-    const pool = EVENTS()[S.side].filter((e) => !S.seen?.includes(e.title)); if (!pool.length) return;
+    const force = new URLSearchParams(location.search).get("event");
+    const pool = EVENTS()[S.side].filter((e) => !S.seen?.includes(e.title) && (force !== "door" || e.kind === "door")); if (!pool.length) return;
     const ev = pool[Math.floor(Math.random() * pool.length)]; S.seen = [...(S.seen || []), ev.title];
     eventOpen = true; S.paused = true;
     if (ev.kind === "door") {
       const [body, hair, tie] = ev.look; $("#vBody").setAttribute("fill", body); $("#vHair").setAttribute("fill", hair);
       $("#vTie").style.display = tie ? "" : "none"; if (tie) $("#vTie").setAttribute("fill", tie);
-      const door = $("#door"); door.classList.add("knock"); [0, 160, 320].forEach((d) => setTimeout(() => beep(180, .07, "square", .06), d));
-      if (S.zoomed) toast("Someone is at the door", ev.who);
-      await sleep(700); door.classList.remove("knock"); door.classList.add("open"); await sleep(350); door.classList.add("in"); await sleep(700);
+      const door = $("#door"); door.classList.add("knock"); knock();
+      await sleep(900); door.classList.remove("knock");
+      if (S.zoomed) { await sleep(300); knock(); await closeLaptop(); await sleep(250); }
+      door.classList.add("open"); beep(240, .25, "sine", .03); await sleep(350); door.classList.add("in"); await sleep(900);
+      return talk(ev);
     } else {
       $(S.side === "blue" ? "#ticker" : "#redNews").setAttribute("opacity", 1);
       if (ev.ticker) $("#tickerText").textContent = ev.ticker + " " + ev.ticker;
@@ -1216,7 +1237,56 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
     });
   }
 
+  function knock() {
+    if (!S.sound) return; const a = audio();
+    [0, .2, .4].forEach((t) => {
+      const at = a.currentTime + t, o = a.createOscillator(), g = a.createGain(), src = a.createBufferSource(), f = a.createBiquadFilter(), g2 = a.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(140, at); o.frequency.exponentialRampToValueAtTime(60, at + .12);
+      g.gain.setValueAtTime(.5, at); g.gain.exponentialRampToValueAtTime(.001, at + .16); o.connect(g); g.connect(a.destination); o.start(at); o.stop(at + .18);
+      src.buffer = noise(); f.type = "lowpass"; f.frequency.value = 500; g2.gain.setValueAtTime(.35, at); g2.gain.exponentialRampToValueAtTime(.001, at + .07);
+      src.connect(f); f.connect(g2); g2.connect(a.destination); src.start(at); src.stop(at + .08);
+    });
+  }
+  function voiceFor(v = {}) {
+    const list = speechSynthesis.getVoices().filter((x) => /^en/i.test(x.lang)); if (!list.length) return null;
+    const girl = list.find((x) => /female|zira|samantha|susan|hazel|jenny|aria|google uk english female/i.test(x.name));
+    const guy = list.find((x) => /male|david|mark|daniel|george|guy|google uk english male/i.test(x.name) && !/female/i.test(x.name));
+    return (v.female ? girl : guy) || list[0];
+  }
+  function say(text, v = {}) {
+    if (!S.sound || !("speechSynthesis" in window)) return false;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/[“”"]/g, "")); const voice = voiceFor(v);
+    if (voice) u.voice = voice; u.lang = "en-US"; u.pitch = v.pitch || 1; u.rate = v.rate || 1; u.volume = .9;
+    speechSynthesis.speak(u); return true;
+  }
+  function placeBubble() {
+    const b = $("#bubble"); if (!b.classList.contains("show")) return;
+    const p = svg.createSVGPoint(); p.x = 1450; p.y = 420; const r = p.matrixTransform(svg.getScreenCTM());
+    const w = b.offsetWidth, left = Math.max(12, Math.min(innerWidth - w - 12, r.x - w - 18)), top = Math.max(60, Math.min(innerHeight - b.offsetHeight - 12, r.y - b.offsetHeight / 2));
+    b.style.left = left + "px"; b.style.top = top + "px"; b.classList.toggle("below", r.x - w - 18 < 12);
+  }
+  addEventListener("resize", placeBubble);
+  async function talk(ev) {
+    const b = $("#bubble"), line = ev.text.replace(/^“|”$/g, "");
+    b.innerHTML = `<b>${ev.who}</b><p class="said"></p><div class="choices"></div>`; b.classList.add("show"); placeBubble();
+    const said = b.querySelector(".said"), spoke = say(line, ev.voice);
+    for (const ch of line) {
+      said.textContent += ch; placeBubble();
+      if (!spoke && /[a-z]/i.test(ch) && Math.random() < .5) beep(320 * (ev.voice?.pitch || 1) + Math.random() * 120, .04, "triangle", .03);
+      await sleep(ch === "." || ch === "?" ? 220 : 32);
+    }
+    const box = b.querySelector(".choices");
+    box.innerHTML = ev.options.map(([label], i) => `<button data-o="${i}">${label}</button>`).join(""); placeBubble();
+    box.querySelectorAll("[data-o]").forEach((btn) => btn.onclick = async () => {
+      window.speechSynthesis?.cancel(); b.classList.remove("show"); S.paused = false; eventOpen = false;
+      await ev.options[+btn.dataset.o][1]();
+      const door = $("#door"); await sleep(400); door.classList.remove("in"); await sleep(600); door.classList.remove("open");
+    });
+  }
+
   function resetGame(side) {
+    $("#bubble").classList.remove("show"); $("#door").classList.remove("in", "open");
     Object.assign(S, { night: false, rain: false, day: 1, minutes: 9 * 60, inside: false, admin: false, scanned: false, stolen: false, cut: false, pivot: false,
       quests: { scout: 0, inside: 0, climb: 0 }, logs: [], over: false, suspect: false, bonus: 0, patched: false, leak: false, boost: false, seen: [], paused: false, nightAlerts: 0 });
     S.atk = { stage: 0, ip: newIp(), next: 9 * 60 + 40, blockedUntil: 0 };
@@ -1248,6 +1318,7 @@ body[data-side="red"] .os { background: radial-gradient(120% 90% at 70% 10%, #3a
   else { $("#hint").style.display = "none"; openMenu(); }
   if (q.has("open")) openLaptop(q.get("open") === "now");
   if (q.has("event")) { S.nextEvent = S.minutes + 1; }
+  if ("speechSynthesis" in window) speechSynthesis.getVoices();
   if (q.has("t")) { S.minutes = +q.get("t") * 60; if (S.minutes >= 18 * 60 || S.minutes < 9 * 60) { S.night = true; S.rain = q.has("rain"); if (S.minutes < 9 * 60) S.minutes += 24 * 60; $("#skip").hidden = false; } paintTime(); }
 })();
 </script>
